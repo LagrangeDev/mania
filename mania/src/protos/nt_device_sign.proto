@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+message NTDeviceSign {
+    string trace = 15;
+    optional string uid = 16;
+    optional Sign sign = 24;
+}
+
+message Sign {
+    optional bytes signature = 1;
+    optional string token = 2;
+    optional Software s = 3;
+}
+
+message Software {
+    optional string ver = 2;
+    optional string token = 3;
+}

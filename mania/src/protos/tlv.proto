@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+message TlvQrCodeD1 {
+    NTOS sys = 1;
+    bytes type = 4;
+}
+
+message TlvQrCodeD1Resp {
+    string url = 2;
+    string qr_sig = 3;
+}
+
+message NTOS {
+    string os = 1;
+    string name = 2;
+}
