@@ -3,7 +3,7 @@
 
 mod business;
 mod connect;
-mod context;
+pub mod context;
 mod crypto;
 mod error;
 mod event;

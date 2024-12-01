@@ -13,16 +13,17 @@ chrono = { version = "0.4.37", features = ["serde"] }
 dashmap = "5.5.3"
 flate2 = "1.0.28"
 generic-array = "1.0.0"
-openssl = "0.10.64"
+openssl = { version = "0.10.64", features = ["vendored"] }
 phf = { version = "0.11.2", features = ["macros"] }
 protobuf = "3.4.0"
 rand = "0.8.5"
 serde = { version = "1.0.197", features = ["derive"] }
 surge-ping = "0.8.1"
 thiserror = "1.0.58"
-tokio = { version = "1.37.0", features = ["net", "io-util", "time", "macros"] }
+tokio = { version = "1.37.0", features = ["net", "io-util", "time", "macros", "rt-multi-thread"] }
 tracing = "0.1.40"
-uuid = { version = "1.8.0", features = ["serde"] }
+uuid = { version = "1.8.0", features = ["serde", "v4"] }
+hex = "0.4.3"
 
 [build-dependencies]
 glob = "0.3.1"

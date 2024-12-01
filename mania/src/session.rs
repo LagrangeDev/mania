@@ -10,6 +10,12 @@ pub struct Session {
     sequence: AtomicU16,
 }
 
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Session {
     pub fn new() -> Self {
         Self {
@@ -33,6 +39,12 @@ impl Session {
 pub struct KeyCollection {
     pub random_key: [u8; 16],
     pub tgt_key: [u8; 16],
+}
+
+impl Default for KeyCollection {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl KeyCollection {

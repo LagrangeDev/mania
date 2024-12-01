@@ -1,3 +1,4 @@
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -32,7 +33,6 @@ pub struct AppInfo {
     pub os: &'static str,
     pub vendor_os: &'static str,
     pub kernel: &'static str,
-    pub base_version: &'static str,
     pub current_version: &'static str,
     pub build_version: i32,
     pub misc_bitmap: i32,
@@ -55,19 +55,18 @@ impl AppInfo {
         os: "Linux",
         vendor_os: "linux",
         kernel: "Linux",
-        base_version: "3.1.1-11223",
-        current_version: "3.1.2-13107",
-        build_version: 13107,
+        current_version: "3.2.10-25765",
+        build_version: 25765,
         misc_bitmap: 32764,
         pt_version: "2.0.0",
         pt_os_version: 19,
         package_name: "com.tencent.qq",
         wt_login_sdk: "nt.wtlogin.0.0.1",
-        package_sign: "V1_LNX_NQ_3.1.2-13107_RDM_B",
+        package_sign: "V1_LNX_NQ_3.2.10-25765_RDM_B",
         app_id: 1600001615,
-        sub_app_id: 537146866,
+        sub_app_id: 537234773,
         app_id_qr_code: 13697054,
-        app_client_version: 13172,
+        app_client_version: 25765,
         main_sig_map: 169742560,
         sub_sig_map: 0,
         nt_login_type: 1,
@@ -77,7 +76,6 @@ impl AppInfo {
         os: "Mac",
         vendor_os: "mac",
         kernel: "Darwin",
-        base_version: "6.9.17-12118",
         current_version: "6.9.23-20139",
         build_version: 20139,
         misc_bitmap: 32764,
@@ -99,7 +97,6 @@ impl AppInfo {
         os: "Windows",
         vendor_os: "win32",
         kernel: "Windows_NT",
-        base_version: "9.9.1-15489",
         current_version: "9.9.2-15962",
         build_version: 15962,
         misc_bitmap: 32764,
@@ -133,4 +130,18 @@ pub struct DeviceInfo {
     pub device_name: String,
     pub system_kernel: String,
     pub kernel_version: String,
+}
+
+impl Default for DeviceInfo {
+    fn default() -> Self {
+        let mut rng = rand::thread_rng();
+        let mac_address: Vec<u8> = (0..6).map(|_| rng.gen()).collect();
+        Self {
+            uuid: Uuid::new_v4(),
+            mac_address,
+            device_name: "Lagrange.Mania".to_string(),
+            system_kernel: "Windows 10.0.19042".to_string(),
+            kernel_version: "10.0.19042.0".to_string(),
+        }
+    }
 }

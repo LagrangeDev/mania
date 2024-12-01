@@ -5,7 +5,9 @@ use chrono::Utc;
 
 use crate::context::Context;
 use crate::event::{ClientEvent, ParseEventError, ServerEvent};
-use crate::packet::{BinaryPacket, PacketBuilder, PacketReader, PacketType};
+use crate::packet::{
+    BinaryPacket, PacketBuilder, PacketReader, PacketType, PREFIX_U16, PREFIX_WITH,
+};
 use crate::tlv::t017::T017;
 use crate::tlv::t018::T018;
 use crate::tlv::t019::T019;
@@ -74,7 +76,7 @@ fn build_trans_emp_body(
     PacketBuilder::new()
         .u8(0) // unknown
         // -13 is the length of zeros, which could be found at TransEmp31 and TransEmp12.ConstructTransEmp()
-        .section_16_with_addition::<_, -13>(|packet| {
+        .write_with_length::<_, { PREFIX_U16 | PREFIX_WITH }, -13>(|packet| {
             packet
                 .u32(ctx.app_info.app_id as u32)
                 .u32(0x72) // const
@@ -83,7 +85,7 @@ fn build_trans_emp_body(
                 .u32(Utc::now().timestamp() as u32) // length actually starts here
                 .u8(2) // header for packet, counted into length of next barrier manually
                 // addition 1 is the packet start counted in
-                .section_16_with_addition::<_, 1>(|packet| {
+                .write_with_length::<_, { PREFIX_U16 | PREFIX_WITH }, 1>(|packet| {
                     packet
                         .u16(qr_cmd)
                         .u64(0) // const
@@ -105,7 +107,7 @@ fn build_trans_emp_body(
 pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
     PacketBuilder::new()
         .u8(2) // packet start
-        .section_16(|packet| {
+        .write_with_length::<_, { PREFIX_U16 | PREFIX_WITH }, 1>(|packet| {
             packet
                 .u16(8001) // ver
                 .u16(cmd) // cmd: wtlogin.trans_emp: 2066, wtlogin.login: 2064

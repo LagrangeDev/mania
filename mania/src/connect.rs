@@ -26,9 +26,9 @@ pub async fn optimum_server(request_msf: bool, ipv6: bool) -> Result<SocketAddr>
 /// Resolve the DNS to get the server address.
 async fn resolve_dns(ipv6: bool) -> Result<Vec<SocketAddr>> {
     let host = if ipv6 {
-        "msfwifiv6.3g.qq.com"
+        "msfwifiv6.3g.qq.com:8080"
     } else {
-        "msfwifi.3g.qq.com"
+        "msfwifi.3g.qq.com:8080"
     };
     let host = tokio::net::lookup_host(host).await?;
     Ok(host.collect())

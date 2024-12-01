@@ -171,7 +171,7 @@ impl SsoPacket {
                     } else {
                         1
                     }) // flag
-                    .bytes(&ctx.key_store.session.d2) // d2
+                    .section(|p| p.bytes(&ctx.key_store.session.d2))
                     .u8(0) // unknown
                     .section(|packet| packet.string(&ctx.key_store.uin.to_string()))
                     .bytes(&tea::tea_encrypt(&body, &ctx.key_store.session.d2_key))
@@ -229,10 +229,11 @@ impl SsoPacket {
 
         let body = reader.bytes();
 
-        let body = if auth_flag == 0 {
-            body
-        } else {
-            tea::tea_decrypt(&body, &ctx.key_store.session.d2_key).into()
+        let body = match auth_flag {
+            0 => body,
+            1 => tea::tea_decrypt(&body, &ctx.key_store.session.d2_key).into(),
+            2 => tea::tea_decrypt(&body, &[0u8; 16]).into(),
+            _ => panic!("Invalid auth flag"),
         };
 
         // Lagrange.Core.Internal.Packets.SsoPacker.Parse
@@ -244,15 +245,14 @@ impl SsoPacket {
         let command = reader.section(|p| p.string());
         let _ = reader.section(|p| p.bytes()); // unknown
         let is_compressed = reader.u32() != 0;
-        let _ = reader.section(|p| p.bytes()); // dummy sso header
-
+        reader.read_with_length::<_, { PREFIX_U32 | PREFIX_LENGTH_ONLY }>(|p| p.bytes()); // dummy sso header
         let body = if is_compressed {
             // Lagrange.Core.Internal.Packets.SsoPacker.InflatePacket
             let body = reader.section(|p| p.bytes());
             let mut reader = flate2::read::ZlibDecoder::new(body.reader());
 
             let mut buffer = BytesMut::new().writer();
-            buffer.write_u32::<BigEndian>(0).unwrap(); // placeholder for length
+            buffer.write_u32::<BigEndian>(0)?; // placeholder for length
             std::io::copy(&mut reader, &mut buffer)?;
 
             let mut buffer = buffer.into_inner();
@@ -324,6 +324,13 @@ fn random_trace() -> String {
     result
 }
 
+pub const PREFIX_NONE: u8 = 0b0000;
+pub const PREFIX_U8: u8 = 0b0001;
+pub const PREFIX_U16: u8 = 0b0010;
+pub const PREFIX_U32: u8 = 0b0100;
+pub const PREFIX_LENGTH_ONLY: u8 = 0;
+pub const PREFIX_WITH: u8 = 0b1000;
+
 pub struct PacketBuilder {
     buffer: Vec<u8>,
 }
@@ -382,6 +389,54 @@ impl PacketBuilder {
         f(self)
     }
 
+    pub fn write_with_length<F, const P: u8, const A: isize>(self, f: F) -> Self
+    where
+        F: FnOnce(Self) -> Self,
+    {
+        const PREFIX_WITH_LENGTH: u8 = 0b1000;
+        let prefix_length = (P & 0b0111) as usize;
+
+        if prefix_length == 0 {
+            return f(self);
+        }
+
+        let this = match prefix_length {
+            1 => self.u8(0),
+            2 => self.u16(0),
+            4 => self.u32(0),
+            _ => panic!("Invalid Prefix is given"),
+        };
+
+        let ori_length = this.buffer.len();
+
+        let mut this = f(this);
+
+        let closure_called_length = this.buffer.len() - ori_length;
+
+        let length = (if (P & PREFIX_WITH_LENGTH) > 0 {
+            closure_called_length + prefix_length
+        } else {
+            closure_called_length
+        } as isize)
+            + A;
+
+        match prefix_length {
+            1 => this.buffer[ori_length - prefix_length] = length as u8,
+            2 => byteorder::BigEndian::write_u16(
+                &mut this.buffer[ori_length - prefix_length..],
+                length as u16,
+            ),
+            4 => byteorder::BigEndian::write_u32(
+                &mut this.buffer[ori_length - prefix_length..],
+                length as u32,
+            ),
+            _ => panic!("Invalid Prefix is given"),
+        }
+
+        this
+    }
+
+    // u32 | prefix
     pub fn section<F>(self, f: F) -> Self
     where
         F: FnOnce(Self) -> Self,
@@ -389,6 +444,7 @@ impl PacketBuilder {
         self.section_with_addition::<F, 4>(f)
     }
 
+    // u32 + skip (no prefix)
     pub fn section_with_addition<F, const N: isize>(self, f: F) -> Self
     where
         F: FnOnce(Self) -> Self,
@@ -404,6 +460,7 @@ impl PacketBuilder {
         this
     }
 
+    // u16 | prefix
     pub fn section_16<F>(self, f: F) -> Self
     where
         F: FnOnce(Self) -> Self,
@@ -411,6 +468,7 @@ impl PacketBuilder {
         self.section_16_with_addition::<F, 2>(f)
     }
 
+    // u16 + skip (no prefix)
     pub fn section_16_with_addition<F, const N: isize>(self, f: F) -> Self
     where
         F: FnOnce(Self) -> Self,
@@ -485,6 +543,21 @@ impl PacketReader {
 
     pub fn skip(&mut self, n: usize) {
         self.reader.advance(n);
+    }
+
+    pub fn read_with_length<T, const P: u8>(&mut self, f: impl FnOnce(&mut Self) -> T) {
+        let length_counted = (P & PREFIX_WITH) > 0;
+        let prefix_length = (P & 0b0111) as usize;
+        let length = match prefix_length {
+            0 => 0,
+            1 => self.u8() as usize,
+            2 => self.u16() as usize,
+            4 => self.u32() as usize,
+            _ => panic!("Invalid Prefix is given"),
+        } - if length_counted { prefix_length } else { 0 };
+
+        let buffer = self.reader.split_to(length);
+        f(&mut PacketReader::new(buffer));
     }
 
     pub fn section<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
