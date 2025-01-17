@@ -5,7 +5,10 @@ use chrono::Utc;
 
 use crate::context::Context;
 use crate::event::{ClientEvent, ParseEventError, ServerEvent};
-use crate::packet::{BinaryPacket, PacketBuilder, PacketReader, PacketType, PREFIX_LENGTH_ONLY, PREFIX_U16, PREFIX_U8, PREFIX_WITH};
+use crate::packet::{
+    BinaryPacket, PacketBuilder, PacketReader, PacketType, PREFIX_LENGTH_ONLY, PREFIX_U16,
+    PREFIX_U8, PREFIX_WITH,
+};
 use crate::tlv::t017::T017;
 use crate::tlv::t018::T018;
 use crate::tlv::t019::T019;
@@ -52,7 +55,7 @@ impl ClientEvent for TransEmp {
                     .u16(0)
                     .build();
                 build_trans_emp_body(ctx, 0x12, data)
-            },
+            }
             TransEmp::FetchQrCode => {
                 let tlvs = if ctx.session.unusual_sign.is_none() {
                     Self::TLVS.as_slice()
@@ -104,12 +107,8 @@ fn build_trans_emp_body(ctx: &Context, qr_cmd: u16, tlvs: Vec<u8>) -> Vec<u8> {
         .u16(request_body.len() as u16)
         .u32(ctx.app_info.app_id as u32)
         .u32(0x72)
-        .write_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }, 0>(|packet| {
-            packet.bytes(&[])
-        })
-        .write_with_length::<_, { PREFIX_U8 | PREFIX_LENGTH_ONLY }, 0>(|packet| {
-            packet.bytes(&[])
-        })
+        .write_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }, 0>(|packet| packet.bytes(&[]))
+        .write_with_length::<_, { PREFIX_U8 | PREFIX_LENGTH_ONLY }, 0>(|packet| packet.bytes(&[]))
         .bytes(&request_body)
         .build()
 }

@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 use std::sync::atomic::AtomicU32;
 
-use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
-use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crate::proto::nt_device_sign::{NTDeviceSign, Sign, Software};
 use crate::proto::nt_packet_uid::NTPacketUid;
+use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 use protobuf::Message;
 use rand::Rng;
 use thiserror::Error;

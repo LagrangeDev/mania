@@ -1,5 +1,5 @@
-use mania::*;
 use mania::context::DeviceInfo;
+use mania::*;
 
 #[tokio::main]
 async fn main() {

@@ -101,7 +101,9 @@ impl Business {
         drop(reconnecting);
     }
 
-    async fn dispatch_packet(&mut self) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn dispatch_packet(
+        &mut self,
+    ) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Lagrange.Core.Internal.Context.PacketContext.DispatchPacket
         let packet = self.receiver.recv().await?;
         let packet = SsoPacket::parse(packet, &self.context)?;
