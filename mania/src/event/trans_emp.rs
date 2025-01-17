@@ -5,9 +5,7 @@ use chrono::Utc;
 
 use crate::context::Context;
 use crate::event::{ClientEvent, ParseEventError, ServerEvent};
-use crate::packet::{
-    BinaryPacket, PacketBuilder, PacketReader, PacketType, PREFIX_U16, PREFIX_WITH,
-};
+use crate::packet::{BinaryPacket, PacketBuilder, PacketReader, PacketType, PREFIX_LENGTH_ONLY, PREFIX_U16, PREFIX_U8, PREFIX_WITH};
 use crate::tlv::t017::T017;
 use crate::tlv::t018::T018;
 use crate::tlv::t019::T019;
@@ -37,70 +35,82 @@ impl ClientEvent for TransEmp {
 
     fn build_packets(&self, ctx: &Context) -> Vec<BinaryPacket> {
         let body = match self {
-            TransEmp::FetchQrCode => build_trans_emp_body(ctx, 0x31, |packet| {
-                // TransEmp31.ConstructTransEmp()
-                let packet = packet.u16(0).u64(0).u8(0);
-
-                let tags = if ctx.session.unusual_sign.is_none() {
+            TransEmp::QueryResult => {
+                let qrsign = ctx.session.qr_sign.load();
+                let qrsign = qrsign.as_ref().expect("qr sign not initialized");
+                let data = PacketBuilder::new()
+                    .u16(0)
+                    .u32(ctx.app_info.app_id as u32)
+                    .write_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }, 0>(|packet| {
+                        packet.bytes(&qrsign.sign)
+                    })
+                    .u64(0)
+                    .u8(0)
+                    .write_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }, 0>(|packet| {
+                        packet.bytes(&[])
+                    })
+                    .u16(0)
+                    .build();
+                build_trans_emp_body(ctx, 0x12, data)
+            },
+            TransEmp::FetchQrCode => {
+                let tlvs = if ctx.session.unusual_sign.is_none() {
                     Self::TLVS.as_slice()
                 } else {
                     Self::TLVS_PASSWORD.as_slice()
                 };
-
-                packet.packet(|p| serialize_tlv_set(ctx, tags, p)).u8(0x03)
-            }),
-            TransEmp::QueryResult => build_trans_emp_body(ctx, 0x12, |packet| {
-                // TransEmp12.ConstructTransEmp()
-                let qrsign = ctx.session.qr_sign.load();
-                let qrsign = qrsign.as_ref().expect("qr sign not initialized");
-
-                packet
-                    .u16(qrsign.sign.len() as u16) // sign length
-                    .bytes(&qrsign.sign)
-                    .u64(0) // const
-                    .u32(0) // const
-                    .u8(0) // const
-                    .u8(0x03) // end of packet
-            }),
+                let data = PacketBuilder::new()
+                    .u16(0)
+                    .u32(ctx.app_info.app_id as u32)
+                    .u64(0)
+                    .bytes(&[])
+                    .u8(0)
+                    .write_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }, 0>(|packet| {
+                        packet.bytes(&[])
+                    })
+                    .packet(|p| serialize_tlv_set(ctx, tlvs, p))
+                    .build();
+                build_trans_emp_body(ctx, 0x31, data)
+            }
         };
         let packet = build_wtlogin_packet(ctx, 2066, &body);
         vec![BinaryPacket(packet.into())]
     }
 }
 
-fn build_trans_emp_body(
-    ctx: &Context,
-    qr_cmd: u16,
-    build_inner: impl FnOnce(PacketBuilder) -> PacketBuilder,
-) -> Vec<u8> {
+fn build_trans_emp_body(ctx: &Context, qr_cmd: u16, tlvs: Vec<u8>) -> Vec<u8> {
+    // newPacket
+    let new_packet = PacketBuilder::new()
+        .u8(2)
+        .u16((43 + tlvs.len() + 1) as u16)
+        .u16(qr_cmd)
+        .bytes(&[0; 21])
+        .u8(0x03)
+        .u16(0x00)
+        .u16(0x32)
+        .u32(0)
+        .u64(0)
+        .bytes(&tlvs)
+        .u8(3)
+        .build();
+
+    let request_body = PacketBuilder::new()
+        .u32(Utc::now().timestamp() as u32)
+        .bytes(&new_packet)
+        .build();
+
     PacketBuilder::new()
-        .u8(0) // unknown
-        // -13 is the length of zeros, which could be found at TransEmp31 and TransEmp12.ConstructTransEmp()
-        .write_with_length::<_, { PREFIX_U16 | PREFIX_WITH }, -13>(|packet| {
-            packet
-                .u32(ctx.app_info.app_id as u32)
-                .u32(0x72) // const
-                .u16(0) // const
-                .u8(0)
-                .u32(Utc::now().timestamp() as u32) // length actually starts here
-                .u8(2) // header for packet, counted into length of next barrier manually
-                // addition 1 is the packet start counted in
-                .write_with_length::<_, { PREFIX_U16 | PREFIX_WITH }, 1>(|packet| {
-                    packet
-                        .u16(qr_cmd)
-                        .u64(0) // const
-                        .u32(0) // const
-                        .u64(0) // const
-                        .u16(3) // const
-                        .u16(0) // const
-                        .u16(50) // unknown const
-                        .u64(0)
-                        .u32(0)
-                        .u16(0)
-                        .u32(ctx.app_info.app_id as u32)
-                        .packet(build_inner)
-                })
+        .u8(0x00)
+        .u16(request_body.len() as u16)
+        .u32(ctx.app_info.app_id as u32)
+        .u32(0x72)
+        .write_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }, 0>(|packet| {
+            packet.bytes(&[])
         })
+        .write_with_length::<_, { PREFIX_U8 | PREFIX_LENGTH_ONLY }, 0>(|packet| {
+            packet.bytes(&[])
+        })
+        .bytes(&request_body)
         .build()
 }
 
@@ -120,6 +130,7 @@ pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
                 .u16(0) // insId
                 .u16(ctx.app_info.app_client_version) // cliType
                 .u32(0) // retryTime
+                // head
                 .u8(1) // const
                 .u8(1) // const
                 .bytes(&ctx.session.stub.random_key) // randKey
