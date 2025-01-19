@@ -1,10 +1,10 @@
 use crate::tlv::prelude::*;
 
-pub struct T017 {
+pub struct T017q {
     pub qr_code: Bytes,
 }
 
-impl TlvDe for T017 {
+impl TlvDe for T017q {
     fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
         Ok(Box::new(p.length_value(|p| Self { qr_code: p.bytes() })))
     }

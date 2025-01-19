@@ -9,6 +9,9 @@ pub enum Error {
 
     #[error("invalid server response: {0}")]
     InvalidServerResponse(Cow<'static, str>),
+
+    #[error("an error occurred: {0}")]
+    GenericError(Cow<'static, str>),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,5 +1,6 @@
 use std::ops::Deref;
 
+// FIXME: do not use openssl, use p256 instead
 use openssl::bn::BigNumContext;
 use openssl::derive::Deriver;
 use openssl::ec::{EcGroup, EcKey, EcPoint, PointConversionForm};

@@ -8,7 +8,6 @@ use dashmap::DashMap;
 use tokio::sync::{oneshot, Mutex, MutexGuard};
 
 use crate::context::Context;
-use crate::event::alive::Alive;
 use crate::event::{resolve_events, ClientEvent, ServerEvent};
 use crate::packet::SsoPacket;
 use crate::socket::{self, PacketReceiver, PacketSender};
@@ -42,31 +41,21 @@ impl Business {
         self.handle.clone()
     }
 
+    // TODO: decouple
     pub async fn spawn(&mut self) {
-        let handle = self.handle();
-        let heartbeat = async move {
-            const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
-            let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
-            interval.tick().await;
-            loop {
-                interval.tick().await;
-                let _ = handle.push_event(&Alive).await;
-                handle.wait_reconnecting().await;
-            }
-        };
         let handle_packets = async {
             loop {
                 match self.dispatch_packet().await {
                     Ok(_) => {}
                     Err(e) => {
                         tracing::error!("Error handling packet: {}", e);
-                        self.reconnect().await;
+                        // FIXME: Non-required reconnections, except for serious errors
+                        // self.reconnect().await;
                     }
                 }
             }
         };
         tokio::select! {
-            _ = heartbeat => {}
             _ = handle_packets => {}
         }
     }
@@ -106,10 +95,10 @@ impl Business {
     ) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Lagrange.Core.Internal.Context.PacketContext.DispatchPacket
         let packet = self.receiver.recv().await?;
-        let packet = SsoPacket::parse(packet, &self.context)?;
+        let packet = SsoPacket::parse(packet, &self.context).await?;
         let sequence = packet.sequence();
 
-        let events = resolve_events(packet, &self.context)?;
+        let events = resolve_events(packet, &self.context).await?;
         // TODO: Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent
         // 在 send_event 中的 handle incoming event 合并到这里来
         // GroupSysDecreaseEvent, ... -> Lagrange.Core.Internal.Context.Logic.Implementation.CachingLogic.Incoming
@@ -119,8 +108,8 @@ impl Business {
             tx.send(events).unwrap();
         } else {
             // Lagrange.Core.Internal.Context.BusinessContext.HandleServerPacket
-
-            todo!("Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent")
+            // todo!("Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent")
+            tracing::warn!("unhandled packet: {:?}", events);
         }
         Ok(())
     }
@@ -146,7 +135,7 @@ impl BusinessHandle {
 
     /// Push a client event to the server, without waiting for a response.
     pub async fn push_event(&self, event: &impl ClientEvent) -> Result<()> {
-        for packet in event.build_sso_packets(&self.context) {
+        for packet in event.build_sso_packets(&self.context).await {
             self.post_packet(packet).await?;
         }
         Ok(())
@@ -157,7 +146,7 @@ impl BusinessHandle {
         // TODO: Lagrange.Core.Internal.Context.BusinessContext.HandleOutgoingEvent
         // MultiMsgUploadEvent -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Outgoing
         let mut result = vec![];
-        for packet in event.build_sso_packets(&self.context) {
+        for packet in event.build_sso_packets(&self.context).await {
             let events = self.send_packet(packet).await?;
             result.extend(events);
         }
@@ -165,11 +154,12 @@ impl BusinessHandle {
     }
 
     async fn post_packet(&self, packet: SsoPacket) -> Result<()> {
-        let packet = packet.build(&self.context);
+        let packet = packet.build(&self.context).await;
         self.sender.load().send(packet).await
     }
 
     async fn send_packet(&self, packet: SsoPacket) -> Result<Vec<Box<dyn ServerEvent>>> {
+        tracing::debug!("sending packet: {:?}", packet);
         let sequence = packet.sequence();
         let (tx, rx) = oneshot::channel();
         self.pending_requests.insert(sequence, tx);

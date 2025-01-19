@@ -1,20 +1,21 @@
 use std::borrow::Cow;
+use std::cmp::PartialEq;
+use std::fmt::Debug;
 use std::sync::atomic::AtomicU32;
 
-use crate::proto::nt_device_sign::{NTDeviceSign, Sign, Software};
+use crate::proto::nt_device_sign::{NTDeviceSign, Sign};
 use crate::proto::nt_packet_uid::NTPacketUid;
 use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use protobuf::Message;
+use protobuf::{Message, MessageField};
 use rand::Rng;
 use thiserror::Error;
-use uuid::Uuid;
 
 use crate::context::Context;
 use crate::crypto::tea;
 
 #[repr(u8)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PacketType {
     T12 = 12,
     T13 = 13,
@@ -35,7 +36,6 @@ impl TryFrom<u32> for PacketType {
 #[derive(Debug)]
 pub struct BinaryPacket(pub Bytes);
 
-#[derive(Debug)]
 pub struct SsoPacket {
     packet_type: PacketType,
     command: Cow<'static, str>,
@@ -43,6 +43,18 @@ pub struct SsoPacket {
     payload: BinaryPacket,
 }
 
+impl Debug for SsoPacket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SsoPacket")
+            .field("packet_type", &self.packet_type)
+            .field("command", &self.command)
+            .field("sequence", &self.sequence)
+            .field("payload", &hex::encode(&self.payload.0))
+            .finish()
+    }
+}
+
+// TODO: add tests
 impl SsoPacket {
     pub fn new(
         packet_type: PacketType,
@@ -101,15 +113,26 @@ impl SsoPacket {
         self.payload.0.clone()
     }
 
-    pub fn build(&self, ctx: &Context) -> Vec<u8> {
+    pub async fn build(&self, ctx: &Context) -> Vec<u8> {
         match self.packet_type {
-            PacketType::T12 => self.build_protocol12(ctx),
-            PacketType::T13 => self.build_protocol13(ctx),
+            PacketType::T12 => self.build_protocol12(ctx).await,
+            PacketType::T13 => self.build_protocol13(ctx).await,
         }
     }
 
-    pub fn build_protocol12(&self, ctx: &Context) -> Vec<u8> {
+    pub async fn build_protocol12(&self, ctx: &Context) -> Vec<u8> {
         // Lagrange.Core.Internal.Packets.SsoPacker.Build
+        let tgt = ctx.key_store.session.tgt.read().await;
+        let uid = ctx
+            .key_store
+            .uid
+            .read()
+            .await
+            .as_ref()
+            .map(|arc| arc.to_string());
+        let uin = ctx.key_store.uin.read().await.to_string();
+        let d2 = ctx.key_store.session.d2.read().await;
+        let d2key = ctx.key_store.session.d2_key.read().await;
         let body = PacketBuilder::new()
             .section(|header| {
                 header
@@ -117,70 +140,61 @@ impl SsoPacket {
                     .u32(ctx.app_info.sub_app_id as u32) // app id
                     .u32(2052) // locale id
                     .bytes(&[2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-                    .section(|p| p.bytes(&ctx.key_store.session.tgt)) // tgt
+                    .section(|p| p.bytes(&tgt)) // tgt
                     .section(|p| p.string(&self.command)) // command
                     .section(|p| p) // unknown
-                    .section(|p| {
-                        let mut buf = Uuid::encode_buffer();
-                        p.string(ctx.device.uuid.simple().encode_lower(&mut buf))
-                    }) // uuid
+                    .section(|p| p.string(&hex::encode(ctx.device.uuid))) // uuid
                     .section(|p| p) // unknown
                     .section_16(|p| p.string(ctx.app_info.current_version)) // version
                     .section(|signature| {
                         let sign =
                             ctx.sign_provider
                                 .sign(&self.command, self.sequence, &self.payload.0);
-                        let sign = sign.map(|result| Sign {
-                            signature: Some(result.signature),
-                            token: result.token,
-                            s: result
-                                .software
-                                .and_then(|s| Software::parse_from_bytes(&s).ok())
-                                .or_else(|| {
-                                    Some(Software {
-                                        ver: Some(ctx.app_info.package_sign.to_string()),
-                                        token: Default::default(),
-                                        special_fields: Default::default(),
-                                    })
-                                })
-                                .into(),
-                            special_fields: Default::default(),
-                        });
                         let device_sign = NTDeviceSign {
                             trace: random_trace(),
-                            uid: ctx.key_store.uid.clone(),
-                            sign: sign.into(),
+                            uid,
+                            sign: match sign {
+                                Some(sign) => MessageField::some(Sign {
+                                    SecSign: Some(hex::decode(sign.sign).unwrap()),
+                                    SecToken: Some(sign.token),
+                                    SecExtra: Some(hex::decode(sign.extra).unwrap()),
+                                    special_fields: Default::default(),
+                                }),
+                                None => MessageField::none(),
+                            },
                             special_fields: Default::default(),
                         };
                         let device_sign = device_sign
                             .write_to_bytes()
-                            .expect("failed to serialize signature");
+                            .expect("failed to serialize device_sign into signature");
                         signature.bytes(&device_sign)
                     }) // signature
             })
             .section(|payload| payload.bytes(&self.payload.0))
             .build();
-
         // Lagrange.Core.Internal.Packets.ServicePacker.BuildProtocol12
         PacketBuilder::new()
             .section(|packet| {
                 packet
                     .u32(12) // protocol version
-                    .u8(if ctx.key_store.session.d2.is_empty() {
-                        2
-                    } else {
-                        1
-                    }) // flag
-                    .section(|p| p.bytes(&ctx.key_store.session.d2))
+                    .u8(if d2.is_empty() { 2 } else { 1 }) // flag
+                    .section(|p| p.bytes(&d2))
                     .u8(0) // unknown
-                    .section(|packet| packet.string(&ctx.key_store.uin.to_string()))
-                    .bytes(&tea::tea_encrypt(&body, &ctx.key_store.session.d2_key))
+                    .section(|packet| packet.string(&uin)) // uin
+                    .bytes(&tea::tea_encrypt(&body, &d2key[..]))
             })
             .build()
     }
 
-    pub fn build_protocol13(&self, ctx: &Context) -> Vec<u8> {
+    pub async fn build_protocol13(&self, ctx: &Context) -> Vec<u8> {
         // Lagrange.Core.Internal.Packets.ServicePacker.BuildProtocol13
+        let uid = ctx
+            .key_store
+            .uid
+            .read()
+            .await
+            .as_ref()
+            .map(|arc| arc.to_string());
         PacketBuilder::new()
             .section(|packet| {
                 packet
@@ -193,7 +207,7 @@ impl SsoPacket {
                         p.section(|p| p.string(&self.command)) // command
                             .section(|p| p) // unknown
                             .section(|p| {
-                                p.bytes(&if let Some(ref uid) = ctx.key_store.uid {
+                                p.bytes(&if let Some(ref uid) = uid {
                                     let uid = NTPacketUid {
                                         uid: Some(uid.clone()),
                                         special_fields: Default::default(),
@@ -209,11 +223,11 @@ impl SsoPacket {
             .build()
     }
 
-    pub fn parse(packet: Bytes, ctx: &Context) -> Result<SsoPacket, ParsePacketError> {
+    pub async fn parse(packet: Bytes, ctx: &Context) -> Result<SsoPacket, ParsePacketError> {
         // Lagrange.Core.Internal.Packets.ServicePacker.Parse
         let mut reader = PacketReader::new(packet);
         let _length = reader.u32();
-        let _protocol: PacketType = reader
+        let protocol: PacketType = reader
             .u32()
             .try_into()
             .map_err(ParsePacketError::UnknownPacketType)?;
@@ -222,16 +236,16 @@ impl SsoPacket {
         let _flag = reader.u8();
         let uin = reader.section(|p| p.string());
         let uin = uin.parse().map_err(|_| ParsePacketError::InvalidUin(uin))?;
-
-        if uin != ctx.key_store.uin {
-            return Err(ParsePacketError::UinMismatch(ctx.key_store.uin, uin));
+        let stored_uin = ctx.key_store.uin.read().await;
+        if uin != *stored_uin && protocol == PacketType::T12 {
+            return Err(ParsePacketError::UinMismatch(*stored_uin, uin));
         }
 
         let body = reader.bytes();
 
         let body = match auth_flag {
             0 => body,
-            1 => tea::tea_decrypt(&body, &ctx.key_store.session.d2_key).into(),
+            1 => tea::tea_decrypt(&body, &ctx.key_store.session.d2_key.read().await[..]).into(),
             2 => tea::tea_decrypt(&body, &[0u8; 16]).into(),
             _ => panic!("Invalid auth flag"),
         };
@@ -545,7 +559,11 @@ impl PacketReader {
         self.reader.advance(n);
     }
 
-    pub fn read_with_length<T, const P: u8>(&mut self, f: impl FnOnce(&mut Self) -> T) {
+    pub fn read_packet(&mut self, count: usize) -> BinaryPacket {
+        BinaryPacket(self.reader.split_to(count))
+    }
+
+    pub fn read_with_length<T, const P: u8>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let length_counted = (P & PREFIX_WITH) > 0;
         let prefix_length = (P & 0b0111) as usize;
         let length = match prefix_length {
@@ -557,7 +575,7 @@ impl PacketReader {
         } - if length_counted { prefix_length } else { 0 };
 
         let buffer = self.reader.split_to(length);
-        f(&mut PacketReader::new(buffer));
+        f(&mut PacketReader::new(buffer))
     }
 
     pub fn section<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {

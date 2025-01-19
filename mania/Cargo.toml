@@ -1,6 +1,6 @@
 [package]
 name = "mania"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,24 +8,27 @@ edition = "2021"
 [dependencies]
 arc-swap = { version = "1.7.1", features = ["serde"] }
 byteorder = "1.5.0"
-bytes = "1.6.0"
-chrono = { version = "0.4.37", features = ["serde"] }
-dashmap = "5.5.3"
-flate2 = "1.0.28"
-generic-array = "1.0.0"
-openssl = { version = "0.10.64", features = ["vendored"] }
-phf = { version = "0.11.2", features = ["macros"] }
+bytes = { version = "1.9.0", features = ["serde"] }
+chrono = { version = "0.4.39", features = ["serde"] }
+dashmap = "6.1.0"
+flate2 = "1.0.35"
+generic-array = "1.2.0"
+openssl = { version = "0.10.68", features = ["vendored"] }
+phf = { version = "0.11.3", features = ["macros"] }
 protobuf = "3.4.0"
 rand = "0.8.5"
-serde = { version = "1.0.197", features = ["derive"] }
+serde = { version = "1.0.217", features = ["derive"] }
 surge-ping = "0.8.1"
-thiserror = "1.0.58"
-tokio = { version = "1.37.0", features = ["net", "io-util", "time", "macros", "rt-multi-thread"] }
-tracing = "0.1.40"
-uuid = { version = "1.8.0", features = ["serde", "v4"] }
+thiserror = "2.0.11"
+tokio = { version = "1.43.0", features = ["net", "io-util", "time", "macros", "rt-multi-thread", "signal"] }
+tracing = "0.1.41"
+uuid = { version = "1.12.0", features = ["serde", "v4"] }
 hex = "0.4.3"
-tracing-subscriber = "0.3.19"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+reqwest = "0.12.12"
+serde_json = "1.0.135"
+futures = "0.3.31"
 
 [build-dependencies]
-glob = "0.3.1"
+glob = "0.3.2"
 protobuf-codegen = "3.4.0"

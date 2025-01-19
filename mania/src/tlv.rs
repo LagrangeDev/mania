@@ -7,44 +7,129 @@ use thiserror::Error;
 use crate::context::Context;
 use crate::packet::{PacketBuilder, PacketReader};
 
-pub mod t011;
-pub mod t016;
-pub mod t017;
+pub mod t011q;
+pub mod t016a;
+pub mod t016e;
+pub mod t016q;
+pub mod t017q;
 pub mod t018;
-pub mod t019;
-pub mod t01b;
-pub mod t01c;
-pub mod t01d;
-pub mod t01e;
-pub mod t033;
-pub mod t035;
-pub mod t066;
-pub mod t0d1;
+pub mod t018q;
+pub mod t019q;
+pub mod t01bq;
+pub mod t01cq;
+pub mod t01dq;
+pub mod t01eq;
+pub mod t033q;
+pub mod t035q;
+pub mod t066q;
+pub mod t0d1q;
+pub mod t100;
+pub mod t106;
+pub mod t107;
+pub mod t10a;
+pub mod t116;
+pub mod t119;
+pub mod t11a;
+pub mod t124;
+pub mod t128;
+pub mod t141;
+pub mod t142;
+pub mod t143;
+pub mod t144;
+pub mod t145;
+pub mod t146;
+pub mod t147;
+pub mod t166;
+pub mod t177;
+pub mod t191;
+pub mod t305;
+pub mod t318;
+pub mod t521;
+pub mod t543;
 
-type TlvConstructor = fn(&Context) -> Box<dyn TlvSer>;
+pub struct TlvPreload {
+    unusual_sign: Option<Bytes>,
+    no_pic_sig: Option<Bytes>,
+    uin: u32,
+    tgtgt_key: [u8; 16],
+    temp_password: Option<Bytes>,
+}
+
+impl TlvPreload {
+    pub fn new(
+        unusual_sign: Option<Bytes>,
+        no_pic_sig: Option<Bytes>,
+        uin: u32,
+        tgtgt_key: [u8; 16],
+        temp_password: Option<Bytes>,
+    ) -> Self {
+        Self {
+            unusual_sign,
+            no_pic_sig,
+            uin,
+            tgtgt_key,
+            temp_password,
+        }
+    }
+}
+
+type TlvConstructor = fn(&Context, pre: &TlvPreload) -> Box<dyn TlvSer>;
+static TLV_QR_SER_MAP: Map<u16, TlvConstructor> = phf_map! {
+    0x011_u16 => t011q::T011q::from_context,
+    0x016_u16 => t016q::T016q::from_context,
+    0x01b_u16 => t01bq::T01bq::from_context,
+    0x01d_u16 => t01dq::T01dq::from_context,
+    0x033_u16 => t033q::T033q::from_context,
+    0x035_u16 => t035q::T035q::from_context,
+    0x066_u16 => t066q::T066q::from_context,
+    0x0d1_u16 => t0d1q::T0d1q::from_context,
+};
+
 static TLV_SER_MAP: Map<u16, TlvConstructor> = phf_map! {
-    0x011_u16 => t011::T011::from_context,
-    0x016_u16 => t016::T016::from_context,
-    0x01b_u16 => t01b::T01b::from_context,
-    0x01d_u16 => t01d::T01d::from_context,
-    0x033_u16 => t033::T033::from_context,
-    0x035_u16 => t035::T035::from_context,
-    0x066_u16 => t066::T066::from_context,
-    0x0d1_u16 => t0d1::T0d1::from_context,
+    0x106_u16 => t106::T106::from_context,
+    0x144_u16 => t144::T144::from_context,
+    0x116_u16 => t116::T116::from_context,
+    0x142_u16 => t142::T142::from_context,
+    0x145_u16 => t145::T145::from_context,
+    0x018_u16 => t018::T018::from_context,
+    0x141_u16 => t141::T141::from_context,
+    0x177_u16 => t177::T177::from_context,
+    0x191_u16 => t191::T191::from_context,
+    0x100_u16 => t100::T100::from_context,
+    0x107_u16 => t107::T107::from_context,
+    0x318_u16 => t318::T318::from_context,
+    0x16a_u16 => t016a::T16A::from_context,
+    0x166_u16 => t166::T166::from_context,
+    0x521_u16 => t521::T521::from_context,
+    0x16E_u16 => t016e::T016E::from_context,
+    0x147_u16 => t147::T147::from_context,
+    0x128_u16 => t128::T128::from_context,
+    0x124_u16 => t124::T124::from_context,
 };
 
 type TlvDeserializer = fn(&mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError>;
+static TLV_QR_DE_MAP: Map<u16, TlvDeserializer> = phf_map! {
+    0x017_u16 => t017q::T017q::deserialize,
+    0x018_u16 => t018q::T018q::deserialize,
+    0x019_u16 => t019q::T019q::deserialize,
+    0x01c_u16 => t01cq::T01cq::deserialize,
+    0x01e_u16 => t01eq::T01eq::deserialize,
+    0x0d1_u16 => t0d1q::T0d1Resp::deserialize,
+};
+
 static TLV_DE_MAP: Map<u16, TlvDeserializer> = phf_map! {
-    0x017_u16 => t017::T017::deserialize,
-    0x018_u16 => t018::T018::deserialize,
-    0x019_u16 => t019::T019::deserialize,
-    0x01c_u16 => t01c::T01c::deserialize,
-    0x01e_u16 => t01e::T01e::deserialize,
-    0x0d1_u16 => t0d1::T0d1Resp::deserialize,
+    0x106_u16 => t106::T106::deserialize,
+    0x10A_u16 => t10a::T10A::deserialize,
+    0x119_u16 => t119::T119::deserialize,
+    0x143_u16 => t143::T143::deserialize,
+    0x146_u16 => t146::T146::deserialize,
+    0x305_u16 => t305::T305::deserialize,
+    0x543_u16 => t543::T543::deserialize,
+    0x11A_u16 => t11a::T11A::deserialize,
 };
 
 pub trait TlvSer {
-    fn from_context(ctx: &Context) -> Box<dyn TlvSer>
+    fn from_context(ctx: &Context, pre: &TlvPreload) -> Box<dyn TlvSer>
     where
         Self: Sized;
 
@@ -56,20 +141,43 @@ pub trait TlvSer {
 }
 
 /// Create a new TLV object by tag
-pub fn new_tlv(tag: u16, ctx: &Context) -> Option<Box<dyn TlvSer>> {
-    TLV_SER_MAP.get(&tag).map(|f| f(ctx))
+pub fn new_qrcode_tlv(tag: u16, ctx: &Context, pre: &TlvPreload) -> Option<Box<dyn TlvSer>> {
+    TLV_QR_SER_MAP.get(&tag).map(|f| f(ctx, pre))
 }
 
-pub fn serialize_tlv_set(ctx: &Context, tags: &[u16], mut packet: PacketBuilder) -> PacketBuilder {
+pub fn new_tlv(tag: u16, ctx: &Context, pre: &TlvPreload) -> Option<Box<dyn TlvSer>> {
+    TLV_SER_MAP.get(&tag).map(|f| f(ctx, pre))
+}
+
+pub fn serialize_tlv_set(
+    ctx: &Context,
+    tags: &[u16],
+    mut packet: PacketBuilder,
+    pre: &TlvPreload,
+) -> PacketBuilder {
     packet = packet.u16(tags.len() as u16);
     for &tag in tags {
-        let tlv = new_tlv(tag, ctx).expect("tlv not found");
+        let tlv = new_tlv(tag, ctx, pre).expect("tlv not found");
         packet = packet.bytes(tlv.serialize_to_bytes().as_slice());
     }
     packet
 }
 
-pub trait TlvDe {
+pub fn serialize_qrcode_tlv_set(
+    ctx: &Context,
+    tags: &[u16],
+    mut packet: PacketBuilder,
+    pre: &TlvPreload,
+) -> PacketBuilder {
+    packet = packet.u16(tags.len() as u16);
+    for &tag in tags {
+        let tlv = new_qrcode_tlv(tag, ctx, pre).expect("tlv not found");
+        packet = packet.bytes(tlv.serialize_to_bytes().as_slice());
+    }
+    packet
+}
+
+pub trait TlvDe: Send {
     /// Deserialize a TLV object from a packet reader
     ///
     /// Tag is **not** included in the packet
@@ -86,16 +194,45 @@ pub trait TlvDe {
 }
 
 /// Deserialize a TLV object from a packet reader
+pub fn deserialize_qrcode_tlv(reader: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    let tag = reader.u16();
+    let de = TLV_QR_DE_MAP.get(&tag).ok_or_else(|| {
+        let len = reader.u16();
+        reader.read_packet(len as usize);
+        ParseTlvError::UnsupportedTag(tag)
+    })?;
+    de(reader)
+}
+
 pub fn deserialize_tlv(reader: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
     let tag = reader.u16();
-    let de = TLV_DE_MAP
-        .get(&tag)
-        .ok_or(ParseTlvError::UnsupportedTag(tag))?;
+    let de = TLV_DE_MAP.get(&tag).ok_or_else(|| {
+        let len = reader.u16();
+        reader.read_packet(len as usize);
+        ParseTlvError::UnsupportedTag(tag)
+    })?;
     de(reader)
 }
 
 pub struct TlvSet(HashMap<u16, Box<dyn TlvDe>>);
 impl TlvSet {
+    pub fn deserialize_qrcode(packet: Bytes) -> Self {
+        let mut result = HashMap::new();
+
+        let mut reader = PacketReader::new(packet);
+        let count = reader.u16();
+
+        for _ in 0..count {
+            match deserialize_qrcode_tlv(&mut reader) {
+                Ok(tlv) => {
+                    result.insert(tlv.tag(), tlv);
+                }
+                Err(e) => tracing::warn!("parse TLV error: {}", e),
+            }
+        }
+        Self(result)
+    }
+
     pub fn deserialize(packet: Bytes) -> Self {
         let mut result = HashMap::new();
 
@@ -132,11 +269,14 @@ pub enum ParseTlvError {
 }
 
 mod prelude {
-    pub use bytes::Bytes;
-
     pub use crate::context::Context;
+    pub use crate::context::ExtendUuid;
+    pub use crate::crypto::tea::tea_encrypt;
     pub use crate::packet::{PacketBuilder, PacketReader};
-    pub use crate::tlv::{ParseTlvError, TlvDe, TlvSer};
+    pub use crate::tlv::TlvPreload;
+    pub use crate::tlv::{serialize_tlv_set, ParseTlvError, TlvDe, TlvSer};
+    pub use bytes::Bytes;
+    pub use uuid::Uuid;
 
     impl PacketBuilder {
         pub(in crate::tlv) fn tlv(
@@ -155,6 +295,7 @@ mod prelude {
             self.section_16_with_addition::<_, 0>(|p| p.bytes(bytes))
         }
 
+        // Prefix.Uint16 | Prefix.LengthOnly
         pub(in crate::tlv) fn string_with_length(self, s: &str) -> PacketBuilder {
             self.bytes_with_length(s.as_bytes())
         }

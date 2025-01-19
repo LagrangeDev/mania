@@ -1,11 +1,13 @@
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::{fs, io};
 use uuid::Uuid;
 
 use crate::crypto::Secp192k1;
 use crate::key_store::KeyStore;
 use crate::session::Session;
 use crate::sign::SignProvider;
+use crate::tlv::TlvPreload;
 use crate::Protocol;
 
 pub struct Context {
@@ -15,6 +17,18 @@ pub struct Context {
     pub sign_provider: Box<dyn SignProvider>,
     pub crypto: Crypto,
     pub session: Session,
+}
+
+impl Context {
+    pub async fn make_tlv_preload(&self) -> TlvPreload {
+        TlvPreload::new(
+            self.key_store.session.unusual_sign.read().await.clone(),
+            self.key_store.session.no_pic_sig.read().await.clone(),
+            *self.key_store.uin.read().await,
+            *self.session.stub.tgtgt_key.read().await,
+            self.key_store.session.temp_password.read().await.clone(),
+        )
+    }
 }
 
 pub struct Crypto {
@@ -132,6 +146,16 @@ pub struct DeviceInfo {
     pub kernel_version: String,
 }
 
+pub trait ExtendUuid {
+    fn to_bytes(&self) -> &[u8];
+}
+
+impl ExtendUuid for Uuid {
+    fn to_bytes(&self) -> &[u8] {
+        self.as_bytes().as_ref()
+    }
+}
+
 impl Default for DeviceInfo {
     fn default() -> Self {
         let mut rng = rand::thread_rng();
@@ -143,5 +167,19 @@ impl Default for DeviceInfo {
             system_kernel: "Windows 10.0.19042".to_string(),
             kernel_version: "10.0.19042.0".to_string(),
         }
+    }
+}
+
+impl DeviceInfo {
+    pub fn load(file_path: &str) -> io::Result<DeviceInfo> {
+        let data = fs::read_to_string(file_path)?;
+        let device_info: DeviceInfo = serde_json::from_str(&data)?;
+        Ok(device_info)
+    }
+
+    pub fn save(&self, file_path: &str) -> io::Result<()> {
+        let json_data = serde_json::to_string_pretty(self)?;
+        fs::write(file_path, json_data)?;
+        Ok(())
     }
 }

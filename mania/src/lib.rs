@@ -7,6 +7,7 @@ pub mod context;
 mod crypto;
 mod error;
 mod event;
+mod http;
 mod key_store;
 mod packet;
 mod ping;
@@ -16,20 +17,26 @@ mod sign;
 mod socket;
 mod tlv;
 
-use std::sync::Arc;
-
-use bytes::Bytes;
-pub use error::{Error, Result};
-use serde::{Deserialize, Serialize};
-
 use crate::business::{Business, BusinessHandle};
 use crate::connect::optimum_server;
-use crate::context::{AppInfo, Context, DeviceInfo};
+pub use crate::context::{AppInfo, Context, DeviceInfo};
+use crate::event::alive::{Alive, AliveRes};
 use crate::event::downcast_event;
-use crate::event::trans_emp::{TransEmp, TransEmp31};
+use crate::event::info_sync::{InfoSync, InfoSyncRes};
+pub use crate::event::trans_emp::{NTLoginHttpRequest, TransEmp, TransEmp31};
+use crate::event::trans_emp::{NTLoginHttpResponse, TransEmp12};
+use crate::event::wtlogin::{WtLogin, WtLoginRes};
 pub use crate::key_store::KeyStore;
 use crate::session::{QrSign, Session};
 use crate::sign::{default_sign_provider, SignProvider};
+use bytes::Bytes;
+pub use error::{Error, Result};
+use serde::{Deserialize, Serialize};
+use std::env;
+pub use std::io::Write;
+use std::sync::Arc;
+use tokio::sync::watch;
+use tokio::time::{sleep, timeout, Duration};
 
 /// The Protocol for the client
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
@@ -87,9 +94,18 @@ impl Client {
             app_info,
             device,
             key_store,
-            sign_provider: config
-                .sign_provider
-                .unwrap_or_else(|| default_sign_provider(config.protocol)),
+            sign_provider: config.sign_provider.unwrap_or_else(|| {
+                default_sign_provider(
+                    config.protocol,
+                    env::var("MANIA_LINUX_SIGN_URL")
+                        .ok()
+                        .map(Some)
+                        .unwrap_or_else(|| {
+                            tracing::warn!("MANIA_LINUX_SIGN_URL not set, login maybe fail!");
+                            None
+                        }),
+                )
+            }),
             crypto: Default::default(),
             session: Session::new(),
         };
@@ -123,6 +139,10 @@ pub struct ClientHandle {
 }
 
 impl ClientHandle {
+    pub fn update_key_store(&self) -> &KeyStore {
+        &self.context.key_store
+    }
+
     pub async fn fetch_qrcode(&self) -> Result<(String, Bytes)> {
         let trans_emp = TransEmp::FetchQrCode;
         let response = self.business.send_event(&trans_emp).await?;
@@ -141,10 +161,135 @@ impl ClientHandle {
             url: event.url.clone(),
         };
 
-        self.context.session.qr_sign.store(Some(Arc::new(qr_sign)));
-
+        *self.context.session.qr_sign.write().await = Some(qr_sign);
         tracing::info!("QR code fetched, expires in {} seconds", event.expiration);
 
         Ok((event.url.clone(), event.qr_code.clone()))
+    }
+
+    async fn query_trans_tmp_status(&self) -> Result<TransEmp12> {
+        if let Some(qr_sign) = &*self.context.session.qr_sign.read().await {
+            let request_body = NTLoginHttpRequest {
+                appid: self.context.app_info.app_id as u64,
+                qrsig: qr_sign.string.clone(),
+                face_update_time: 0,
+            };
+            let payload = serde_json::to_vec(&request_body).unwrap();
+            let response = http::client()
+                .post_binary_async(
+                    "https://ntlogin.qq.com/qr/getFace",
+                    &payload,
+                    "application/json",
+                )
+                .await
+                .unwrap();
+            let info: NTLoginHttpResponse = serde_json::from_slice(&response).unwrap();
+            *self.context.key_store.uin.write().await = info.uin;
+            let res = self.business.send_event(&TransEmp::QueryResult).await?;
+            let res: &TransEmp12 = res.first().and_then(downcast_event).unwrap();
+            Ok(res.to_owned())
+        } else {
+            Err(Error::GenericError("QR code not fetched".into()))
+        }
+    }
+
+    async fn do_wt_login(&self) -> Result<()> {
+        let res = self.business.send_event(&WtLogin {}).await?;
+        let event: &WtLoginRes = res.first().and_then(downcast_event).unwrap();
+        match event.code {
+            0 => {
+                tracing::info!(
+                    "WTLogin success, welcome {:?} ヾ(≧▽≦*)o",
+                    self.context.key_store.info.read().await
+                );
+                Ok(())
+            }
+            _ => Err(Error::GenericError(
+                format!(
+                    "WTLogin failed with code: {}, msg: {:?} w(ﾟДﾟ)w",
+                    event.code, event.msg
+                )
+                .into(),
+            )),
+        }
+    }
+
+    pub async fn login_by_qrcode(&self) -> Result<()> {
+        let interval = Duration::from_secs(2);
+        let timeout_duration = Duration::from_secs(120);
+        let result = timeout(timeout_duration, async {
+            loop {
+                let status = match self.query_trans_tmp_status().await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        tracing::warn!("query_trans_tmp_status failed: {:?}", e);
+                        return Err(e);
+                    }
+                };
+                match status {
+                    TransEmp12::WaitingForScan => {
+                        tracing::info!("Waiting for scan...");
+                    }
+                    TransEmp12::WaitingForConfirm => {
+                        tracing::info!("Waiting for confirm...");
+                    }
+                    TransEmp12::Confirmed(data) => {
+                        tracing::info!("QR code confirmed, logging in...");
+                        let mut tgtgt = [0u8; 16];
+                        tgtgt.copy_from_slice(&data.tgtgt_key[..]);
+                        *self.context.session.stub.tgtgt_key.write().await = tgtgt;
+                        *self.context.key_store.session.temp_password.write().await =
+                            Some(data.temp_password);
+                        *self.context.key_store.session.no_pic_sig.write().await =
+                            Some(data.no_pic_sig);
+                        return self.do_wt_login().await;
+                    }
+                    TransEmp12::CodeExpired => {
+                        return Err(Error::GenericError("QR code expired".into()));
+                    }
+                    TransEmp12::Canceled => {
+                        return Err(Error::GenericError("QR code login canceled by user".into()));
+                    }
+                }
+                sleep(interval).await;
+            }
+        })
+        .await;
+        match result {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err(Error::GenericError(
+                "QR code scan timed out after 120s!".into(),
+            )),
+        }
+    }
+
+    pub async fn online(&self) -> Result<watch::Sender<()>> {
+        let res = self.business.send_event(&InfoSync).await?;
+        let _: &InfoSyncRes =
+            res.first()
+                .and_then(downcast_event)
+                .ok_or(Error::InvalidServerResponse(
+                    "parsing InfoSyncRes error".into(),
+                ))?; // TODO: parse InfoSyncRes
+
+        let (tx, mut rx) = watch::channel::<()>(());
+        let handle = self.business.clone();
+
+        let heartbeat = async move {
+            const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
+            let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
+            loop {
+                tokio::select! {
+                    _ = interval.tick() => {
+                        let res = handle.send_event(&Alive).await.unwrap();
+                        let _: &AliveRes = res.first().and_then(downcast_event).unwrap();
+                    }
+                    _ = rx.changed() => break,
+                }
+            }
+        };
+        tokio::spawn(heartbeat);
+        Ok(tx)
     }
 }

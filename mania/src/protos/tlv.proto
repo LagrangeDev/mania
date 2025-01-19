@@ -10,6 +10,18 @@ message TlvQrCodeD1Resp {
     string qr_sig = 3;
 }
 
+message Tlv543 {
+    Tlv543Layer1 layer1 = 9;
+}
+
+message Tlv543Layer1 {
+    Tlv543Layer2 layer2 = 11;
+}
+
+message Tlv543Layer2 {
+    string uid = 1;
+}
+
 message NTOS {
     string os = 1;
     string name = 2;

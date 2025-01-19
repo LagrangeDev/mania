@@ -1,6 +1,6 @@
-use phf::{phf_set, Set};
-
 use crate::Protocol;
+use phf::{phf_set, Set};
+use serde::Deserialize;
 
 mod linux;
 
@@ -42,7 +42,15 @@ static WHITELIST: Set<&'static str> = phf_set! {
     "OidbSvcTrpcTcp.0xf55_1",
     "OidbSvcTrpcTcp.0xf67_1",
     "OidbSvcTrpcTcp.0xf67_5",
+    "OidbSvcTrpcTcp.0x6d9_4"
 };
+
+#[derive(Deserialize)]
+pub struct SignResult {
+    pub(crate) sign: String,
+    pub(crate) extra: String,
+    pub(crate) token: String,
+}
 
 pub trait SignProvider: Send + Sync {
     fn sign(&self, cmd: &str, seq: u32, body: &[u8]) -> Option<SignResult> {
@@ -56,15 +64,9 @@ pub trait SignProvider: Send + Sync {
     fn sign_impl(&self, cmd: &str, seq: u32, body: &[u8]) -> Option<SignResult>;
 }
 
-pub struct SignResult {
-    pub software: Option<Vec<u8>>,
-    pub token: Option<String>,
-    pub signature: Vec<u8>,
-}
-
-pub fn default_sign_provider(protocol: Protocol) -> Box<dyn SignProvider> {
+pub fn default_sign_provider(protocol: Protocol, url: Option<String>) -> Box<dyn SignProvider> {
     match protocol {
-        Protocol::Linux => Box::new(linux::LinuxSignProvider {}),
+        Protocol::Linux => Box::new(linux::LinuxSignProvider { url }),
         _ => unimplemented!(),
     }
 }

@@ -7,12 +7,7 @@ message NTDeviceSign {
 }
 
 message Sign {
-    optional bytes signature = 1;
-    optional string token = 2;
-    optional Software s = 3;
-}
-
-message Software {
-    optional string ver = 2;
-    optional string token = 3;
+    optional bytes SecSign = 1;
+    optional string SecToken = 2;
+    optional bytes SecExtra = 3;
 }

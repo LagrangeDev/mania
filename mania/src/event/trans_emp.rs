@@ -1,21 +1,39 @@
 use std::vec;
 
-use bytes::Bytes;
-use chrono::Utc;
-
 use crate::context::Context;
 use crate::event::{ClientEvent, ParseEventError, ServerEvent};
 use crate::packet::{
     BinaryPacket, PacketBuilder, PacketReader, PacketType, PREFIX_LENGTH_ONLY, PREFIX_U16,
     PREFIX_U8, PREFIX_WITH,
 };
-use crate::tlv::t017::T017;
-use crate::tlv::t018::T018;
-use crate::tlv::t019::T019;
-use crate::tlv::t01c::T01c;
-use crate::tlv::t01e::T01e;
-use crate::tlv::t0d1::T0d1Resp;
-use crate::tlv::{serialize_tlv_set, TlvSet};
+use crate::tlv::*;
+use bytes::Bytes;
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize)]
+pub struct NTLoginHttpRequest {
+    pub(crate) appid: u64,
+    #[serde(rename = "faceUpdateTime")]
+    pub(crate) face_update_time: u64,
+    pub(crate) qrsig: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NTLoginHttpResponse {
+    #[serde(rename = "retCode")]
+    pub ret_code: i32,
+    #[serde(rename = "errMsg")]
+    pub err_msg: String,
+    #[serde(rename = "qrSig")]
+    pub qr_sig: String,
+    #[serde(rename = "uin")]
+    pub uin: u32,
+    #[serde(rename = "faceUrl")]
+    pub face_url: String,
+    #[serde(rename = "faceUpdateTime")]
+    pub face_update_time: i64,
+}
 
 pub enum TransEmp {
     FetchQrCode,
@@ -36,10 +54,11 @@ impl ClientEvent for TransEmp {
         PacketType::T12
     }
 
-    fn build_packets(&self, ctx: &Context) -> Vec<BinaryPacket> {
+    async fn build_packets(&self, ctx: &Context) -> Vec<BinaryPacket> {
+        let pre_tlv = ctx.make_tlv_preload().await;
         let body = match self {
             TransEmp::QueryResult => {
-                let qrsign = ctx.session.qr_sign.load();
+                let qrsign = ctx.session.qr_sign.read().await;
                 let qrsign = qrsign.as_ref().expect("qr sign not initialized");
                 let data = PacketBuilder::new()
                     .u16(0)
@@ -57,7 +76,7 @@ impl ClientEvent for TransEmp {
                 build_trans_emp_body(ctx, 0x12, data)
             }
             TransEmp::FetchQrCode => {
-                let tlvs = if ctx.session.unusual_sign.is_none() {
+                let tlvs = if ctx.session.unusual_sign.read().await.is_none() {
                     Self::TLVS.as_slice()
                 } else {
                     Self::TLVS_PASSWORD.as_slice()
@@ -71,12 +90,12 @@ impl ClientEvent for TransEmp {
                     .write_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }, 0>(|packet| {
                         packet.bytes(&[])
                     })
-                    .packet(|p| serialize_tlv_set(ctx, tlvs, p))
+                    .packet(|p| serialize_qrcode_tlv_set(ctx, tlvs, p, &pre_tlv))
                     .build();
                 build_trans_emp_body(ctx, 0x31, data)
             }
         };
-        let packet = build_wtlogin_packet(ctx, 2066, &body);
+        let packet = build_wtlogin_packet(ctx, 2066, &body).await;
         vec![BinaryPacket(packet.into())]
     }
 }
@@ -113,7 +132,10 @@ fn build_trans_emp_body(ctx: &Context, qr_cmd: u16, tlvs: Vec<u8>) -> Vec<u8> {
         .build()
 }
 
-pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
+// TODO: decouple
+pub async fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
+    let uin = ctx.key_store.uin.read().await;
+    let random_key = ctx.session.stub.random_key.read().await;
     PacketBuilder::new()
         .u8(2) // packet start
         .write_with_length::<_, { PREFIX_U16 | PREFIX_WITH }, 1>(|packet| {
@@ -121,7 +143,7 @@ pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
                 .u16(8001) // ver
                 .u16(cmd) // cmd: wtlogin.trans_emp: 2066, wtlogin.login: 2064
                 .u16(ctx.session.next_sequence()) // unique wtLoginSequence for wtlogin packets only, should be stored in KeyStore
-                .u32(ctx.key_store.uin) // uin, 0 for wt
+                .u32(*uin) // uin, 0 for wt
                 .u8(3) // extVer
                 .u8(135) // cmdVer
                 .u32(0) // actually unknown const 0
@@ -132,7 +154,7 @@ pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
                 // head
                 .u8(1) // const
                 .u8(1) // const
-                .bytes(&ctx.session.stub.random_key) // randKey
+                .bytes(&random_key[..]) // randKey
                 .u16(0x102) // unknown const
                 .u16(25) // pubKey length
                 .bytes(ctx.crypto.secp.public_key()) // pubKey
@@ -161,18 +183,21 @@ impl ServerEvent for TransEmp31 {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(u8)]
 pub enum TransEmp12 {
-    Confirmed {
-        tgtgt_key: Bytes,
-        temp_password: Bytes,
-        no_pic_sig: Bytes,
-    } = 0,
+    Confirmed(TransEmp12ConfirmedData) = 0,
     CodeExpired = 17,
     WaitingForScan = 48,
     WaitingForConfirm = 53,
     Canceled = 54,
+}
+
+#[derive(Debug, Clone)]
+pub struct TransEmp12ConfirmedData {
+    pub tgtgt_key: Bytes,
+    pub temp_password: Bytes,
+    pub no_pic_sig: Bytes,
 }
 
 impl ServerEvent for TransEmp12 {
@@ -191,94 +216,7 @@ impl ServerEvent for TransEmp12 {
     }
 }
 
-pub fn parse(packet: Bytes, ctx: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
-    // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp.DeserializeBody
-    let packet = parse_wtlogin_packet(packet, ctx)?;
-    let mut reader = PacketReader::new(packet);
-
-    let _packet_length = reader.u32();
-    let _ = reader.u32(); // misc unknown data
-    let command = reader.u16();
-    reader.skip(40);
-    let _app_id = reader.u32();
-
-    let packet = reader.bytes();
-
-    // Lagrange.Core.Internal.Service.Login.TransEmpService.Parse
-    match command {
-        0x31 => {
-            // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp31.Deserialize
-            let mut reader = PacketReader::new(packet);
-            let _ = reader.u8();
-            let signature = reader.section_16_with_addition::<_, 0>(|p| p.bytes());
-            let tlvs = TlvSet::deserialize(reader.bytes());
-
-            let qr_code = tlvs
-                .get::<T017>()
-                .map_err(ParseEventError::MissingTlv)?
-                .qr_code
-                .clone();
-            let expiration = tlvs
-                .get::<T01c>()
-                .map_err(ParseEventError::MissingTlv)?
-                .expire_sec;
-            let t0d1 = tlvs
-                .get::<T0d1Resp>()
-                .map_err(ParseEventError::MissingTlv)?;
-            let url = t0d1.proto.url.clone();
-            let qr_sig = t0d1.proto.qr_sig.clone();
-
-            Ok(vec![Box::new(TransEmp31 {
-                qr_code,
-                expiration,
-                url,
-                qr_sig,
-                signature,
-            })])
-        }
-        0x12 => {
-            // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp12.Deserialize
-            let mut reader = PacketReader::new(packet);
-            let state = reader.u8();
-            let result = match state {
-                0 => {
-                    reader.skip(12); // misc unknown data
-
-                    let tlvs = TlvSet::deserialize(reader.bytes());
-                    let tgtgt_key = tlvs
-                        .get::<T01e>()
-                        .map_err(ParseEventError::MissingTlv)?
-                        .tgtgt_key
-                        .clone();
-                    let temp_password = tlvs
-                        .get::<T018>()
-                        .map_err(ParseEventError::MissingTlv)?
-                        .temp_password
-                        .clone();
-                    let no_pic_sig = tlvs
-                        .get::<T019>()
-                        .map_err(ParseEventError::MissingTlv)?
-                        .no_pic_sig
-                        .clone();
-
-                    TransEmp12::Confirmed {
-                        tgtgt_key,
-                        temp_password,
-                        no_pic_sig,
-                    }
-                }
-                17 => TransEmp12::CodeExpired,
-                48 => TransEmp12::WaitingForScan,
-                53 => TransEmp12::WaitingForConfirm,
-                54 => TransEmp12::Canceled,
-                _ => Err(ParseEventError::UnknownRetCode(state as i32))?,
-            };
-            Ok(vec![Box::new(result)])
-        }
-        _ => Err(ParseEventError::UnsupportedTransEmp(command)),
-    }
-}
-
+// TODO: decouple
 pub fn parse_wtlogin_packet(packet: Bytes, ctx: &Context) -> Result<Bytes, ParseEventError> {
     // Lagrange.Core.Internal.Packets.Login.WtLogin.WtLoginBase.DeserializePacket
     let mut reader = PacketReader::new(packet);
@@ -304,4 +242,92 @@ pub fn parse_wtlogin_packet(packet: Bytes, ctx: &Context) -> Result<Bytes, Parse
     let decrypted = ctx.crypto.secp.tea_decrypt(&encrypted);
 
     Ok(Bytes::from(decrypted))
+}
+
+pub fn parse(packet: Bytes, ctx: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
+    // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp.DeserializeBody
+    let packet = parse_wtlogin_packet(packet, ctx)?;
+    let mut reader = PacketReader::new(packet);
+
+    let _packet_length = reader.u32();
+    let _ = reader.u32(); // misc unknown data
+    let command = reader.u16();
+    reader.skip(40);
+    let _app_id = reader.u32();
+
+    let packet = reader.bytes();
+
+    // Lagrange.Core.Internal.Service.Login.TransEmpService.Parse
+    match command {
+        0x31 => {
+            // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp31.Deserialize
+            let mut reader = PacketReader::new(packet);
+            let _ = reader.u8();
+            let signature = reader.section_16_with_addition::<_, 0>(|p| p.bytes());
+            let tlvs = TlvSet::deserialize_qrcode(reader.bytes());
+
+            let qr_code = tlvs
+                .get::<t017q::T017q>()
+                .map_err(ParseEventError::MissingTlv)?
+                .qr_code
+                .clone();
+            let expiration = tlvs
+                .get::<t01cq::T01cq>()
+                .map_err(ParseEventError::MissingTlv)?
+                .expire_sec;
+            let t0d1 = tlvs
+                .get::<t0d1q::T0d1Resp>()
+                .map_err(ParseEventError::MissingTlv)?;
+            let url = t0d1.proto.url.clone();
+            let qr_sig = t0d1.proto.qr_sig.clone();
+
+            Ok(vec![Box::new(TransEmp31 {
+                qr_code,
+                expiration,
+                url,
+                qr_sig,
+                signature,
+            })])
+        }
+        0x12 => {
+            // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp12.Deserialize
+            let mut reader = PacketReader::new(packet);
+            let state = reader.u8();
+            let result = match state {
+                0 => {
+                    reader.skip(12); // misc unknown data
+
+                    let tlvs = TlvSet::deserialize_qrcode(reader.bytes());
+                    let tgtgt_key = tlvs
+                        .get::<t01eq::T01eq>()
+                        .map_err(ParseEventError::MissingTlv)?
+                        .tgtgt_key
+                        .clone();
+                    let temp_password = tlvs
+                        .get::<t018q::T018q>()
+                        .map_err(ParseEventError::MissingTlv)?
+                        .temp_password
+                        .clone();
+                    let no_pic_sig = tlvs
+                        .get::<t019q::T019q>()
+                        .map_err(ParseEventError::MissingTlv)?
+                        .no_pic_sig
+                        .clone();
+
+                    TransEmp12::Confirmed(TransEmp12ConfirmedData {
+                        tgtgt_key,
+                        temp_password,
+                        no_pic_sig,
+                    })
+                }
+                17 => TransEmp12::CodeExpired,
+                48 => TransEmp12::WaitingForScan,
+                53 => TransEmp12::WaitingForConfirm,
+                54 => TransEmp12::Canceled,
+                _ => Err(ParseEventError::UnknownRetCode(state as i32))?,
+            };
+            Ok(vec![Box::new(result)])
+        }
+        _ => Err(ParseEventError::UnsupportedTransEmp(command)),
+    }
 }

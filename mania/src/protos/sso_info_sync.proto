@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+message SsoInfoSyncRequest {
+  uint32 SyncFlag = 1;
+  uint32 ReqRandom = 2;
+  uint32 CurActiveStatus = 4;
+  uint64 GroupLastMsgTime = 5;
+  SsoC2CInfoSync C2CInfoSync = 6;
+  NormalConfig NormalConfig = 8;
+  RegisterInfo RegisterInfo = 9;
+  UnknownStructure UnknownStructure = 10;
+  CurAppState AppState = 11;
+}
+
+message SsoC2CMsgCookie {
+  uint64 C2CLastMsgTime = 1;
+}
+
+message SsoC2CInfoSync {
+  SsoC2CMsgCookie C2CMsgCookie = 1;
+  uint64 C2CLastMsgTime = 2;
+  SsoC2CMsgCookie LastC2CMsgCookie = 3;
+}
+
+message NormalConfig {
+  map<uint32, int32> IntCfg = 1;
+}
+
+message CurAppState {
+  uint32 IsDelayRequest = 1;
+  uint32 AppStatus = 2;
+  uint32 SilenceStatus = 3;
+}
+
+message UnknownStructure {
+  uint32 GroupCode = 1;
+  uint32 Flag2 = 2;
+}
+
+message RegisterInfo {
+  string Guid = 1;
+  int32 KickPC = 2;
+  string CurrentVersion = 3;
+  int32 IsFirstRegisterProxyOnline = 4;
+  int32 LocaleId = 5;
+  OnlineDeviceInfo Device = 6;
+  int32 SetMute = 7;
+  int32 RegisterVendorType = 8;
+  int32 RegType = 9;
+  OnlineBusinessInfo BusinessInfo = 10;
+  int32 BatteryStatus = 11;
+  uint32 Field12 = 12;
+}
+
+message OnlineDeviceInfo {
+  string User = 1;
+  string Os = 2;
+  string OsVer = 3;
+  string VendorName = 4;
+  string OsLower = 5;
+}
+
+message OnlineBusinessInfo {
+  uint32 NotifySwitch = 1;
+  uint32 BindUinNotifySwitch = 2;
+}
