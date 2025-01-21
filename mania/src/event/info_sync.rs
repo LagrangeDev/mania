@@ -1,24 +1,29 @@
 use crate::context::Context;
 use crate::event::{ClientEvent, ParseEventError, ServerEvent};
-use crate::packet::{BinaryPacket, PacketType};
+use crate::packet::BinaryPacket;
 use crate::proto::sso_info_sync::*;
 use bytes::Bytes;
 use protobuf::{Message, MessageField};
 use std::collections::HashMap;
 
-#[derive(Debug)]
 pub struct InfoSync;
 
+#[derive(Debug)]
+pub struct InfoSyncRes;
+
+impl ServerEvent for InfoSyncRes {
+    fn ret_code(&self) -> i32 {
+        0
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
 impl ClientEvent for InfoSync {
-    fn command(&self) -> &'static str {
-        "trpc.msg.register_proxy.RegisterProxy.SsoInfoSync"
-    }
+    const COMMAND: &'static str = "trpc.msg.register_proxy.RegisterProxy.SsoInfoSync";
 
-    fn packet_type(&self) -> PacketType {
-        PacketType::T12
-    }
-
-    fn build_packets(&self, ctx: &Context) -> Vec<BinaryPacket> {
+    fn build(&self, ctx: &Context) -> Vec<BinaryPacket> {
         let request = SsoInfoSyncRequest {
             SyncFlag: 735,
             ReqRandom: 298191, // FIXME:
@@ -81,21 +86,9 @@ impl ClientEvent for InfoSync {
         };
         vec![BinaryPacket(request.write_to_bytes().unwrap().into())]
     }
-}
 
-#[derive(Debug)]
-pub struct InfoSyncRes {}
-
-impl ServerEvent for InfoSyncRes {
-    fn ret_code(&self) -> i32 {
-        0
+    fn parse(_: Bytes, _: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
+        // TODO: parse InfoSyncRes
+        Ok(vec![Box::new(InfoSyncRes {})])
     }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-pub fn parse(_: Bytes, _: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
-    // TODO: parse InfoSyncRes
-    Ok(vec![Box::new(InfoSyncRes {})])
 }

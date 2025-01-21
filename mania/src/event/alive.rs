@@ -5,22 +5,8 @@ use bytes::Bytes;
 
 pub struct Alive;
 
-impl ClientEvent for Alive {
-    fn command(&self) -> &'static str {
-        "Heartbeat.Alive"
-    }
-
-    fn packet_type(&self) -> PacketType {
-        PacketType::T13
-    }
-
-    fn build_packets(&self, _ctx: &Context) -> Vec<BinaryPacket> {
-        vec![BinaryPacket(4u32.to_be_bytes().to_vec().into())]
-    }
-}
-
 #[derive(Debug)]
-pub struct AliveRes {}
+pub struct AliveRes;
 
 impl ServerEvent for AliveRes {
     fn ret_code(&self) -> i32 {
@@ -31,6 +17,18 @@ impl ServerEvent for AliveRes {
     }
 }
 
-pub fn parse(_: Bytes, _: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
-    Ok(vec![Box::new(AliveRes {})])
+impl ClientEvent for Alive {
+    const COMMAND: &'static str = "Heartbeat.Alive";
+
+    fn packet_type(&self) -> PacketType {
+        PacketType::T13
+    }
+
+    fn build(&self, _ctx: &Context) -> Vec<BinaryPacket> {
+        vec![BinaryPacket(4u32.to_be_bytes().to_vec().into())]
+    }
+
+    fn parse(_: Bytes, _: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
+        Ok(vec![Box::new(AliveRes {})])
+    }
 }

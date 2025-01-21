@@ -1,44 +1,56 @@
+pub mod alive;
+pub mod info_sync;
+pub mod trans_emp;
+pub mod wtlogin;
+// TODO: global mod(s)
+
+use crate::context::Context;
+use crate::event::alive::Alive;
+use crate::event::info_sync::InfoSync;
+use crate::event::wtlogin::WtLogin;
+use crate::packet::{BinaryPacket, PacketReader, PacketType, SsoPacket};
+use crate::TransEmp;
 use bytes::Bytes;
 use phf::phf_map;
 use std::sync::Arc;
 use thiserror::Error;
 
-use crate::context::Context;
-use crate::packet::{BinaryPacket, PacketReader, PacketType, SsoPacket};
-
-pub mod alive;
-pub mod info_sync;
-pub mod trans_emp;
-pub mod wtlogin;
+pub trait ServerEvent: std::fmt::Debug + Send + Sync {
+    fn ret_code(&self) -> i32;
+    fn as_any(&self) -> &dyn std::any::Any;
+}
 
 pub trait ClientEvent: Send + Sync {
-    fn command(&self) -> &'static str;
-    fn packet_type(&self) -> PacketType;
-    fn build_packets(&self, context: &Context) -> Vec<BinaryPacket>;
-
+    const COMMAND: &'static str;
+    fn command(&self) -> &'static str {
+        Self::COMMAND
+    }
+    fn packet_type(&self) -> PacketType {
+        PacketType::T12 // most common packet type
+    }
+    fn build(&self, context: &Context) -> Vec<BinaryPacket>;
     fn build_sso_packets(&self, context: &Context) -> Vec<SsoPacket> {
         let packet_type = self.packet_type();
         let command = self.command();
-        self.build_packets(context)
+        self.build(context)
             .into_iter()
             .map(|packet| SsoPacket::new(packet_type, command, packet))
             .collect()
     }
-}
-
-pub trait ServerEvent: std::fmt::Debug + Send + Sync {
-    fn ret_code(&self) -> i32;
-
-    fn as_any(&self) -> &dyn std::any::Any;
+    fn parse(
+        packet: Bytes,
+        context: &Context,
+    ) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError>;
 }
 
 type ParseEvent = fn(Bytes, &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError>;
 static EVENT_MAP: phf::Map<&'static str, ParseEvent> = phf_map! {
-    "wtlogin.trans_emp" => trans_emp::parse,
-    "wtlogin.login" => wtlogin::parse,
-    "Heartbeat.Alive" => alive::parse,
-    "trpc.msg.register_proxy.RegisterProxy.SsoInfoSync" => info_sync::parse,
+    "wtlogin.trans_emp" => TransEmp::parse,
+    "wtlogin.login" => WtLogin::parse,
+    "Heartbeat.Alive" => Alive::parse,
+    "trpc.msg.register_proxy.RegisterProxy.SsoInfoSync" => InfoSync::parse,
 };
+
 /// Resolve SSO events from a packet.
 pub async fn resolve_events(
     packet: SsoPacket,
