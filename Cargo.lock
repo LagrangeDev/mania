@@ -731,6 +731,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "inventory"
+version = "0.3.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b31349d02fe60f80bbbab1a9402364cad7460626d6030494b08ac4a2075bf81"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "ipnet"
 version = "2.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -806,6 +815,9 @@ dependencies = [
  "generic-array",
  "glob",
  "hex",
+ "inventory",
+ "mania-macros",
+ "once_cell",
  "openssl",
  "phf",
  "protobuf",
@@ -820,6 +832,14 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "mania-macros"
+version = "0.0.1"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

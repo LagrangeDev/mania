@@ -5,51 +5,63 @@ pub mod wtlogin;
 // TODO: global mod(s)
 
 use crate::context::Context;
-use crate::event::alive::Alive;
-use crate::event::info_sync::InfoSync;
-use crate::event::wtlogin::WtLogin;
 use crate::packet::{BinaryPacket, PacketReader, PacketType, SsoPacket};
-use crate::TransEmp;
 use bytes::Bytes;
-use phf::phf_map;
+pub use inventory;
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::Arc;
 use thiserror::Error;
 
-pub trait ServerEvent: std::fmt::Debug + Send + Sync {
+pub trait ServerEvent: Debug + Send + Sync {
     fn ret_code(&self) -> i32;
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
-pub trait ClientEvent: Send + Sync {
+pub trait CECommandMarker: Send + Sync {
     const COMMAND: &'static str;
     fn command(&self) -> &'static str {
         Self::COMMAND
     }
+}
+
+pub trait ClientEvent: CECommandMarker {
     fn packet_type(&self) -> PacketType {
         PacketType::T12 // most common packet type
     }
     fn build(&self, context: &Context) -> Vec<BinaryPacket>;
-    fn build_sso_packets(&self, context: &Context) -> Vec<SsoPacket> {
-        let packet_type = self.packet_type();
-        let command = self.command();
-        self.build(context)
-            .into_iter()
-            .map(|packet| SsoPacket::new(packet_type, command, packet))
-            .collect()
-    }
     fn parse(
         packet: Bytes,
         context: &Context,
     ) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError>;
 }
 
+pub fn build_sso_packet<T: ClientEvent>(event: &T, context: &Context) -> Vec<SsoPacket> {
+    event
+        .build(context)
+        .into_iter()
+        .map(|packet| SsoPacket::new(event.packet_type(), event.command(), packet))
+        .collect()
+}
+
 type ParseEvent = fn(Bytes, &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError>;
-static EVENT_MAP: phf::Map<&'static str, ParseEvent> = phf_map! {
-    "wtlogin.trans_emp" => TransEmp::parse,
-    "wtlogin.login" => WtLogin::parse,
-    "Heartbeat.Alive" => Alive::parse,
-    "trpc.msg.register_proxy.RegisterProxy.SsoInfoSync" => InfoSync::parse,
-};
+
+pub struct ClientEventRegistry {
+    pub command: &'static str,
+    pub parse_fn: ParseEvent,
+}
+
+inventory::collect!(ClientEventRegistry);
+
+type EventMapT = HashMap<&'static str, ParseEvent>;
+static EVENT_MAP: Lazy<EventMapT> = Lazy::new(|| {
+    let mut map = HashMap::new();
+    for item in inventory::iter::<ClientEventRegistry> {
+        map.insert(item.command, item.parse_fn);
+    }
+    map
+});
 
 /// Resolve SSO events from a packet.
 pub async fn resolve_events(

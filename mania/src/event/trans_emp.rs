@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::context::Context;
-use crate::event::{ClientEvent, ParseEventError, ServerEvent};
+use crate::event::*;
 use crate::packet::{
     BinaryPacket, PacketBuilder, PacketReader, PREFIX_LENGTH_ONLY, PREFIX_U16, PREFIX_U8,
     PREFIX_WITH,
@@ -9,6 +9,7 @@ use crate::packet::{
 use crate::tlv::*;
 use bytes::Bytes;
 use chrono::Utc;
+use mania_macros::ce_commend;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
@@ -35,22 +36,38 @@ pub struct NTLoginHttpResponse {
     pub face_update_time: i64,
 }
 
-pub enum TransEmp {
-    FetchQrCode,
-    QueryResult,
+#[repr(u16)]
+enum TransEmpStatus {
+    QueryResult = 0x12,
+    FetchQrCode = 0x31,
+}
+
+#[ce_commend("wtlogin.trans_emp")]
+pub struct TransEmp {
+    status: TransEmpStatus,
 }
 
 impl TransEmp {
     const TLVS: [u16; 7] = [0x016, 0x01B, 0x01D, 0x033, 0x035, 0x066, 0x0D1];
     const TLVS_PASSWORD: [u16; 8] = [0x011, 0x016, 0x01B, 0x01D, 0x033, 0x035, 0x066, 0x0D1];
+
+    pub fn new_fetch_qr_code() -> Self {
+        Self {
+            status: TransEmpStatus::FetchQrCode,
+        }
+    }
+
+    pub fn new_query_result() -> Self {
+        Self {
+            status: TransEmpStatus::QueryResult,
+        }
+    }
 }
 
 impl ClientEvent for TransEmp {
-    const COMMAND: &'static str = "wtlogin.trans_emp";
-
     fn build(&self, ctx: &Context) -> Vec<BinaryPacket> {
-        let body = match self {
-            TransEmp::QueryResult => {
+        let body = match self.status {
+            TransEmpStatus::QueryResult => {
                 let qrsign = ctx.session.qr_sign.load();
                 let qrsign = qrsign.as_ref().expect("qr sign not initialized");
                 let data = PacketBuilder::new()
@@ -68,7 +85,7 @@ impl ClientEvent for TransEmp {
                     .build();
                 build_trans_emp_body(ctx, 0x12, data)
             }
-            TransEmp::FetchQrCode => {
+            TransEmpStatus::FetchQrCode => {
                 let tlvs = if ctx.session.unusual_sign.is_none() {
                     Self::TLVS.as_slice()
                 } else {
@@ -132,7 +149,7 @@ impl ClientEvent for TransEmp {
                 let url = t0d1.proto.url.clone();
                 let qr_sig = t0d1.proto.qr_sig.clone();
 
-                Ok(vec![Box::new(TransEmp31 {
+                Ok(vec![Box::new(TransEmp31Res {
                     qr_code,
                     expiration,
                     url,
@@ -165,16 +182,16 @@ impl ClientEvent for TransEmp {
                             .no_pic_sig
                             .clone();
 
-                        TransEmp12::Confirmed(TransEmp12ConfirmedData {
+                        TransEmp12Res::Confirmed(TransEmp12ConfirmedData {
                             tgtgt_key,
                             temp_password,
                             no_pic_sig,
                         })
                     }
-                    17 => TransEmp12::CodeExpired,
-                    48 => TransEmp12::WaitingForScan,
-                    53 => TransEmp12::WaitingForConfirm,
-                    54 => TransEmp12::Canceled,
+                    17 => TransEmp12Res::CodeExpired,
+                    48 => TransEmp12Res::WaitingForScan,
+                    53 => TransEmp12Res::WaitingForConfirm,
+                    54 => TransEmp12Res::Canceled,
                     _ => Err(ParseEventError::UnknownRetCode(state as i32))?,
                 };
                 Ok(vec![Box::new(result)])
@@ -247,7 +264,7 @@ pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
 }
 
 #[derive(Debug)]
-pub struct TransEmp31 {
+pub struct TransEmp31Res {
     pub qr_code: Bytes,
     pub expiration: u32,
     pub url: String,
@@ -255,19 +272,9 @@ pub struct TransEmp31 {
     pub signature: Bytes,
 }
 
-impl ServerEvent for TransEmp31 {
-    fn ret_code(&self) -> i32 {
-        0
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
 #[derive(Debug, Clone)]
 #[repr(u8)]
-pub enum TransEmp12 {
+pub enum TransEmp12Res {
     Confirmed(TransEmp12ConfirmedData) = 0,
     CodeExpired = 17,
     WaitingForScan = 48,
@@ -282,14 +289,24 @@ pub struct TransEmp12ConfirmedData {
     pub no_pic_sig: Bytes,
 }
 
-impl ServerEvent for TransEmp12 {
+impl ServerEvent for TransEmp31Res {
+    fn ret_code(&self) -> i32 {
+        0
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl ServerEvent for TransEmp12Res {
     fn ret_code(&self) -> i32 {
         match self {
-            TransEmp12::Confirmed { .. } => 0,
-            TransEmp12::CodeExpired => 17,
-            TransEmp12::WaitingForScan => 48,
-            TransEmp12::WaitingForConfirm => 53,
-            TransEmp12::Canceled => 54,
+            TransEmp12Res::Confirmed { .. } => 0,
+            TransEmp12Res::CodeExpired => 17,
+            TransEmp12Res::WaitingForScan => 48,
+            TransEmp12Res::WaitingForConfirm => 53,
+            TransEmp12Res::Canceled => 54,
         }
     }
 

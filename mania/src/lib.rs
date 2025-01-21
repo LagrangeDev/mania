@@ -23,8 +23,8 @@ pub use crate::context::{AppInfo, Context, DeviceInfo};
 use crate::event::alive::{Alive, AliveRes};
 use crate::event::downcast_event;
 use crate::event::info_sync::{InfoSync, InfoSyncRes};
-pub use crate::event::trans_emp::{NTLoginHttpRequest, TransEmp, TransEmp31};
-use crate::event::trans_emp::{NTLoginHttpResponse, TransEmp12};
+pub use crate::event::trans_emp::{NTLoginHttpRequest, TransEmp, TransEmp31Res};
+use crate::event::trans_emp::{NTLoginHttpResponse, TransEmp12Res};
 use crate::event::wtlogin::{WtLogin, WtLoginRes};
 pub use crate::key_store::KeyStore;
 use crate::session::{QrSign, Session};
@@ -144,9 +144,9 @@ impl ClientHandle {
     }
 
     pub async fn fetch_qrcode(&self) -> Result<(String, Bytes)> {
-        let trans_emp = TransEmp::FetchQrCode;
+        let trans_emp = TransEmp::new_fetch_qr_code();
         let response = self.business.send_event(&trans_emp).await?;
-        let event: &TransEmp31 = response
+        let event: &TransEmp31Res = response
             .first()
             .and_then(downcast_event)
             .ok_or(Error::InvalidServerResponse("parsing error".into()))?;
@@ -167,7 +167,7 @@ impl ClientHandle {
         Ok((event.url.clone(), event.qr_code.clone()))
     }
 
-    async fn query_trans_tmp_status(&self) -> Result<TransEmp12> {
+    async fn query_trans_tmp_status(&self) -> Result<TransEmp12Res> {
         if let Some(qr_sign) = &*self.context.session.qr_sign.load() {
             let request_body = NTLoginHttpRequest {
                 appid: self.context.app_info.app_id as u64,
@@ -185,8 +185,9 @@ impl ClientHandle {
                 .unwrap();
             let info: NTLoginHttpResponse = serde_json::from_slice(&response).unwrap();
             self.context.key_store.uin.store(info.uin.into());
-            let res = self.business.send_event(&TransEmp::QueryResult).await?;
-            let res: &TransEmp12 = res.first().and_then(downcast_event).unwrap();
+            let query_result = TransEmp::new_query_result();
+            let res = self.business.send_event(&query_result).await?;
+            let res: &TransEmp12Res = res.first().and_then(downcast_event).unwrap();
             Ok(res.to_owned())
         } else {
             Err(Error::GenericError("QR code not fetched".into()))
@@ -227,13 +228,13 @@ impl ClientHandle {
                     }
                 };
                 match status {
-                    TransEmp12::WaitingForScan => {
+                    TransEmp12Res::WaitingForScan => {
                         tracing::info!("Waiting for scan...");
                     }
-                    TransEmp12::WaitingForConfirm => {
+                    TransEmp12Res::WaitingForConfirm => {
                         tracing::info!("Waiting for confirm...");
                     }
-                    TransEmp12::Confirmed(data) => {
+                    TransEmp12Res::Confirmed(data) => {
                         tracing::info!("QR code confirmed, logging in...");
                         self.context
                             .session
@@ -252,10 +253,10 @@ impl ClientHandle {
                             .store(Some(Arc::from(data.no_pic_sig)));
                         return self.do_wt_login().await;
                     }
-                    TransEmp12::CodeExpired => {
+                    TransEmp12Res::CodeExpired => {
                         return Err(Error::GenericError("QR code expired".into()));
                     }
-                    TransEmp12::Canceled => {
+                    TransEmp12Res::Canceled => {
                         return Err(Error::GenericError("QR code login canceled by user".into()));
                     }
                 }

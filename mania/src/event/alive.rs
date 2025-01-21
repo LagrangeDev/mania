@@ -1,8 +1,10 @@
 use crate::context::Context;
-use crate::event::{ClientEvent, ParseEventError, ServerEvent};
+use crate::event::*;
 use crate::packet::{BinaryPacket, PacketType};
 use bytes::Bytes;
+use mania_macros::ce_commend;
 
+#[ce_commend("Heartbeat.Alive")]
 pub struct Alive;
 
 #[derive(Debug)]
@@ -18,8 +20,6 @@ impl ServerEvent for AliveRes {
 }
 
 impl ClientEvent for Alive {
-    const COMMAND: &'static str = "Heartbeat.Alive";
-
     fn packet_type(&self) -> PacketType {
         PacketType::T13
     }

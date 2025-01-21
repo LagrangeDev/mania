@@ -1,11 +1,13 @@
 use crate::context::Context;
-use crate::event::{ClientEvent, ParseEventError, ServerEvent};
+use crate::event::*;
 use crate::packet::BinaryPacket;
 use crate::proto::sso_info_sync::*;
 use bytes::Bytes;
+use mania_macros::ce_commend;
 use protobuf::{Message, MessageField};
 use std::collections::HashMap;
 
+#[ce_commend("trpc.msg.register_proxy.RegisterProxy.SsoInfoSync")]
 pub struct InfoSync;
 
 #[derive(Debug)]
@@ -21,8 +23,6 @@ impl ServerEvent for InfoSyncRes {
 }
 
 impl ClientEvent for InfoSync {
-    const COMMAND: &'static str = "trpc.msg.register_proxy.RegisterProxy.SsoInfoSync";
-
     fn build(&self, ctx: &Context) -> Vec<BinaryPacket> {
         let request = SsoInfoSyncRequest {
             SyncFlag: 735,

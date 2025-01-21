@@ -1,17 +1,19 @@
 use crate::context::Context;
 use crate::crypto::tea::tea_decrypt;
 use crate::event::trans_emp::{build_wtlogin_packet, parse_wtlogin_packet};
-use crate::event::{ClientEvent, ParseEventError, ServerEvent};
+use crate::event::*;
 use crate::key_store::AccountInfo;
 use crate::packet::{BinaryPacket, PacketBuilder, PacketReader};
 use crate::tlv::*;
 use bytes::Bytes;
 use chrono::Utc;
+use mania_macros::ce_commend;
 use openssl::md::Md;
 use openssl::md_ctx::MdCtx;
 use std::fmt::Debug;
 use std::sync::Arc;
 
+#[ce_commend("wtlogin.login")]
 pub struct WtLogin;
 
 #[derive(Debug, Clone)]
@@ -37,8 +39,6 @@ impl WtLogin {
 }
 
 impl ClientEvent for WtLogin {
-    const COMMAND: &'static str = "wtlogin.login";
-
     fn build(&self, context: &Context) -> Vec<BinaryPacket> {
         let body = PacketBuilder::new()
             .u16(0x09)

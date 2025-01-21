@@ -8,7 +8,7 @@ use dashmap::DashMap;
 use tokio::sync::{oneshot, Mutex, MutexGuard};
 
 use crate::context::Context;
-use crate::event::{resolve_events, ClientEvent, ServerEvent};
+use crate::event::{build_sso_packet, resolve_events, ClientEvent, ServerEvent};
 use crate::packet::SsoPacket;
 use crate::socket::{self, PacketReceiver, PacketSender};
 
@@ -135,7 +135,7 @@ impl BusinessHandle {
 
     /// Push a client event to the server, without waiting for a response.
     pub async fn push_event(&self, event: &impl ClientEvent) -> Result<()> {
-        for packet in event.build_sso_packets(&self.context) {
+        for packet in build_sso_packet(event, &self.context) {
             self.post_packet(packet).await?;
         }
         Ok(())
@@ -146,7 +146,7 @@ impl BusinessHandle {
         // TODO: Lagrange.Core.Internal.Context.BusinessContext.HandleOutgoingEvent
         // MultiMsgUploadEvent -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Outgoing
         let mut result = vec![];
-        for packet in event.build_sso_packets(&self.context) {
+        for packet in build_sso_packet(event, &self.context) {
             let events = self.send_packet(packet).await?;
             result.extend(events);
         }
