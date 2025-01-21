@@ -8,7 +8,7 @@ pub struct T141 {
 }
 
 impl TlvSer for T141 {
-    fn from_context(_: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(_: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             version: 0,
             unknown: "Unknown".to_string(),

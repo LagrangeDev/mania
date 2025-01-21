@@ -161,14 +161,14 @@ impl ClientHandle {
             url: event.url.clone(),
         };
 
-        *self.context.session.qr_sign.write().await = Some(qr_sign);
+        self.context.session.qr_sign.store(Some(Arc::from(qr_sign)));
         tracing::info!("QR code fetched, expires in {} seconds", event.expiration);
 
         Ok((event.url.clone(), event.qr_code.clone()))
     }
 
     async fn query_trans_tmp_status(&self) -> Result<TransEmp12> {
-        if let Some(qr_sign) = &*self.context.session.qr_sign.read().await {
+        if let Some(qr_sign) = &*self.context.session.qr_sign.load() {
             let request_body = NTLoginHttpRequest {
                 appid: self.context.app_info.app_id as u64,
                 qrsig: qr_sign.string.clone(),
@@ -184,7 +184,7 @@ impl ClientHandle {
                 .await
                 .unwrap();
             let info: NTLoginHttpResponse = serde_json::from_slice(&response).unwrap();
-            *self.context.key_store.uin.write().await = info.uin;
+            self.context.key_store.uin.store(info.uin.into());
             let res = self.business.send_event(&TransEmp::QueryResult).await?;
             let res: &TransEmp12 = res.first().and_then(downcast_event).unwrap();
             Ok(res.to_owned())
@@ -200,7 +200,7 @@ impl ClientHandle {
             0 => {
                 tracing::info!(
                     "WTLogin success, welcome {:?} ヾ(≧▽≦*)o",
-                    self.context.key_store.info.read().await
+                    self.context.key_store.info
                 );
                 Ok(())
             }
@@ -235,13 +235,21 @@ impl ClientHandle {
                     }
                     TransEmp12::Confirmed(data) => {
                         tracing::info!("QR code confirmed, logging in...");
-                        let mut tgtgt = [0u8; 16];
-                        tgtgt.copy_from_slice(&data.tgtgt_key[..]);
-                        *self.context.session.stub.tgtgt_key.write().await = tgtgt;
-                        *self.context.key_store.session.temp_password.write().await =
-                            Some(data.temp_password);
-                        *self.context.key_store.session.no_pic_sig.write().await =
-                            Some(data.no_pic_sig);
+                        self.context
+                            .session
+                            .stub
+                            .tgtgt_key
+                            .store(Arc::from(data.tgtgt_key));
+                        self.context
+                            .key_store
+                            .session
+                            .temp_password
+                            .store(Some(Arc::from(data.temp_password)));
+                        self.context
+                            .key_store
+                            .session
+                            .no_pic_sig
+                            .store(Some(Arc::from(data.no_pic_sig)));
                         return self.do_wt_login().await;
                     }
                     TransEmp12::CodeExpired => {

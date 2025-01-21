@@ -12,7 +12,7 @@ pub struct T01bq {
 }
 
 impl TlvSer for T01bq {
-    fn from_context(_ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(_: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             micro: 0,
             version: 0,

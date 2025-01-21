@@ -11,7 +11,7 @@ pub struct T016q {
 }
 
 impl TlvSer for T016q {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             sso_version: 0,
             appid: ctx.app_info.app_id as u32,

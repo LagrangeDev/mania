@@ -5,7 +5,7 @@ pub struct T166 {
 }
 
 impl TlvSer for T166 {
-    fn from_context(_: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(_: &Context) -> Box<dyn TlvSer> {
         Box::new(Self { image_type: 5 })
     }
 

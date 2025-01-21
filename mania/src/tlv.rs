@@ -73,7 +73,7 @@ impl TlvPreload {
     }
 }
 
-type TlvConstructor = fn(&Context, pre: &TlvPreload) -> Box<dyn TlvSer>;
+type TlvConstructor = fn(&Context) -> Box<dyn TlvSer>;
 static TLV_QR_SER_MAP: Map<u16, TlvConstructor> = phf_map! {
     0x011_u16 => t011q::T011q::from_context,
     0x016_u16 => t016q::T016q::from_context,
@@ -129,7 +129,7 @@ static TLV_DE_MAP: Map<u16, TlvDeserializer> = phf_map! {
 };
 
 pub trait TlvSer {
-    fn from_context(ctx: &Context, pre: &TlvPreload) -> Box<dyn TlvSer>
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer>
     where
         Self: Sized;
 
@@ -141,23 +141,18 @@ pub trait TlvSer {
 }
 
 /// Create a new TLV object by tag
-pub fn new_qrcode_tlv(tag: u16, ctx: &Context, pre: &TlvPreload) -> Option<Box<dyn TlvSer>> {
-    TLV_QR_SER_MAP.get(&tag).map(|f| f(ctx, pre))
+pub fn new_qrcode_tlv(tag: u16, ctx: &Context) -> Option<Box<dyn TlvSer>> {
+    TLV_QR_SER_MAP.get(&tag).map(|f| f(ctx))
 }
 
-pub fn new_tlv(tag: u16, ctx: &Context, pre: &TlvPreload) -> Option<Box<dyn TlvSer>> {
-    TLV_SER_MAP.get(&tag).map(|f| f(ctx, pre))
+pub fn new_tlv(tag: u16, ctx: &Context) -> Option<Box<dyn TlvSer>> {
+    TLV_SER_MAP.get(&tag).map(|f| f(ctx))
 }
 
-pub fn serialize_tlv_set(
-    ctx: &Context,
-    tags: &[u16],
-    mut packet: PacketBuilder,
-    pre: &TlvPreload,
-) -> PacketBuilder {
+pub fn serialize_tlv_set(ctx: &Context, tags: &[u16], mut packet: PacketBuilder) -> PacketBuilder {
     packet = packet.u16(tags.len() as u16);
     for &tag in tags {
-        let tlv = new_tlv(tag, ctx, pre).expect("tlv not found");
+        let tlv = new_tlv(tag, ctx).expect("tlv not found");
         packet = packet.bytes(tlv.serialize_to_bytes().as_slice());
     }
     packet
@@ -167,11 +162,10 @@ pub fn serialize_qrcode_tlv_set(
     ctx: &Context,
     tags: &[u16],
     mut packet: PacketBuilder,
-    pre: &TlvPreload,
 ) -> PacketBuilder {
     packet = packet.u16(tags.len() as u16);
     for &tag in tags {
-        let tlv = new_qrcode_tlv(tag, ctx, pre).expect("tlv not found");
+        let tlv = new_qrcode_tlv(tag, ctx).expect("tlv not found");
         packet = packet.bytes(tlv.serialize_to_bytes().as_slice());
     }
     packet
@@ -273,7 +267,6 @@ mod prelude {
     pub use crate::context::ExtendUuid;
     pub use crate::crypto::tea::tea_encrypt;
     pub use crate::packet::{PacketBuilder, PacketReader};
-    pub use crate::tlv::TlvPreload;
     pub use crate::tlv::{serialize_tlv_set, ParseTlvError, TlvDe, TlvSer};
     pub use bytes::Bytes;
     pub use uuid::Uuid;

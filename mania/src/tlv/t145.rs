@@ -5,7 +5,7 @@ pub struct T145 {
 }
 
 impl TlvSer for T145 {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             device_guid: ctx.device.uuid,
         })

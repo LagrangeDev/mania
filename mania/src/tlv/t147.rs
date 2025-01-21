@@ -7,7 +7,7 @@ pub struct T147 {
 }
 
 impl TlvSer for T147 {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             app_id: ctx.app_info.app_id as u32,
             pt_version: ctx.app_info.pt_version.parse().unwrap(),

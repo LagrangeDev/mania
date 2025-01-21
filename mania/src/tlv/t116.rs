@@ -5,7 +5,7 @@ pub struct T116 {
 }
 
 impl TlvSer for T116 {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             sub_sigmap: ctx.app_info.sub_sig_map,
         })

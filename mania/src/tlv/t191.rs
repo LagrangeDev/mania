@@ -5,7 +5,7 @@ pub struct T191 {
 }
 
 impl TlvSer for T191 {
-    fn from_context(_: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(_: &Context) -> Box<dyn TlvSer> {
         Box::new(Self { can_web_verify: 0 })
     }
 

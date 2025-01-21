@@ -5,7 +5,7 @@ pub struct T142 {
 }
 
 impl TlvSer for T142 {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             package_name: ctx.app_info.package_name.to_string(),
         })

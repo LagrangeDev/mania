@@ -10,7 +10,7 @@ pub struct T100 {
 }
 
 impl TlvSer for T100 {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             db_buf_version: 0,
             sso_version: 0x00000005,

@@ -3,7 +3,7 @@ use crate::tlv::prelude::*;
 pub struct T124 {}
 
 impl TlvSer for T124 {
-    fn from_context(_: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(_: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {})
     }
 

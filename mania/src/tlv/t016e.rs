@@ -5,7 +5,7 @@ pub struct T016E {
 }
 
 impl TlvSer for T016E {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             device_name: ctx.device.device_name.clone(),
         })

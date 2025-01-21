@@ -7,7 +7,7 @@ pub struct T0d1q {
 }
 
 impl TlvSer for T0d1q {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             proto: TlvQrCodeD1 {
                 sys: Some(NTOS {

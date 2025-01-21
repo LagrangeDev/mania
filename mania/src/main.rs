@@ -19,9 +19,9 @@ async fn main() {
         key_store.save("keystore.json").unwrap();
         key_store
     });
-    let need_login = key_store.is_session_expired().await
-        || key_store.session.d2.read().await.is_empty()
-        || key_store.session.tgt.read().await.is_empty();
+    let need_login = key_store.is_session_expired()
+        || key_store.session.d2.load().is_empty()
+        || key_store.session.tgt.load().is_empty();
     let mut client = Client::new(config, device, key_store).await.unwrap();
     let client_handle = client.handle();
     tokio::spawn(async move {

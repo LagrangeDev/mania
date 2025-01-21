@@ -5,9 +5,17 @@ pub struct T16A {
 }
 
 impl TlvSer for T16A {
-    fn from_context(_: &Context, pre: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
-            no_pic_sig: pre.no_pic_sig.clone().expect("no_pic_sig is none"),
+            no_pic_sig: ctx
+                .key_store
+                .session
+                .no_pic_sig
+                .load()
+                .clone()
+                .expect("no_pic_sig is none")
+                .as_ref()
+                .clone(),
         })
     }
 

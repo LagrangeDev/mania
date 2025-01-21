@@ -8,7 +8,7 @@ pub struct T01dq {
 }
 
 impl TlvSer for T01dq {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             field_byte: 1,
             misc_bitmap: ctx.app_info.misc_bitmap as u32,

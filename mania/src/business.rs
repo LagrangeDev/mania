@@ -95,7 +95,7 @@ impl Business {
     ) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Lagrange.Core.Internal.Context.PacketContext.DispatchPacket
         let packet = self.receiver.recv().await?;
-        let packet = SsoPacket::parse(packet, &self.context).await?;
+        let packet = SsoPacket::parse(packet, &self.context)?;
         let sequence = packet.sequence();
 
         let events = resolve_events(packet, &self.context).await?;
@@ -154,7 +154,7 @@ impl BusinessHandle {
     }
 
     async fn post_packet(&self, packet: SsoPacket) -> Result<()> {
-        let packet = packet.build(&self.context).await;
+        let packet = packet.build(&self.context);
         self.sender.load().send(packet).await
     }
 

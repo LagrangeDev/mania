@@ -7,7 +7,6 @@ use crate::crypto::Secp192k1;
 use crate::key_store::KeyStore;
 use crate::session::Session;
 use crate::sign::SignProvider;
-use crate::tlv::TlvPreload;
 use crate::Protocol;
 
 pub struct Context {
@@ -17,18 +16,6 @@ pub struct Context {
     pub sign_provider: Box<dyn SignProvider>,
     pub crypto: Crypto,
     pub session: Session,
-}
-
-impl Context {
-    pub async fn make_tlv_preload(&self) -> TlvPreload {
-        TlvPreload::new(
-            self.key_store.session.unusual_sign.read().await.clone(),
-            self.key_store.session.no_pic_sig.read().await.clone(),
-            *self.key_store.uin.read().await,
-            *self.session.stub.tgtgt_key.read().await,
-            self.key_store.session.temp_password.read().await.clone(),
-        )
-    }
 }
 
 pub struct Crypto {

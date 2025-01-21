@@ -31,10 +31,9 @@ impl ClientEvent for WtLogin {
     }
 
     async fn build_packets(&self, context: &Context) -> Vec<BinaryPacket> {
-        let pre_tlv = context.make_tlv_preload().await;
         let body = PacketBuilder::new()
             .u16(0x09)
-            .packet(|p| serialize_tlv_set(context, Self::BUILD_TLVS.as_slice(), p, &pre_tlv))
+            .packet(|p| serialize_tlv_set(context, Self::BUILD_TLVS.as_slice(), p))
             .build();
         let body = build_wtlogin_packet(context, 2064, &body).await;
         vec![BinaryPacket(body.into())]
@@ -48,17 +47,14 @@ pub struct WtLoginRes {
 
 impl ServerEvent for WtLoginRes {
     fn ret_code(&self) -> i32 {
-        0
+        self.code
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 }
 
-pub async fn parse(
-    packet: Bytes,
-    ctx: Arc<Context>,
-) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
+pub fn parse(packet: Bytes, ctx: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
     let packet = parse_wtlogin_packet(packet, &ctx)?;
     let mut reader = PacketReader::new(packet);
     reader.skip(2);
@@ -70,8 +66,7 @@ pub async fn parse(
             .map_err(ParseEventError::MissingTlv)?
             .encrypted_tlv
             .clone();
-        let tgtgt_key = *ctx.session.stub.tgtgt_key.read().await;
-        let dec_tlvs_data = tea_decrypt(&enc_tlvs_data, &tgtgt_key);
+        let dec_tlvs_data = tea_decrypt(&enc_tlvs_data, &ctx.session.stub.tgtgt_key.load());
         let tlvs = TlvSet::deserialize(Bytes::from(dec_tlvs_data));
         let tgt = tlvs
             .get::<t10a::T10A>()
@@ -88,13 +83,16 @@ pub async fn parse(
             .map_err(ParseEventError::MissingTlv)?
             .d2key
             .clone();
+        let trans_d2_key: &[u8; 16] = (&d2_key[..])
+            .try_into()
+            .expect("d2_key is not 16 bytes long");
         let tgtgt = {
             let mut ctx = MdCtx::new().unwrap();
             ctx.digest_init(Md::md5()).unwrap();
             ctx.digest_update(&d2_key).unwrap();
             let mut buf = [0; 16];
             ctx.digest_final(&mut buf).unwrap();
-            buf
+            Bytes::copy_from_slice(&buf)
         };
         let temp_pwd = tlvs
             .get::<t106::T106>()
@@ -109,20 +107,27 @@ pub async fn parse(
         let self_info = tlvs
             .get::<t11a::T11A>()
             .map_err(ParseEventError::MissingTlv)?;
-        *ctx.session.stub.tgtgt_key.write().await = tgtgt;
-        *ctx.key_store.session.tgt.write().await = tgt;
-        *ctx.key_store.session.d2.write().await = d2;
-        let mut d2_key_16 = [0u8; 16];
-        d2_key_16.copy_from_slice(d2_key.as_ref());
-        *ctx.key_store.session.d2_key.write().await = d2_key_16;
-        *ctx.key_store.uid.write().await = Some(uid);
-        *ctx.key_store.session.temp_password.write().await = Some(temp_pwd);
-        *ctx.key_store.session.session_date.write().await = Utc::now();
-        *ctx.key_store.info.write().await = AccountInfo {
+        ctx.session.stub.tgtgt_key.store(Arc::from(tgtgt));
+        ctx.key_store.session.tgt.store(Arc::from(tgt));
+        ctx.key_store.session.d2.store(Arc::from(d2));
+        ctx.key_store
+            .session
+            .d2_key
+            .store(Arc::from(trans_d2_key.to_owned()));
+        ctx.key_store.uid.store(Some(Arc::from(uid)));
+        ctx.key_store
+            .session
+            .temp_password
+            .store(Some(Arc::from(temp_pwd)));
+        ctx.key_store
+            .session
+            .session_date
+            .store(Arc::from(Utc::now()));
+        ctx.key_store.info.store(Arc::from(AccountInfo {
             age: self_info.age,
             gender: self_info.gender,
             name: self_info.nick_name.clone(),
-        };
+        }));
         Ok(vec![Box::new(WtLoginRes { code: 0, msg: None })])
     } else {
         let tlv146 = original_tlvs.get::<t146::T146>().ok();

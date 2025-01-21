@@ -7,24 +7,31 @@ pub struct T106 {
     pub uin: i32,
     pub password_md5: Bytes,
     pub guid: String,
-    pub tgtgt_key: [u8; 16],
+    pub tgtgt_key: Bytes,
     pub ip: [u8; 4],
     pub save_password: bool,
     pub temp: Bytes,
 }
 
 impl TlvSer for T106 {
-    fn from_context(ctx: &Context, pre: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             app_id: ctx.app_info.app_id,
             app_client_version: ctx.app_info.app_client_version as i32,
-            uin: 0,
-            password_md5: Bytes::default(),
+            uin: ctx.key_store.uin.load().as_ref().to_owned() as i32,
+            password_md5: ctx.key_store.password_md5.load().as_ref().to_owned(),
             guid: hex::encode(ctx.device.uuid),
-            tgtgt_key: [0; 16],
+            tgtgt_key: ctx.session.stub.tgtgt_key.load().as_ref().to_owned(),
             ip: [0, 0, 0, 0],
             save_password: true,
-            temp: pre.temp_password.clone().expect("temp password not found"),
+            temp: ctx
+                .key_store
+                .session
+                .temp_password
+                .load_full()
+                .as_ref()
+                .map(|arc| (**arc).clone())
+                .unwrap(),
         })
     }
 
@@ -42,7 +49,7 @@ impl TlvDe for T106 {
             uin: 0,
             password_md5: Default::default(),
             guid: "".to_string(),
-            tgtgt_key: [0; 16],
+            tgtgt_key: Bytes::new(),
             ip: [0; 4],
             save_password: false,
             temp: p.bytes(),

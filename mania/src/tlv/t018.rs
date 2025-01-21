@@ -11,13 +11,13 @@ pub struct T018 {
 }
 
 impl TlvSer for T018 {
-    fn from_context(_: &Context, pre: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             ping_version: 0,
             sso_version: 0x00000005,
             app_id: 0,
             app_client_version: 30366,
-            uin: pre.uin,
+            uin: **ctx.key_store.uin.load(),
             field0: 0,
             field1: 0,
         })

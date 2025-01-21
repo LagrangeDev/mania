@@ -5,7 +5,7 @@ pub struct T521 {
 }
 
 impl TlvSer for T521 {
-    fn from_context(_: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(_: &Context) -> Box<dyn TlvSer> {
         Box::new(Self { product_type: 0x13 })
     }
 

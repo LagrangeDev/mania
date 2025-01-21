@@ -5,7 +5,7 @@ pub struct T066q {
 }
 
 impl TlvSer for T066q {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             pt_os_version: ctx.app_info.pt_os_version,
         })

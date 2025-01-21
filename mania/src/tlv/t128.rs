@@ -6,7 +6,7 @@ pub struct T128 {
 }
 
 impl TlvSer for T128 {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             app_info_os: ctx.app_info.os.to_string(),
             device_guid: ctx.device.uuid,

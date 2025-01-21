@@ -113,26 +113,15 @@ impl SsoPacket {
         self.payload.0.clone()
     }
 
-    pub async fn build(&self, ctx: &Context) -> Vec<u8> {
+    pub fn build(&self, ctx: &Context) -> Vec<u8> {
         match self.packet_type {
-            PacketType::T12 => self.build_protocol12(ctx).await,
-            PacketType::T13 => self.build_protocol13(ctx).await,
+            PacketType::T12 => self.build_protocol12(ctx),
+            PacketType::T13 => self.build_protocol13(ctx),
         }
     }
 
-    pub async fn build_protocol12(&self, ctx: &Context) -> Vec<u8> {
+    pub fn build_protocol12(&self, ctx: &Context) -> Vec<u8> {
         // Lagrange.Core.Internal.Packets.SsoPacker.Build
-        let tgt = ctx.key_store.session.tgt.read().await;
-        let uid = ctx
-            .key_store
-            .uid
-            .read()
-            .await
-            .as_ref()
-            .map(|arc| arc.to_string());
-        let uin = ctx.key_store.uin.read().await.to_string();
-        let d2 = ctx.key_store.session.d2.read().await;
-        let d2key = ctx.key_store.session.d2_key.read().await;
         let body = PacketBuilder::new()
             .section(|header| {
                 header
@@ -140,7 +129,7 @@ impl SsoPacket {
                     .u32(ctx.app_info.sub_app_id as u32) // app id
                     .u32(2052) // locale id
                     .bytes(&[2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-                    .section(|p| p.bytes(&tgt)) // tgt
+                    .section(|p| p.bytes(&ctx.key_store.session.tgt.load())) // tgt
                     .section(|p| p.string(&self.command)) // command
                     .section(|p| p) // unknown
                     .section(|p| p.string(&hex::encode(ctx.device.uuid))) // uuid
@@ -152,7 +141,12 @@ impl SsoPacket {
                                 .sign(&self.command, self.sequence, &self.payload.0);
                         let device_sign = NTDeviceSign {
                             trace: random_trace(),
-                            uid,
+                            uid: ctx
+                                .key_store
+                                .uid
+                                .load()
+                                .as_ref()
+                                .map(|arc| arc.as_ref().clone()),
                             sign: match sign {
                                 Some(sign) => MessageField::some(Sign {
                                     SecSign: Some(hex::decode(sign.sign).unwrap()),
@@ -177,24 +171,24 @@ impl SsoPacket {
             .section(|packet| {
                 packet
                     .u32(12) // protocol version
-                    .u8(if d2.is_empty() { 2 } else { 1 }) // flag
-                    .section(|p| p.bytes(&d2))
+                    .u8(if ctx.key_store.session.d2.load().is_empty() {
+                        2
+                    } else {
+                        1
+                    }) // flag
+                    .section(|p| p.bytes(&ctx.key_store.session.d2.load()))
                     .u8(0) // unknown
-                    .section(|packet| packet.string(&uin)) // uin
-                    .bytes(&tea::tea_encrypt(&body, &d2key[..]))
+                    .section(|packet| packet.string(&ctx.key_store.uin.to_string())) // uin
+                    .bytes(&tea::tea_encrypt(
+                        &body,
+                        ctx.key_store.session.d2_key.load().as_ref(),
+                    ))
             })
             .build()
     }
 
-    pub async fn build_protocol13(&self, ctx: &Context) -> Vec<u8> {
+    pub fn build_protocol13(&self, ctx: &Context) -> Vec<u8> {
         // Lagrange.Core.Internal.Packets.ServicePacker.BuildProtocol13
-        let uid = ctx
-            .key_store
-            .uid
-            .read()
-            .await
-            .as_ref()
-            .map(|arc| arc.to_string());
         PacketBuilder::new()
             .section(|packet| {
                 packet
@@ -207,7 +201,9 @@ impl SsoPacket {
                         p.section(|p| p.string(&self.command)) // command
                             .section(|p| p) // unknown
                             .section(|p| {
-                                p.bytes(&if let Some(ref uid) = uid {
+                                p.bytes(&if let Some(ref uid) =
+                                    ctx.key_store.uid.load().as_ref().map(|arc| arc.to_string())
+                                {
                                     let uid = NTPacketUid {
                                         uid: Some(uid.clone()),
                                         special_fields: Default::default(),
@@ -223,7 +219,7 @@ impl SsoPacket {
             .build()
     }
 
-    pub async fn parse(packet: Bytes, ctx: &Context) -> Result<SsoPacket, ParsePacketError> {
+    pub fn parse(packet: Bytes, ctx: &Context) -> Result<SsoPacket, ParsePacketError> {
         // Lagrange.Core.Internal.Packets.ServicePacker.Parse
         let mut reader = PacketReader::new(packet);
         let _length = reader.u32();
@@ -236,16 +232,18 @@ impl SsoPacket {
         let _flag = reader.u8();
         let uin = reader.section(|p| p.string());
         let uin = uin.parse().map_err(|_| ParsePacketError::InvalidUin(uin))?;
-        let stored_uin = ctx.key_store.uin.read().await;
-        if uin != *stored_uin && protocol == PacketType::T12 {
-            return Err(ParsePacketError::UinMismatch(*stored_uin, uin));
+        if uin != **ctx.key_store.uin.load() && protocol == PacketType::T12 {
+            return Err(ParsePacketError::UinMismatch(
+                **ctx.key_store.uin.load(),
+                uin,
+            ));
         }
 
         let body = reader.bytes();
 
         let body = match auth_flag {
             0 => body,
-            1 => tea::tea_decrypt(&body, &ctx.key_store.session.d2_key.read().await[..]).into(),
+            1 => tea::tea_decrypt(&body, ctx.key_store.session.d2_key.load().as_ref()).into(),
             2 => tea::tea_decrypt(&body, &[0u8; 16]).into(),
             _ => panic!("Invalid auth flag"),
         };

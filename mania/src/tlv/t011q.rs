@@ -5,9 +5,13 @@ pub struct T011q {
 }
 
 impl TlvSer for T011q {
-    fn from_context(_: &Context, pre: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
-            unusual_sign: Bytes::from(pre.unusual_sign.clone().expect("unusual sign is none")),
+            unusual_sign: ctx
+                .session
+                .unusual_sign
+                .clone()
+                .expect("unusual sign is none"),
         })
     }
 

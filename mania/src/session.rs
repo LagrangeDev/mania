@@ -1,10 +1,12 @@
+use arc_swap::{ArcSwap, ArcSwapOption};
+use bytes::Bytes;
 use std::sync::atomic::{self, AtomicU16};
-use tokio::sync::RwLock;
+use std::sync::Arc;
 
 pub struct Session {
     pub stub: KeyCollection,
-    pub qr_sign: RwLock<Option<QrSign>>,
-    pub unusual_sign: RwLock<Option<Vec<u8>>>,
+    pub qr_sign: ArcSwapOption<QrSign>,
+    pub unusual_sign: Option<Bytes>,
     // TODO: other fields
     sequence: AtomicU16,
 }
@@ -19,12 +21,12 @@ impl Session {
     pub fn new() -> Self {
         Self {
             stub: KeyCollection::new(),
-            qr_sign: RwLock::new(Some(QrSign {
+            qr_sign: ArcSwapOption::new(Some(Arc::from(QrSign {
                 sign: [0; 24],
                 string: String::new(),
                 url: String::new(),
-            })),
-            unusual_sign: RwLock::new(None),
+            }))),
+            unusual_sign: None,
             sequence: AtomicU16::new(0),
         }
     }
@@ -40,8 +42,8 @@ impl Session {
 
 #[derive(Debug)]
 pub struct KeyCollection {
-    pub random_key: RwLock<[u8; 16]>,
-    pub tgtgt_key: RwLock<[u8; 16]>,
+    pub random_key: [u8; 16],
+    pub tgtgt_key: ArcSwap<Bytes>,
 }
 
 impl Default for KeyCollection {
@@ -53,8 +55,8 @@ impl Default for KeyCollection {
 impl KeyCollection {
     pub fn new() -> Self {
         Self {
-            random_key: RwLock::new([0; 16]),
-            tgtgt_key: RwLock::new([0; 16]),
+            random_key: [0; 16],
+            tgtgt_key: ArcSwap::new(Arc::new(Bytes::from_static(&[0; 16]))),
         }
     }
 }

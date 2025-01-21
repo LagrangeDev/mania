@@ -55,10 +55,9 @@ impl ClientEvent for TransEmp {
     }
 
     async fn build_packets(&self, ctx: &Context) -> Vec<BinaryPacket> {
-        let pre_tlv = ctx.make_tlv_preload().await;
         let body = match self {
             TransEmp::QueryResult => {
-                let qrsign = ctx.session.qr_sign.read().await;
+                let qrsign = ctx.session.qr_sign.load();
                 let qrsign = qrsign.as_ref().expect("qr sign not initialized");
                 let data = PacketBuilder::new()
                     .u16(0)
@@ -76,7 +75,7 @@ impl ClientEvent for TransEmp {
                 build_trans_emp_body(ctx, 0x12, data)
             }
             TransEmp::FetchQrCode => {
-                let tlvs = if ctx.session.unusual_sign.read().await.is_none() {
+                let tlvs = if ctx.session.unusual_sign.is_none() {
                     Self::TLVS.as_slice()
                 } else {
                     Self::TLVS_PASSWORD.as_slice()
@@ -90,7 +89,7 @@ impl ClientEvent for TransEmp {
                     .write_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }, 0>(|packet| {
                         packet.bytes(&[])
                     })
-                    .packet(|p| serialize_qrcode_tlv_set(ctx, tlvs, p, &pre_tlv))
+                    .packet(|p| serialize_qrcode_tlv_set(ctx, tlvs, p))
                     .build();
                 build_trans_emp_body(ctx, 0x31, data)
             }
@@ -134,8 +133,6 @@ fn build_trans_emp_body(ctx: &Context, qr_cmd: u16, tlvs: Vec<u8>) -> Vec<u8> {
 
 // TODO: decouple
 pub async fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
-    let uin = ctx.key_store.uin.read().await;
-    let random_key = ctx.session.stub.random_key.read().await;
     PacketBuilder::new()
         .u8(2) // packet start
         .write_with_length::<_, { PREFIX_U16 | PREFIX_WITH }, 1>(|packet| {
@@ -143,7 +140,7 @@ pub async fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u
                 .u16(8001) // ver
                 .u16(cmd) // cmd: wtlogin.trans_emp: 2066, wtlogin.login: 2064
                 .u16(ctx.session.next_sequence()) // unique wtLoginSequence for wtlogin packets only, should be stored in KeyStore
-                .u32(*uin) // uin, 0 for wt
+                .u32(**ctx.key_store.uin.load()) // uin, 0 for wt
                 .u8(3) // extVer
                 .u8(135) // cmdVer
                 .u32(0) // actually unknown const 0
@@ -154,7 +151,7 @@ pub async fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u
                 // head
                 .u8(1) // const
                 .u8(1) // const
-                .bytes(&random_key[..]) // randKey
+                .bytes(&ctx.session.stub.random_key) // randKey
                 .u16(0x102) // unknown const
                 .u16(25) // pubKey length
                 .bytes(ctx.crypto.secp.public_key()) // pubKey

@@ -1,7 +1,5 @@
 use bytes::Bytes;
 use phf::phf_map;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -35,25 +33,12 @@ pub trait ServerEvent: std::fmt::Debug + Send + Sync {
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
-type ParseEventSync = fn(Bytes, &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError>;
-type ParseEventAsync = fn(
-    Bytes,
-    Arc<Context>,
-) -> Pin<
-    Box<dyn Future<Output = Result<Vec<Box<dyn ServerEvent>>, ParseEventError>> + Send + 'static>,
->;
-enum ParseEvent {
-    Sync(ParseEventSync),
-    Async(ParseEventAsync),
-}
-
+type ParseEvent = fn(Bytes, &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError>;
 static EVENT_MAP: phf::Map<&'static str, ParseEvent> = phf_map! {
-    "wtlogin.trans_emp" => ParseEvent::Sync(trans_emp::parse),
-    "wtlogin.login" => ParseEvent::Async(|bytes, ctx: Arc<Context>| {
-        Box::pin(wtlogin::parse(bytes, ctx))
-    }),
-    "Heartbeat.Alive" => ParseEvent::Sync(alive::parse),
-    "trpc.msg.register_proxy.RegisterProxy.SsoInfoSync" => ParseEvent::Sync(info_sync::parse),
+    "wtlogin.trans_emp" => trans_emp::parse,
+    "wtlogin.login" => wtlogin::parse,
+    "Heartbeat.Alive" => alive::parse,
+    "trpc.msg.register_proxy.RegisterProxy.SsoInfoSync" => info_sync::parse,
 };
 /// Resolve SSO events from a packet.
 pub async fn resolve_events(
@@ -72,10 +57,7 @@ pub async fn resolve_events(
             packet.command().to_string(),
         ));
     };
-    let events = match parse {
-        ParseEvent::Sync(parse) => parse(payload, context)?,
-        ParseEvent::Async(parse) => parse(payload, context.clone()).await?,
-    };
+    let events = parse(payload, context)?;
     Ok(events)
 }
 

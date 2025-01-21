@@ -7,7 +7,7 @@ pub struct T177 {
 }
 
 impl TlvSer for T177 {
-    fn from_context(ctx: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             field_1: Bytes::from_static(b"\x01"),
             build_time: 0,

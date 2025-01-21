@@ -7,7 +7,7 @@ pub struct T107 {
 }
 
 impl TlvSer for T107 {
-    fn from_context(_: &Context, _: &TlvPreload) -> Box<dyn TlvSer> {
+    fn from_context(_: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             pic_type: 0x0001,
             cap_type: 0x0D,

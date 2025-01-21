@@ -1,20 +1,16 @@
+use arc_swap::{ArcSwap, ArcSwapOption};
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{fs, io};
-use tokio::sync::RwLock;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct KeyStore {
-    #[serde(with = "serde_rwlock")]
-    pub uin: RwLock<u32>,
-    #[serde(with = "serde_rwlock")]
-    pub uid: RwLock<Option<String>>,
-    #[serde(with = "serde_rwlock")]
-    pub password_md5: RwLock<Bytes>,
+    pub uin: ArcSwap<u32>,
+    pub uid: ArcSwapOption<String>,
+    pub password_md5: ArcSwap<Bytes>,
     pub session: WtLoginSession,
-    #[serde(with = "serde_rwlock")]
-    pub info: RwLock<AccountInfo>,
+    pub info: ArcSwap<AccountInfo>,
 }
 
 impl KeyStore {
@@ -32,10 +28,9 @@ impl KeyStore {
         Ok(())
     }
 
-    pub async fn is_session_expired(&self) -> bool {
-        let session_date = self.session.session_date.read().await;
+    pub fn is_session_expired(&self) -> bool {
         let now = Utc::now();
-        let duration = now.signed_duration_since(*session_date);
+        let duration = now.signed_duration_since(**self.session.session_date.load());
         duration.num_seconds() > 15 * 86400
     }
 }
@@ -49,32 +44,19 @@ pub struct AccountInfo {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct WtLoginSession {
-    #[serde(with = "serde_rwlock")]
-    pub d2_key: RwLock<[u8; 16]>,
-    #[serde(with = "serde_rwlock")]
-    pub d2: RwLock<Bytes>,
-    #[serde(with = "serde_rwlock")]
-    pub tgt: RwLock<Bytes>,
-    #[serde(with = "serde_rwlock")]
-    pub session_date: RwLock<DateTime<Utc>>,
-    #[serde(with = "serde_rwlock")]
-    pub qr_sign: RwLock<Option<Bytes>>,
-    #[serde(with = "serde_rwlock")]
-    pub qr_string: RwLock<Option<String>>,
-    #[serde(with = "serde_rwlock")]
-    pub qr_url: RwLock<Option<String>>,
-    #[serde(with = "serde_rwlock")]
-    pub exchange_key: RwLock<Option<Bytes>>,
-    #[serde(with = "serde_rwlock")]
-    pub key_sign: RwLock<Option<Bytes>>,
-    #[serde(with = "serde_rwlock")]
-    pub unusual_sign: RwLock<Option<Bytes>>,
-    #[serde(with = "serde_rwlock")]
-    pub unusual_cookie: RwLock<Option<String>>,
-    #[serde(with = "serde_rwlock")]
-    pub temp_password: RwLock<Option<Bytes>>,
-    #[serde(with = "serde_rwlock")]
-    pub no_pic_sig: RwLock<Option<Bytes>>,
+    pub d2_key: ArcSwap<[u8; 16]>,
+    pub d2: ArcSwap<Bytes>,
+    pub tgt: ArcSwap<Bytes>,
+    pub session_date: ArcSwap<DateTime<Utc>>,
+    pub qr_sign: ArcSwapOption<Bytes>,
+    pub qr_string: ArcSwapOption<String>,
+    pub qr_url: ArcSwapOption<String>,
+    pub exchange_key: ArcSwapOption<Bytes>,
+    pub key_sign: ArcSwapOption<Bytes>,
+    pub unusual_sign: ArcSwapOption<Bytes>,
+    pub unusual_cookie: ArcSwapOption<String>,
+    pub temp_password: ArcSwapOption<Bytes>,
+    pub no_pic_sig: ArcSwapOption<Bytes>,
 }
 
 mod serde_rwlock {
