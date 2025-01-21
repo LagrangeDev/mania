@@ -14,7 +14,7 @@ impl ClientEvent for Alive {
         PacketType::T13
     }
 
-    async fn build_packets(&self, _ctx: &Context) -> Vec<BinaryPacket> {
+    fn build_packets(&self, _ctx: &Context) -> Vec<BinaryPacket> {
         vec![BinaryPacket(4u32.to_be_bytes().to_vec().into())]
     }
 }

@@ -30,12 +30,12 @@ impl ClientEvent for WtLogin {
         PacketType::T12
     }
 
-    async fn build_packets(&self, context: &Context) -> Vec<BinaryPacket> {
+    fn build_packets(&self, context: &Context) -> Vec<BinaryPacket> {
         let body = PacketBuilder::new()
             .u16(0x09)
             .packet(|p| serialize_tlv_set(context, Self::BUILD_TLVS.as_slice(), p))
             .build();
-        let body = build_wtlogin_packet(context, 2064, &body).await;
+        let body = build_wtlogin_packet(context, 2064, &body);
         vec![BinaryPacket(body.into())]
     }
 }

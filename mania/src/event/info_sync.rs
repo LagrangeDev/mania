@@ -18,7 +18,7 @@ impl ClientEvent for InfoSync {
         PacketType::T12
     }
 
-    async fn build_packets(&self, ctx: &Context) -> Vec<BinaryPacket> {
+    fn build_packets(&self, ctx: &Context) -> Vec<BinaryPacket> {
         let request = SsoInfoSyncRequest {
             SyncFlag: 735,
             ReqRandom: 298191, // FIXME:

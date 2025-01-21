@@ -14,13 +14,12 @@ pub mod wtlogin;
 pub trait ClientEvent: Send + Sync {
     fn command(&self) -> &'static str;
     fn packet_type(&self) -> PacketType;
-    async fn build_packets(&self, context: &Context) -> Vec<BinaryPacket>;
+    fn build_packets(&self, context: &Context) -> Vec<BinaryPacket>;
 
-    async fn build_sso_packets(&self, context: &Context) -> Vec<SsoPacket> {
+    fn build_sso_packets(&self, context: &Context) -> Vec<SsoPacket> {
         let packet_type = self.packet_type();
         let command = self.command();
         self.build_packets(context)
-            .await
             .into_iter()
             .map(|packet| SsoPacket::new(packet_type, command, packet))
             .collect()

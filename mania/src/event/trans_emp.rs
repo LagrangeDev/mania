@@ -54,7 +54,7 @@ impl ClientEvent for TransEmp {
         PacketType::T12
     }
 
-    async fn build_packets(&self, ctx: &Context) -> Vec<BinaryPacket> {
+    fn build_packets(&self, ctx: &Context) -> Vec<BinaryPacket> {
         let body = match self {
             TransEmp::QueryResult => {
                 let qrsign = ctx.session.qr_sign.load();
@@ -94,7 +94,7 @@ impl ClientEvent for TransEmp {
                 build_trans_emp_body(ctx, 0x31, data)
             }
         };
-        let packet = build_wtlogin_packet(ctx, 2066, &body).await;
+        let packet = build_wtlogin_packet(ctx, 2066, &body);
         vec![BinaryPacket(packet.into())]
     }
 }
@@ -132,7 +132,7 @@ fn build_trans_emp_body(ctx: &Context, qr_cmd: u16, tlvs: Vec<u8>) -> Vec<u8> {
 }
 
 // TODO: decouple
-pub async fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
+pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
     PacketBuilder::new()
         .u8(2) // packet start
         .write_with_length::<_, { PREFIX_U16 | PREFIX_WITH }, 1>(|packet| {
