@@ -1,11 +1,25 @@
 use mania::*;
-use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::new("debug"))
-        .init();
+    #[cfg(feature = "tokio-tracing")]
+    {
+        use tracing_subscriber::prelude::*;
+        let console_layer = console_subscriber::spawn();
+        tracing_subscriber::registry()
+            .with(console_layer)
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_filter(tracing_subscriber::EnvFilter::new("debug")),
+            )
+            .init();
+    }
+    #[cfg(not(feature = "tokio-tracing"))]
+    {
+        tracing_subscriber::fmt()
+            .with_env_filter(tracing_subscriber::EnvFilter::new("debug"))
+            .init();
+    }
     let config = ClientConfig::default();
     let device = DeviceInfo::load("device.json").unwrap_or_else(|_| {
         tracing::warn!("Failed to load device info, generating a new one...");
