@@ -14,7 +14,6 @@ chrono = { version = "0.4.39", features = ["serde"] }
 dashmap = "6.1.0"
 flate2 = "1.0.35"
 generic-array = "1.2.0"
-openssl = { version = "0.10.68", features = ["vendored"] }
 phf = { version = "0.11.3", features = ["macros"] }
 protobuf = "3.7.1"
 rand = "0.8.5"
@@ -32,6 +31,9 @@ serde_json = "1.0.135"
 futures = "0.3.31"
 inventory = "0.3.17"
 once_cell = "1.20.2"
+p256 = {version = "0.13.2", features = ["ecdh"]}
+md-5 = "0.10.6"
+elliptic-curve = "0.13.8"
 
 [build-dependencies]
 glob = "0.3.2"

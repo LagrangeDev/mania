@@ -8,8 +8,7 @@ use crate::tlv::*;
 use bytes::Bytes;
 use chrono::Utc;
 use mania_macros::ce_commend;
-use openssl::md::Md;
-use openssl::md_ctx::MdCtx;
+use md5::{Digest, Md5};
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -80,14 +79,7 @@ impl ClientEvent for WtLogin {
             let trans_d2_key: &[u8; 16] = (&d2_key[..])
                 .try_into()
                 .expect("d2_key is not 16 bytes long");
-            let tgtgt = {
-                let mut ctx = MdCtx::new().unwrap();
-                ctx.digest_init(Md::md5()).unwrap();
-                ctx.digest_update(&d2_key).unwrap();
-                let mut buf = [0; 16];
-                ctx.digest_final(&mut buf).unwrap();
-                Bytes::copy_from_slice(&buf)
-            };
+            let tgtgt = Bytes::copy_from_slice(&Md5::digest(&d2_key));
             let temp_pwd = tlvs
                 .get::<t106::T106>()
                 .map_err(ParseEventError::MissingTlv)?

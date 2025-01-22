@@ -1,6 +1,7 @@
 use std::vec;
 
 use crate::context::Context;
+use crate::crypto::Ecdh;
 use crate::event::*;
 use crate::packet::{
     BinaryPacket, PacketBuilder, PacketReader, PREFIX_LENGTH_ONLY, PREFIX_U16, PREFIX_U8,
@@ -251,13 +252,14 @@ pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
                 .u16(ctx.app_info.app_client_version) // cliType
                 .u32(0) // retryTime
                 // head
-                .u8(1) // const
-                .u8(1) // const
+                .u8(2) // curve type (Secp192K1: 1, Prime256V1: 2)
+                .u8(1) // rollback flag
                 .bytes(&ctx.session.stub.random_key) // randKey
-                .u16(0x102) // unknown const
-                .u16(25) // pubKey length
-                .bytes(ctx.crypto.secp.public_key()) // pubKey
-                .bytes(ctx.crypto.secp.tea_encrypt(body).as_slice())
+                .u16(0x0131) // android: 0x0131, windows: 0x0102
+                .u16(0x0001)
+                .u16(ctx.crypto.p256.public_key().len() as u16) // pubKey length
+                .bytes(ctx.crypto.p256.public_key()) // pubKey
+                .bytes(ctx.crypto.p256.tea_encrypt(body).as_slice())
                 .u8(3) // packet end
         })
         .build()
@@ -338,7 +340,7 @@ pub fn parse_wtlogin_packet(packet: Bytes, ctx: &Context) -> Result<Bytes, Parse
         return Err(ParseEventError::InvalidPacketEnd);
     }
 
-    let decrypted = ctx.crypto.secp.tea_decrypt(&encrypted);
+    let decrypted = ctx.crypto.p256.tea_decrypt(&encrypted);
 
     Ok(Bytes::from(decrypted))
 }

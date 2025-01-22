@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{fs, io};
 use uuid::Uuid;
 
-use crate::crypto::Secp192k1;
+use crate::crypto::{Ecdh, P256};
 use crate::key_store::KeyStore;
 use crate::session::Session;
 use crate::sign::SignProvider;
@@ -19,13 +19,13 @@ pub struct Context {
 }
 
 pub struct Crypto {
-    pub secp: Secp192k1,
+    pub p256: P256,
 }
 
 impl Default for Crypto {
     fn default() -> Self {
         Self {
-            secp: Secp192k1::new().unwrap(),
+            p256: P256::new(),
         }
     }
 }
