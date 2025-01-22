@@ -23,7 +23,7 @@ impl ServerEvent for InfoSyncRes {
 }
 
 impl ClientEvent for InfoSync {
-    fn build(&self, ctx: &Context) -> Vec<BinaryPacket> {
+    fn build(&self, ctx: &Context) -> BinaryPacket {
         let request = SsoInfoSyncRequest {
             SyncFlag: 735,
             ReqRandom: 298191, // FIXME:
@@ -84,11 +84,11 @@ impl ClientEvent for InfoSync {
             })),
             special_fields: Default::default(),
         };
-        vec![BinaryPacket(request.write_to_bytes().unwrap().into())]
+        BinaryPacket(request.write_to_bytes().unwrap().into())
     }
 
-    fn parse(_: Bytes, _: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
+    fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
         // TODO: parse InfoSyncRes
-        Ok(vec![Box::new(InfoSyncRes {})])
+        Ok(Box::new(InfoSyncRes {}))
     }
 }

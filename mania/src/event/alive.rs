@@ -24,11 +24,11 @@ impl ClientEvent for Alive {
         PacketType::T13
     }
 
-    fn build(&self, _ctx: &Context) -> Vec<BinaryPacket> {
-        vec![BinaryPacket(4u32.to_be_bytes().to_vec().into())]
+    fn build(&self, _ctx: &Context) -> BinaryPacket {
+        BinaryPacket(4u32.to_be_bytes().to_vec().into())
     }
 
-    fn parse(_: Bytes, _: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
-        Ok(vec![Box::new(AliveRes {})])
+    fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
+        Ok(Box::new(AliveRes {}))
     }
 }

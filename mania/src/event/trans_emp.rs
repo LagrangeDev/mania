@@ -1,5 +1,3 @@
-use std::vec;
-
 use crate::context::Context;
 use crate::crypto::Ecdh;
 use crate::event::*;
@@ -66,7 +64,7 @@ impl TransEmp {
 }
 
 impl ClientEvent for TransEmp {
-    fn build(&self, ctx: &Context) -> Vec<BinaryPacket> {
+    fn build(&self, ctx: &Context) -> BinaryPacket {
         let body = match self.status {
             TransEmpStatus::QueryResult => {
                 let qrsign = ctx.session.qr_sign.load();
@@ -107,13 +105,13 @@ impl ClientEvent for TransEmp {
             }
         };
         let packet = build_wtlogin_packet(ctx, 2066, &body);
-        vec![BinaryPacket(packet.into())]
+        BinaryPacket(packet.into())
     }
 
     fn parse(
         packet: Bytes,
         context: &Context,
-    ) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
+    ) -> Result<Box<dyn ServerEvent>, ParseEventError> {
         // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp.DeserializeBody
         let packet = parse_wtlogin_packet(packet, context)?;
         let mut reader = PacketReader::new(packet);
@@ -150,13 +148,13 @@ impl ClientEvent for TransEmp {
                 let url = t0d1.proto.url.clone();
                 let qr_sig = t0d1.proto.qr_sig.clone();
 
-                Ok(vec![Box::new(TransEmp31Res {
+                Ok(Box::new(TransEmp31Res {
                     qr_code,
                     expiration,
                     url,
                     qr_sig,
                     signature,
-                })])
+                }))
             }
             0x12 => {
                 // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp12.Deserialize
@@ -195,7 +193,7 @@ impl ClientEvent for TransEmp {
                     54 => TransEmp12Res::Canceled,
                     _ => Err(ParseEventError::UnknownRetCode(state as i32))?,
                 };
-                Ok(vec![Box::new(result)])
+                Ok(Box::new(result))
             }
             _ => Err(ParseEventError::UnsupportedTransEmp(command)),
         }

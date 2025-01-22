@@ -30,22 +30,18 @@ pub trait ClientEvent: CECommandMarker {
     fn packet_type(&self) -> PacketType {
         PacketType::T12 // most common packet type
     }
-    fn build(&self, context: &Context) -> Vec<BinaryPacket>;
+    fn build(&self, context: &Context) -> BinaryPacket;
     fn parse(
         packet: Bytes,
         context: &Context,
-    ) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError>;
+    ) -> Result<Box<dyn ServerEvent>, ParseEventError>;
 }
 
-pub fn build_sso_packet<T: ClientEvent>(event: &T, context: &Context) -> Vec<SsoPacket> {
-    event
-        .build(context)
-        .into_iter()
-        .map(|packet| SsoPacket::new(event.packet_type(), event.command(), packet))
-        .collect()
+pub fn build_sso_packet<T: ClientEvent>(event: &T, context: &Context) -> SsoPacket {
+    SsoPacket::new(event.packet_type(), event.command(), event.build(context))
 }
 
-type ParseEvent = fn(Bytes, &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError>;
+type ParseEvent = fn(Bytes, &Context) -> Result<Box<dyn ServerEvent>, ParseEventError>;
 
 pub struct ClientEventRegistry {
     pub command: &'static str,
@@ -67,7 +63,7 @@ static EVENT_MAP: Lazy<EventMapT> = Lazy::new(|| {
 pub async fn resolve_events(
     packet: SsoPacket,
     context: &Arc<Context>,
-) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
+) -> Result<Box<dyn ServerEvent>, ParseEventError> {
     // Lagrange.Core.Internal.Context.ServiceContext.ResolveEventByPacket
     let payload = PacketReader::new(packet.payload()).section(|p| p.bytes());
     tracing::debug!(

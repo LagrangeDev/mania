@@ -38,16 +38,16 @@ impl WtLogin {
 }
 
 impl ClientEvent for WtLogin {
-    fn build(&self, context: &Context) -> Vec<BinaryPacket> {
+    fn build(&self, context: &Context) -> BinaryPacket {
         let body = PacketBuilder::new()
             .u16(0x09)
             .packet(|p| serialize_tlv_set(context, Self::BUILD_TLVS.as_slice(), p))
             .build();
         let body = build_wtlogin_packet(context, 2064, &body);
-        vec![BinaryPacket(body.into())]
+        BinaryPacket(body.into())
     }
 
-    fn parse(packet: Bytes, ctx: &Context) -> Result<Vec<Box<dyn ServerEvent>>, ParseEventError> {
+    fn parse(packet: Bytes, ctx: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
         let packet = parse_wtlogin_packet(packet, ctx)?;
         let mut reader = PacketReader::new(packet);
         reader.skip(2);
@@ -114,13 +114,13 @@ impl ClientEvent for WtLogin {
                 gender: self_info.gender,
                 name: self_info.nick_name.clone(),
             }));
-            Ok(vec![Box::new(WtLoginRes { code: 0, msg: None })])
+            Ok(Box::new(WtLoginRes { code: 0, msg: None }))
         } else {
             let tlv146 = original_tlvs.get::<t146::T146>().ok();
-            Ok(vec![Box::new(WtLoginRes {
+            Ok(Box::new(WtLoginRes {
                 code: typ as i32,
                 msg: tlv146.map(|t| t.message.clone()),
-            })])
+            }))
         }
     }
 }

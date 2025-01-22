@@ -146,10 +146,7 @@ impl ClientHandle {
     pub async fn fetch_qrcode(&self) -> Result<(String, Bytes)> {
         let trans_emp = TransEmp::new_fetch_qr_code();
         let response = self.business.send_event(&trans_emp).await?;
-        let event: &TransEmp31Res = response
-            .first()
-            .and_then(downcast_event)
-            .ok_or(Error::InvalidServerResponse("parsing error".into()))?;
+        let event: &TransEmp31Res = downcast_event(&response).unwrap();
 
         let qr_sign = QrSign {
             sign: event
@@ -187,7 +184,7 @@ impl ClientHandle {
             self.context.key_store.uin.store(info.uin.into());
             let query_result = TransEmp::new_query_result();
             let res = self.business.send_event(&query_result).await?;
-            let res: &TransEmp12Res = res.first().and_then(downcast_event).unwrap();
+            let res: &TransEmp12Res = downcast_event(&res).unwrap();
             Ok(res.to_owned())
         } else {
             Err(Error::GenericError("QR code not fetched".into()))
@@ -196,7 +193,7 @@ impl ClientHandle {
 
     async fn do_wt_login(&self) -> Result<()> {
         let res = self.business.send_event(&WtLogin {}).await?;
-        let event: &WtLoginRes = res.first().and_then(downcast_event).unwrap();
+        let event: &WtLoginRes = downcast_event(&res).unwrap();
         match event.code {
             0 => {
                 tracing::info!(
@@ -275,12 +272,7 @@ impl ClientHandle {
 
     pub async fn online(&self) -> Result<watch::Sender<()>> {
         let res = self.business.send_event(&InfoSync).await?;
-        let _: &InfoSyncRes =
-            res.first()
-                .and_then(downcast_event)
-                .ok_or(Error::InvalidServerResponse(
-                    "parsing InfoSyncRes error".into(),
-                ))?; // TODO: parse InfoSyncRes
+        let _: &InfoSyncRes = downcast_event(&res).unwrap();
 
         let (tx, mut rx) = watch::channel::<()>(());
         let handle = self.business.clone();
@@ -292,7 +284,7 @@ impl ClientHandle {
                 tokio::select! {
                     _ = interval.tick() => {
                         let res = handle.send_event(&Alive).await.unwrap();
-                        let _: &AliveRes = res.first().and_then(downcast_event).unwrap();
+                        let _: &AliveRes = downcast_event(&res).unwrap();
                     }
                     _ = rx.changed() => break,
                 }

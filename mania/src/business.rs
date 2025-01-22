@@ -118,7 +118,7 @@ impl Business {
 pub struct BusinessHandle {
     sender: ArcSwap<PacketSender>,
     reconnecting: Mutex<()>,
-    pending_requests: DashMap<u32, oneshot::Sender<Vec<Box<dyn ServerEvent>>>>,
+    pending_requests: DashMap<u32, oneshot::Sender<Box<dyn ServerEvent>>>,
     context: Arc<Context>,
 }
 
@@ -135,22 +135,17 @@ impl BusinessHandle {
 
     /// Push a client event to the server, without waiting for a response.
     pub async fn push_event(&self, event: &impl ClientEvent) -> Result<()> {
-        for packet in build_sso_packet(event, &self.context) {
-            self.post_packet(packet).await?;
-        }
-        Ok(())
+        let packet = build_sso_packet(event, &self.context);
+        self.post_packet(packet).await
     }
 
     /// Send a client event to the server and wait for the response.
-    pub async fn send_event(&self, event: &impl ClientEvent) -> Result<Vec<Box<dyn ServerEvent>>> {
+    pub async fn send_event(&self, event: &impl ClientEvent) -> Result<Box<dyn ServerEvent>> {
         // TODO: Lagrange.Core.Internal.Context.BusinessContext.HandleOutgoingEvent
         // MultiMsgUploadEvent -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Outgoing
-        let mut result = vec![];
-        for packet in build_sso_packet(event, &self.context) {
-            let events = self.send_packet(packet).await?;
-            result.extend(events);
-        }
-        Ok(result)
+        let packet = build_sso_packet(event, &self.context);
+        let events = self.send_packet(packet).await?;
+        Ok(events)
     }
 
     async fn post_packet(&self, packet: SsoPacket) -> Result<()> {
@@ -158,14 +153,12 @@ impl BusinessHandle {
         self.sender.load().send(packet).await
     }
 
-    async fn send_packet(&self, packet: SsoPacket) -> Result<Vec<Box<dyn ServerEvent>>> {
+    async fn send_packet(&self, packet: SsoPacket) -> Result<Box<dyn ServerEvent>> {
         tracing::debug!("sending packet: {:?}", packet);
         let sequence = packet.sequence();
         let (tx, rx) = oneshot::channel();
         self.pending_requests.insert(sequence, tx);
-
         self.post_packet(packet).await?;
-
         let events = rx.await.expect("response not received");
         Ok(events)
     }
