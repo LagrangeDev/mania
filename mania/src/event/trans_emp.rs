@@ -1,14 +1,7 @@
-use crate::context::Context;
 use crate::crypto::Ecdh;
-use crate::event::*;
-use crate::packet::{
-    BinaryPacket, PacketBuilder, PacketReader, PREFIX_LENGTH_ONLY, PREFIX_U16, PREFIX_U8,
-    PREFIX_WITH,
-};
+use crate::event::prelude::*;
 use crate::tlv::*;
-use bytes::Bytes;
 use chrono::Utc;
-use mania_macros::ce_commend;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
@@ -36,14 +29,44 @@ pub struct NTLoginHttpResponse {
 }
 
 #[repr(u16)]
-enum TransEmpStatus {
+#[derive(Debug)]
+pub enum TransEmpStatus {
     QueryResult = 0x12,
     FetchQrCode = 0x31,
 }
 
 #[ce_commend("wtlogin.trans_emp")]
+#[derive(Debug, ServerEvent)]
 pub struct TransEmp {
-    status: TransEmpStatus,
+    pub status: TransEmpStatus,
+    pub emp12_result: Option<TransEmp12Res>,
+    pub emp31_result: Option<TransEmp31Res>,
+}
+
+#[derive(Debug)]
+pub struct TransEmp31Res {
+    pub qr_code: Bytes,
+    pub expiration: u32,
+    pub url: String,
+    pub qr_sig: String,
+    pub signature: Bytes,
+}
+
+#[derive(Debug, Clone)]
+#[repr(u8)]
+pub enum TransEmp12Res {
+    Confirmed(TransEmp12ConfirmedData) = 0,
+    CodeExpired = 17,
+    WaitingForScan = 48,
+    WaitingForConfirm = 53,
+    Canceled = 54,
+}
+
+#[derive(Debug, Clone)]
+pub struct TransEmp12ConfirmedData {
+    pub tgtgt_key: Bytes,
+    pub temp_password: Bytes,
+    pub no_pic_sig: Bytes,
 }
 
 impl TransEmp {
@@ -53,12 +76,16 @@ impl TransEmp {
     pub fn new_fetch_qr_code() -> Self {
         Self {
             status: TransEmpStatus::FetchQrCode,
+            emp12_result: None,
+            emp31_result: None,
         }
     }
 
     pub fn new_query_result() -> Self {
         Self {
             status: TransEmpStatus::QueryResult,
+            emp12_result: None,
+            emp31_result: None,
         }
     }
 }
@@ -108,10 +135,7 @@ impl ClientEvent for TransEmp {
         BinaryPacket(packet.into())
     }
 
-    fn parse(
-        packet: Bytes,
-        context: &Context,
-    ) -> Result<Box<dyn ServerEvent>, ParseEventError> {
+    fn parse(packet: Bytes, context: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
         // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp.DeserializeBody
         let packet = parse_wtlogin_packet(packet, context)?;
         let mut reader = PacketReader::new(packet);
@@ -148,12 +172,16 @@ impl ClientEvent for TransEmp {
                 let url = t0d1.proto.url.clone();
                 let qr_sig = t0d1.proto.qr_sig.clone();
 
-                Ok(Box::new(TransEmp31Res {
-                    qr_code,
-                    expiration,
-                    url,
-                    qr_sig,
-                    signature,
+                Ok(Box::new(Self {
+                    status: TransEmpStatus::FetchQrCode,
+                    emp12_result: None,
+                    emp31_result: Some(TransEmp31Res {
+                        qr_code,
+                        expiration,
+                        url,
+                        qr_sig,
+                        signature,
+                    }),
                 }))
             }
             0x12 => {
@@ -193,7 +221,11 @@ impl ClientEvent for TransEmp {
                     54 => TransEmp12Res::Canceled,
                     _ => Err(ParseEventError::UnknownRetCode(state as i32))?,
                 };
-                Ok(Box::new(result))
+                Ok(Box::new(Self {
+                    status: TransEmpStatus::QueryResult,
+                    emp12_result: Some(result),
+                    emp31_result: None,
+                }))
             }
             _ => Err(ParseEventError::UnsupportedTransEmp(command)),
         }
@@ -261,58 +293,6 @@ pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
                 .u8(3) // packet end
         })
         .build()
-}
-
-#[derive(Debug)]
-pub struct TransEmp31Res {
-    pub qr_code: Bytes,
-    pub expiration: u32,
-    pub url: String,
-    pub qr_sig: String,
-    pub signature: Bytes,
-}
-
-#[derive(Debug, Clone)]
-#[repr(u8)]
-pub enum TransEmp12Res {
-    Confirmed(TransEmp12ConfirmedData) = 0,
-    CodeExpired = 17,
-    WaitingForScan = 48,
-    WaitingForConfirm = 53,
-    Canceled = 54,
-}
-
-#[derive(Debug, Clone)]
-pub struct TransEmp12ConfirmedData {
-    pub tgtgt_key: Bytes,
-    pub temp_password: Bytes,
-    pub no_pic_sig: Bytes,
-}
-
-impl ServerEvent for TransEmp31Res {
-    fn ret_code(&self) -> i32 {
-        0
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-impl ServerEvent for TransEmp12Res {
-    fn ret_code(&self) -> i32 {
-        match self {
-            TransEmp12Res::Confirmed { .. } => 0,
-            TransEmp12Res::CodeExpired => 17,
-            TransEmp12Res::WaitingForScan => 48,
-            TransEmp12Res::WaitingForConfirm => 53,
-            TransEmp12Res::Canceled => 54,
-        }
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 // TODO: decouple

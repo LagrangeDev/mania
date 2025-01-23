@@ -1,4 +1,5 @@
 use mania::*;
+use std::io::Write;
 
 #[tokio::main]
 async fn main() {

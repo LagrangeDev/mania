@@ -1,33 +1,18 @@
 use crate::context::Context;
 use crate::crypto::tea::tea_decrypt;
+use crate::event::prelude::*;
 use crate::event::trans_emp::{build_wtlogin_packet, parse_wtlogin_packet};
-use crate::event::*;
 use crate::key_store::AccountInfo;
-use crate::packet::{BinaryPacket, PacketBuilder, PacketReader};
 use crate::tlv::*;
-use bytes::Bytes;
 use chrono::Utc;
-use mania_macros::ce_commend;
 use md5::{Digest, Md5};
-use std::fmt::Debug;
 use std::sync::Arc;
 
 #[ce_commend("wtlogin.login")]
-pub struct WtLogin;
-
-#[derive(Debug, Clone)]
-pub struct WtLoginRes {
+#[derive(Debug, Default, ServerEvent)]
+pub struct WtLogin {
     pub code: i32,
     pub msg: Option<String>,
-}
-
-impl ServerEvent for WtLoginRes {
-    fn ret_code(&self) -> i32 {
-        self.code
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl WtLogin {
@@ -114,10 +99,10 @@ impl ClientEvent for WtLogin {
                 gender: self_info.gender,
                 name: self_info.nick_name.clone(),
             }));
-            Ok(Box::new(WtLoginRes { code: 0, msg: None }))
+            Ok(Box::new(Self { code: 0, msg: None }))
         } else {
             let tlv146 = original_tlvs.get::<t146::T146>().ok();
-            Ok(Box::new(WtLoginRes {
+            Ok(Box::new(Self {
                 code: typ as i32,
                 msg: tlv146.map(|t| t.message.clone()),
             }))

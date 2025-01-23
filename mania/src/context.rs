@@ -24,9 +24,7 @@ pub struct Crypto {
 
 impl Default for Crypto {
     fn default() -> Self {
-        Self {
-            p256: P256::new(),
-        }
+        Self { p256: P256::new() }
     }
 }
 

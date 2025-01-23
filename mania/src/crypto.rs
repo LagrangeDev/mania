@@ -6,7 +6,7 @@ mod consts;
 pub mod tea;
 
 /// The original macro that @wybxc originally wrote (b81f75b7) was perfect.
-/// but since that mania has dropped OpenSSL, it seems that this kind of abstraction is no longer needed. 
+/// but since that mania has dropped OpenSSL, it seems that this kind of abstraction is no longer needed.
 /// If there's ever a need in the future, we'll revisit it.
 pub trait Ecdh {
     fn new() -> Self;
@@ -63,8 +63,8 @@ impl Ecdh for P256 {
 
 #[cfg(test)]
 mod test {
-    use rand::thread_rng;
     use super::*;
+    use rand::thread_rng;
     #[test]
     fn test_ecdh_p256() {
         let mut rng = thread_rng();
@@ -79,7 +79,7 @@ mod test {
         let server_shared = P256::key_exchange(server_secret, client_pubkey);
         let client_shared = P256::key_exchange(client_secret, server_pubkey);
         assert_eq!(server_shared, client_shared);
-        
+
         let client_message = b"https://music.163.com/song?id=1496089150";
         let ciphertext_from_client = tea::tea_encrypt(client_message, &client_shared);
         let decrypted_by_server = tea::tea_decrypt(&ciphertext_from_client, &server_shared);
@@ -88,12 +88,24 @@ mod test {
         let ciphertext_from_server = tea::tea_encrypt(server_message, &server_shared);
         let decrypted_by_client = tea::tea_decrypt(&ciphertext_from_server, &client_shared);
         assert_eq!(server_message.to_vec(), decrypted_by_client);
-        
-        println!("Client message: {:?}", String::from_utf8_lossy(client_message));
+
+        println!(
+            "Client message: {:?}",
+            String::from_utf8_lossy(client_message)
+        );
         println!("Ciphertext from client: {:?}", ciphertext_from_client);
-        println!("Decrypted by server: {:?}", String::from_utf8_lossy(&decrypted_by_server));
-        println!("Server message: {:?}", String::from_utf8_lossy(server_message));
+        println!(
+            "Decrypted by server: {:?}",
+            String::from_utf8_lossy(&decrypted_by_server)
+        );
+        println!(
+            "Server message: {:?}",
+            String::from_utf8_lossy(server_message)
+        );
         println!("Ciphertext from server: {:?}", ciphertext_from_server);
-        println!("Decrypted by client: {:?}", String::from_utf8_lossy(&decrypted_by_client));
+        println!(
+            "Decrypted by client: {:?}",
+            String::from_utf8_lossy(&decrypted_by_client)
+        );
     }
 }

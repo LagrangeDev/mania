@@ -8,9 +8,13 @@ use dashmap::DashMap;
 use tokio::sync::{oneshot, Mutex, MutexGuard};
 
 use crate::context::Context;
-use crate::event::{build_sso_packet, resolve_events, ClientEvent, ServerEvent};
+use crate::event::{dispatch_logic, resolve_event, ClientEvent, LogicFlow, ServerEvent};
 use crate::packet::SsoPacket;
 use crate::socket::{self, PacketReceiver, PacketSender};
+
+fn build_sso_packet<T: ClientEvent>(event: &T, context: &Context) -> SsoPacket {
+    SsoPacket::new(event.packet_type(), event.command(), event.build(context))
+}
 
 pub struct Business {
     addr: SocketAddr,
@@ -98,18 +102,20 @@ impl Business {
         let packet = SsoPacket::parse(packet, &self.context)?;
         let sequence = packet.sequence();
 
-        let events = resolve_events(packet, &self.context).await?;
-        // TODO: Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent
+        let mut event = resolve_event(packet, &self.context).await?;
+        // Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent
         // 在 send_event 中的 handle incoming event 合并到这里来
         // GroupSysDecreaseEvent, ... -> Lagrange.Core.Internal.Context.Logic.Implementation.CachingLogic.Incoming
         // KickNTEvent -> Lagrange.Core.Internal.Context.Logic.Implementation.WtExchangeLogic.Incoming
         // PushMessageEvent, ... -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Incoming
+        dispatch_logic(&mut *event, LogicFlow::InComing);
         if let Some((_, tx)) = self.handle.pending_requests.remove(&sequence) {
-            tx.send(events).unwrap();
+            tx.send(event).unwrap();
         } else {
+            // (actually done)
             // Lagrange.Core.Internal.Context.BusinessContext.HandleServerPacket
-            // todo!("Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent")
-            tracing::warn!("unhandled packet: {:?}", events);
+            // Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent
+            tracing::warn!("unhandled packet: {:?}", event);
         }
         Ok(())
     }
@@ -134,14 +140,18 @@ impl BusinessHandle {
     }
 
     /// Push a client event to the server, without waiting for a response.
-    pub async fn push_event(&self, event: &impl ClientEvent) -> Result<()> {
+    pub async fn push_event(&self, event: &(impl ClientEvent + ServerEvent)) -> Result<()> {
         let packet = build_sso_packet(event, &self.context);
         self.post_packet(packet).await
     }
 
     /// Send a client event to the server and wait for the response.
-    pub async fn send_event(&self, event: &impl ClientEvent) -> Result<Box<dyn ServerEvent>> {
-        // TODO: Lagrange.Core.Internal.Context.BusinessContext.HandleOutgoingEvent
+    pub async fn send_event(
+        &self,
+        event: &mut (impl ClientEvent + ServerEvent),
+    ) -> Result<Box<dyn ServerEvent>> {
+        // Lagrange.Core.Internal.Context.BusinessContext.HandleOutgoingEvent
+        dispatch_logic(event as &mut dyn ServerEvent, LogicFlow::OutGoing);
         // MultiMsgUploadEvent -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Outgoing
         let packet = build_sso_packet(event, &self.context);
         let events = self.send_packet(packet).await?;

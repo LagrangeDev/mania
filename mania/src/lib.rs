@@ -20,12 +20,11 @@ mod tlv;
 use crate::business::{Business, BusinessHandle};
 use crate::connect::optimum_server;
 pub use crate::context::{AppInfo, Context, DeviceInfo};
-use crate::event::alive::{Alive, AliveRes};
+use crate::event::alive::Alive;
 use crate::event::downcast_event;
-use crate::event::info_sync::{InfoSync, InfoSyncRes};
-pub use crate::event::trans_emp::{NTLoginHttpRequest, TransEmp, TransEmp31Res};
-use crate::event::trans_emp::{NTLoginHttpResponse, TransEmp12Res};
-use crate::event::wtlogin::{WtLogin, WtLoginRes};
+use crate::event::info_sync::InfoSync;
+use crate::event::trans_emp::{NTLoginHttpRequest, NTLoginHttpResponse, TransEmp, TransEmp12Res};
+use crate::event::wtlogin::WtLogin;
 pub use crate::key_store::KeyStore;
 use crate::session::{QrSign, Session};
 use crate::sign::{default_sign_provider, SignProvider};
@@ -33,7 +32,6 @@ use bytes::Bytes;
 pub use error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::env;
-pub use std::io::Write;
 use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::time::{sleep, timeout, Duration};
@@ -127,7 +125,7 @@ impl Client {
     }
 
     pub async fn spawn(&mut self) {
-        // TODO: event stream
+        // TODO: (non-internal) event stream
         self.business.spawn().await;
     }
 }
@@ -144,24 +142,24 @@ impl ClientHandle {
     }
 
     pub async fn fetch_qrcode(&self) -> Result<(String, Bytes)> {
-        let trans_emp = TransEmp::new_fetch_qr_code();
-        let response = self.business.send_event(&trans_emp).await?;
-        let event: &TransEmp31Res = downcast_event(&response).unwrap();
-
+        let mut trans_emp = TransEmp::new_fetch_qr_code();
+        let response = self.business.send_event(&mut trans_emp).await?;
+        let event: &TransEmp = downcast_event(&response).unwrap();
+        let result = event.emp31_result.as_ref().unwrap();
         let qr_sign = QrSign {
-            sign: event
+            sign: result
                 .signature
                 .as_ref()
                 .try_into()
                 .map_err(|_| Error::InvalidServerResponse("invalid QR signature".into()))?,
-            string: event.qr_sig.clone(),
-            url: event.url.clone(),
+            string: result.qr_sig.clone(),
+            url: result.url.clone(),
         };
 
         self.context.session.qr_sign.store(Some(Arc::from(qr_sign)));
-        tracing::info!("QR code fetched, expires in {} seconds", event.expiration);
+        tracing::info!("QR code fetched, expires in {} seconds", result.expiration);
 
-        Ok((event.url.clone(), event.qr_code.clone()))
+        Ok((result.url.clone(), result.qr_code.clone()))
     }
 
     async fn query_trans_tmp_status(&self) -> Result<TransEmp12Res> {
@@ -182,18 +180,19 @@ impl ClientHandle {
                 .unwrap();
             let info: NTLoginHttpResponse = serde_json::from_slice(&response).unwrap();
             self.context.key_store.uin.store(info.uin.into());
-            let query_result = TransEmp::new_query_result();
-            let res = self.business.send_event(&query_result).await?;
-            let res: &TransEmp12Res = downcast_event(&res).unwrap();
-            Ok(res.to_owned())
+            let mut query_result = TransEmp::new_query_result();
+            let res = self.business.send_event(&mut query_result).await?;
+            let res: &TransEmp = downcast_event(&res).unwrap();
+            let result = res.emp12_result.as_ref().unwrap();
+            Ok(result.to_owned())
         } else {
             Err(Error::GenericError("QR code not fetched".into()))
         }
     }
 
     async fn do_wt_login(&self) -> Result<()> {
-        let res = self.business.send_event(&WtLogin {}).await?;
-        let event: &WtLoginRes = downcast_event(&res).unwrap();
+        let res = self.business.send_event(&mut WtLogin::default()).await?;
+        let event: &WtLogin = downcast_event(&res).unwrap();
         match event.code {
             0 => {
                 tracing::info!(
@@ -271,8 +270,8 @@ impl ClientHandle {
     }
 
     pub async fn online(&self) -> Result<watch::Sender<()>> {
-        let res = self.business.send_event(&InfoSync).await?;
-        let _: &InfoSyncRes = downcast_event(&res).unwrap();
+        let res = self.business.send_event(&mut InfoSync).await?;
+        let _: &InfoSync = downcast_event(&res).unwrap();
 
         let (tx, mut rx) = watch::channel::<()>(());
         let handle = self.business.clone();
@@ -283,8 +282,8 @@ impl ClientHandle {
             loop {
                 tokio::select! {
                     _ = interval.tick() => {
-                        let res = handle.send_event(&Alive).await.unwrap();
-                        let _: &AliveRes = downcast_event(&res).unwrap();
+                        let res = handle.send_event(&mut Alive).await.unwrap();
+                        let _: &Alive = downcast_event(&res).unwrap();
                     }
                     _ = rx.changed() => break,
                 }

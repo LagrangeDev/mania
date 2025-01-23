@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+message NTSsoHeartBeat {
+  uint32 type = 1;
+}

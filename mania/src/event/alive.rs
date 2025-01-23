@@ -1,23 +1,8 @@
-use crate::context::Context;
-use crate::event::*;
-use crate::packet::{BinaryPacket, PacketType};
-use bytes::Bytes;
-use mania_macros::ce_commend;
+use crate::event::prelude::*;
 
 #[ce_commend("Heartbeat.Alive")]
+#[derive(Debug, ServerEvent)]
 pub struct Alive;
-
-#[derive(Debug)]
-pub struct AliveRes;
-
-impl ServerEvent for AliveRes {
-    fn ret_code(&self) -> i32 {
-        0
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
 
 impl ClientEvent for Alive {
     fn packet_type(&self) -> PacketType {
@@ -29,6 +14,6 @@ impl ClientEvent for Alive {
     }
 
     fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
-        Ok(Box::new(AliveRes {}))
+        Ok(Box::new(Self {}))
     }
 }
