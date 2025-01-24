@@ -1,8 +1,8 @@
-pub mod alive;
-pub mod info_sync;
-pub mod nt_sso_alive;
-pub mod trans_emp;
-pub mod wtlogin;
+pub mod action;
+pub mod login;
+pub mod message;
+pub mod notify;
+pub mod system;
 
 use crate::context::Context;
 use crate::packet::{BinaryPacket, PacketReader, PacketType, SsoPacket};
