@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
 pub struct NTLoginHttpRequest {
-    pub(crate) appid: u64,
+    pub appid: u64,
     #[serde(rename = "faceUpdateTime")]
-    pub(crate) face_update_time: u64,
-    pub(crate) qrsig: String,
+    pub face_update_time: u64,
+    pub qrsig: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -287,9 +287,9 @@ pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
                 .bytes(&ctx.session.stub.random_key) // randKey
                 .u16(0x0131) // android: 0x0131, windows: 0x0102
                 .u16(0x0001)
-                .u16(ctx.crypto.p256.public_key().len() as u16) // pubKey length
-                .bytes(ctx.crypto.p256.public_key()) // pubKey
-                .bytes(ctx.crypto.p256.tea_encrypt(body).as_slice())
+                .u16(ctx.crypto.login_p256.public_key().len() as u16) // pubKey length
+                .bytes(ctx.crypto.login_p256.public_key()) // pubKey
+                .bytes(ctx.crypto.login_p256.tea_encrypt(body).as_slice())
                 .u8(3) // packet end
         })
         .build()
@@ -318,7 +318,7 @@ pub fn parse_wtlogin_packet(packet: Bytes, ctx: &Context) -> Result<Bytes, Parse
         return Err(ParseEventError::InvalidPacketEnd);
     }
 
-    let decrypted = ctx.crypto.p256.tea_decrypt(&encrypted);
+    let decrypted = ctx.crypto.login_p256.tea_decrypt(&encrypted);
 
     Ok(Bytes::from(decrypted))
 }

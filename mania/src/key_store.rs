@@ -37,9 +37,9 @@ impl KeyStore {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AccountInfo {
-    pub(crate) age: u8,
-    pub(crate) gender: u8,
-    pub(crate) name: String,
+    pub age: u8,
+    pub gender: u8,
+    pub name: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

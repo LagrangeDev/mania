@@ -47,9 +47,9 @@ static WHITELIST: Set<&'static str> = phf_set! {
 
 #[derive(Deserialize)]
 pub struct SignResult {
-    pub(crate) sign: String,
-    pub(crate) extra: String,
-    pub(crate) token: String,
+    pub sign: String,
+    pub extra: String,
+    pub token: String,
 }
 
 pub trait SignProvider: Send + Sync {

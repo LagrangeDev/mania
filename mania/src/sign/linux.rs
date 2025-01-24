@@ -17,7 +17,7 @@ struct SignServerResp {
 }
 
 pub struct LinuxSignProvider {
-    pub(crate) url: Option<String>,
+    pub url: Option<String>,
 }
 
 impl SignProvider for LinuxSignProvider {

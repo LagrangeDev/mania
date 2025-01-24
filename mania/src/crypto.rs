@@ -1,15 +1,14 @@
-use crate::crypto::consts::ECDH_256_PEER_KEY;
 use md5::{Digest, Md5};
 use p256::{ecdh::EphemeralSecret, EncodedPoint, PublicKey};
 
-mod consts;
+pub mod consts;
 pub mod tea;
 
 /// The original macro that @wybxc originally wrote (b81f75b7) was perfect.
 /// but since that mania has dropped OpenSSL, it seems that this kind of abstraction is no longer needed.
 /// If there's ever a need in the future, we'll revisit it.
 pub trait Ecdh {
-    fn new() -> Self;
+    fn new(server_public_key: [u8; 65]) -> Self;
     fn public_key(&self) -> &[u8];
     fn shared_key(&self) -> &[u8];
     fn key_exchange<C>(
@@ -40,9 +39,9 @@ pub struct P256 {
 }
 
 impl Ecdh for P256 {
-    fn new() -> Self {
+    fn new(server_public_key: [u8; 65]) -> Self {
         let s_pub_key =
-            PublicKey::from_sec1_bytes(&ECDH_256_PEER_KEY).expect("Failed to parse public key");
+            PublicKey::from_sec1_bytes(&server_public_key).expect("Failed to parse public key");
         let c_pri_key = EphemeralSecret::random(&mut rand::thread_rng());
         let c_pub_key = c_pri_key.public_key();
         let share_key = Self::key_exchange(c_pri_key, s_pub_key);

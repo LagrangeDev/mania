@@ -9,7 +9,7 @@ impl ClientEvent for Alive {
         PacketType::T13
     }
 
-    fn build(&self, _ctx: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> BinaryPacket {
         BinaryPacket(4u32.to_be_bytes().to_vec().into())
     }
 

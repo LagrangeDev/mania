@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{fs, io};
 use uuid::Uuid;
 
+use crate::crypto::consts::ECDH_256_PEER_LOGIN_KEY;
 use crate::crypto::{Ecdh, P256};
 use crate::key_store::KeyStore;
 use crate::session::Session;
@@ -19,12 +20,14 @@ pub struct Context {
 }
 
 pub struct Crypto {
-    pub p256: P256,
+    pub login_p256: P256,
 }
 
 impl Default for Crypto {
     fn default() -> Self {
-        Self { p256: P256::new() }
+        Self {
+            login_p256: P256::new(ECDH_256_PEER_LOGIN_KEY), // TODO: dynamic fetch (login) p256 pub key from tx's server
+        }
     }
 }
 

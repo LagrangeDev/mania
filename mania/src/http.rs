@@ -1,5 +1,5 @@
 use reqwest::Client;
-use reqwest::Error as AsyncError;
+use reqwest::Error;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -18,7 +18,7 @@ impl HttpClient {
         &self,
         url: &str,
         params: Option<&HashMap<String, String>>,
-    ) -> Result<String, AsyncError> {
+    ) -> Result<String, Error> {
         let mut request = self.client.get(url);
         if let Some(query_params) = params {
             request = request.query(query_params);
@@ -31,7 +31,7 @@ impl HttpClient {
         &self,
         url: &str,
         payload: Option<HashMap<String, String>>,
-    ) -> Result<String, AsyncError> {
+    ) -> Result<String, Error> {
         let form_data = payload.unwrap_or_default();
         let response = self.client.post(url).form(&form_data).send().await?;
         response.text().await
@@ -42,7 +42,7 @@ impl HttpClient {
         url: &str,
         payload: &[u8],
         content_type: &str,
-    ) -> Result<Vec<u8>, AsyncError> {
+    ) -> Result<Vec<u8>, Error> {
         let response = self
             .client
             .post(url)
