@@ -28,6 +28,13 @@ pub struct NTLoginHttpResponse {
     pub face_update_time: i64,
 }
 
+#[ce_commend("wtlogin.trans_emp")]
+#[derive(Debug, ServerEvent)]
+pub struct TransEmp {
+    pub status: TransEmpStatus,
+    pub result: Option<TransEmpResult>,
+}
+
 #[repr(u16)]
 #[derive(Debug)]
 pub enum TransEmpStatus {
@@ -35,21 +42,10 @@ pub enum TransEmpStatus {
     FetchQrCode = 0x31,
 }
 
-#[ce_commend("wtlogin.trans_emp")]
-#[derive(Debug, ServerEvent)]
-pub struct TransEmp {
-    pub status: TransEmpStatus,
-    pub emp12_result: Option<TransEmp12Res>,
-    pub emp31_result: Option<TransEmp31Res>,
-}
-
 #[derive(Debug)]
-pub struct TransEmp31Res {
-    pub qr_code: Bytes,
-    pub expiration: u32,
-    pub url: String,
-    pub qr_sig: String,
-    pub signature: Bytes,
+pub enum TransEmpResult {
+    Emp12(TransEmp12Res),
+    Emp31(TransEmp31Res),
 }
 
 #[derive(Debug, Clone)]
@@ -69,6 +65,15 @@ pub struct TransEmp12ConfirmedData {
     pub no_pic_sig: Bytes,
 }
 
+#[derive(Debug)]
+pub struct TransEmp31Res {
+    pub qr_code: Bytes,
+    pub expiration: u32,
+    pub url: String,
+    pub qr_sig: String,
+    pub signature: Bytes,
+}
+
 impl TransEmp {
     const TLVS: [u16; 7] = [0x016, 0x01B, 0x01D, 0x033, 0x035, 0x066, 0x0D1];
     const TLVS_PASSWORD: [u16; 8] = [0x011, 0x016, 0x01B, 0x01D, 0x033, 0x035, 0x066, 0x0D1];
@@ -76,16 +81,14 @@ impl TransEmp {
     pub fn new_fetch_qr_code() -> Self {
         Self {
             status: TransEmpStatus::FetchQrCode,
-            emp12_result: None,
-            emp31_result: None,
+            result: None,
         }
     }
 
     pub fn new_query_result() -> Self {
         Self {
             status: TransEmpStatus::QueryResult,
-            emp12_result: None,
-            emp31_result: None,
+            result: None,
         }
     }
 }
@@ -174,14 +177,13 @@ impl ClientEvent for TransEmp {
 
                 Ok(Box::new(Self {
                     status: TransEmpStatus::FetchQrCode,
-                    emp12_result: None,
-                    emp31_result: Some(TransEmp31Res {
+                    result: Some(TransEmpResult::Emp31(TransEmp31Res {
                         qr_code,
                         expiration,
                         url,
                         qr_sig,
                         signature,
-                    }),
+                    })),
                 }))
             }
             0x12 => {
@@ -223,8 +225,7 @@ impl ClientEvent for TransEmp {
                 };
                 Ok(Box::new(Self {
                     status: TransEmpStatus::QueryResult,
-                    emp12_result: Some(result),
-                    emp31_result: None,
+                    result: Some(TransEmpResult::Emp12(result)),
                 }))
             }
             _ => Err(ParseEventError::UnsupportedTransEmp(command)),

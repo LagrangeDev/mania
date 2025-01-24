@@ -23,7 +23,9 @@ pub use crate::context::{AppInfo, Context, DeviceInfo};
 use crate::event::alive::Alive;
 use crate::event::downcast_event;
 use crate::event::info_sync::InfoSync;
-use crate::event::trans_emp::{NTLoginHttpRequest, NTLoginHttpResponse, TransEmp, TransEmp12Res};
+use crate::event::trans_emp::{
+    NTLoginHttpRequest, NTLoginHttpResponse, TransEmp, TransEmp12Res, TransEmpResult,
+};
 use crate::event::wtlogin::WtLogin;
 pub use crate::key_store::KeyStore;
 use crate::session::{QrSign, Session};
@@ -145,21 +147,23 @@ impl ClientHandle {
         let mut trans_emp = TransEmp::new_fetch_qr_code();
         let response = self.business.send_event(&mut trans_emp).await?;
         let event: &TransEmp = downcast_event(&response).unwrap();
-        let result = event.emp31_result.as_ref().unwrap();
-        let qr_sign = QrSign {
-            sign: result
-                .signature
-                .as_ref()
-                .try_into()
-                .map_err(|_| Error::InvalidServerResponse("invalid QR signature".into()))?,
-            string: result.qr_sig.clone(),
-            url: result.url.clone(),
-        };
-
-        self.context.session.qr_sign.store(Some(Arc::from(qr_sign)));
-        tracing::info!("QR code fetched, expires in {} seconds", result.expiration);
-
-        Ok((result.url.clone(), result.qr_code.clone()))
+        let result = event.result.as_ref().unwrap();
+        if let TransEmpResult::Emp31(emp31) = result {
+            let qr_sign = QrSign {
+                sign: emp31
+                    .signature
+                    .as_ref()
+                    .try_into()
+                    .map_err(|_| Error::InvalidServerResponse("invalid QR signature".into()))?,
+                string: emp31.qr_sig.clone(),
+                url: emp31.url.clone(),
+            };
+            self.context.session.qr_sign.store(Some(Arc::from(qr_sign)));
+            tracing::info!("QR code fetched, expires in {} seconds", emp31.expiration);
+            Ok((emp31.url.clone(), emp31.qr_code.clone()))
+        } else {
+            panic!("Emp31 not found in response");
+        }
     }
 
     async fn query_trans_tmp_status(&self) -> Result<TransEmp12Res> {
@@ -183,8 +187,12 @@ impl ClientHandle {
             let mut query_result = TransEmp::new_query_result();
             let res = self.business.send_event(&mut query_result).await?;
             let res: &TransEmp = downcast_event(&res).unwrap();
-            let result = res.emp12_result.as_ref().unwrap();
-            Ok(result.to_owned())
+            let result = res.result.as_ref().unwrap();
+            if let TransEmpResult::Emp12(emp12) = result {
+                Ok(emp12.to_owned())
+            } else {
+                panic!("Emp12 not found in response");
+            }
         } else {
             Err(Error::GenericError("QR code not fetched".into()))
         }
