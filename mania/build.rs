@@ -5,7 +5,7 @@ fn main() {
         .includes(["src/protos"])
         .cargo_out_dir("protos");
 
-    for input in glob::glob("src/protos/*.proto").unwrap() {
+    for input in glob::glob("src/protos/**/*.proto").unwrap() {
         let input = input.unwrap();
         codegen.input(input);
     }
