@@ -23,6 +23,7 @@ pub use crate::context::{AppInfo, Context, DeviceInfo};
 use crate::event::alive::Alive;
 use crate::event::downcast_event;
 use crate::event::info_sync::InfoSync;
+use crate::event::nt_sso_alive::NtSsoAlive;
 use crate::event::trans_emp::{
     NTLoginHttpRequest, NTLoginHttpResponse, TransEmp, TransEmp12Res, TransEmpResult,
 };
@@ -278,20 +279,24 @@ impl ClientHandle {
     }
 
     pub async fn online(&self) -> Result<watch::Sender<()>> {
+        let (tx, mut rx) = watch::channel::<()>(());
         let res = self.business.send_event(&mut InfoSync).await?;
         let _: &InfoSync = downcast_event(&res).unwrap();
-
-        let (tx, mut rx) = watch::channel::<()>(());
         let handle = self.business.clone();
-
         let heartbeat = async move {
-            const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
-            let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
+            let mut hb_interval = tokio::time::interval(Duration::from_secs(10));
+            let mut nt_hb_interval = tokio::time::interval(Duration::from_secs(270));
             loop {
                 tokio::select! {
-                    _ = interval.tick() => {
-                        let res = handle.send_event(&mut Alive).await.unwrap();
-                        let _: &Alive = downcast_event(&res).unwrap();
+                    _ = hb_interval.tick() => {
+                        if let Err(e) = handle.send_event(&mut Alive).await {
+                            tracing::error!("Failed to send Alive event: {:?}", e);
+                        }
+                    }
+                    _ = nt_hb_interval.tick() => {
+                        if let Err(e) = handle.send_event(&mut NtSsoAlive).await {
+                            tracing::error!("Failed to send NtSsoAlive event: {:?}", e);
+                        }
                     }
                     _ = rx.changed() => break,
                 }
