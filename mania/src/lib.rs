@@ -1,51 +1,29 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)] // TODO: remove this after stable
+mod core;
 
-mod business;
-mod connect;
-mod context;
-mod crypto;
-mod error;
-mod event;
-mod http;
-mod key_store;
-mod packet;
-mod ping;
-mod proto;
-mod session;
-mod sign;
-mod socket;
-mod tlv;
-
-use crate::business::{Business, BusinessHandle};
-use crate::connect::optimum_server;
-pub use crate::context::{AppInfo, Context, DeviceInfo};
-use crate::event::downcast_event;
-use crate::event::login::trans_emp::{
+use crate::core::business::{Business, BusinessHandle};
+use crate::core::connect::optimum_server;
+use crate::core::context::Protocol;
+pub use crate::core::context::{AppInfo, Context, DeviceInfo};
+pub use crate::core::error::{Error, Result};
+use crate::core::event::downcast_event;
+use crate::core::event::login::trans_emp::{
     NTLoginHttpRequest, NTLoginHttpResponse, TransEmp, TransEmp12Res, TransEmpResult,
 };
-use crate::event::login::wtlogin::WtLogin;
-use crate::event::system::alive::Alive;
-use crate::event::system::info_sync::InfoSync;
-use crate::event::system::nt_sso_alive::NtSsoAlive;
-pub use crate::key_store::KeyStore;
-use crate::session::{QrSign, Session};
-use crate::sign::{default_sign_provider, SignProvider};
+use crate::core::event::login::wtlogin::WtLogin;
+use crate::core::event::system::alive::Alive;
+use crate::core::event::system::info_sync::InfoSync;
+use crate::core::event::system::nt_sso_alive::NtSsoAlive;
+use crate::core::http;
+pub use crate::core::key_store::KeyStore;
+use crate::core::session::{QrSign, Session};
+use crate::core::sign::{default_sign_provider, SignProvider};
 use bytes::Bytes;
-pub use error::{Error, Result};
-use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::time::{sleep, timeout, Duration};
-
-/// The Protocol for the client
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-pub enum Protocol {
-    Windows = 0,
-    MacOS = 1,
-    Linux = 2,
-}
 
 /// Configuration for the client
 pub struct ClientConfig {
