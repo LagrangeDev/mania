@@ -1,6 +1,9 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)] // TODO: remove this after stable
+#![feature(if_let_guard)]
 mod core;
+mod event;
+mod message;
 
 use crate::core::business::{Business, BusinessHandle};
 use crate::core::connect::optimum_server;
@@ -267,7 +270,7 @@ impl ClientHandle {
             loop {
                 tokio::select! {
                     _ = hb_interval.tick() => {
-                        if let Err(e) = handle.send_event(&mut Alive).await {
+                        if let Err(e) = handle.send_event(&mut Alive { test: 1 }).await {
                             tracing::error!("Failed to send Alive event: {:?}", e);
                         }
                     }

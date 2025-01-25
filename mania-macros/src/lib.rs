@@ -68,23 +68,38 @@ pub fn handle_event(attr: TokenStream, item: TokenStream) -> TokenStream {
         hasher.update(&fn_token_stream);
         hasher.update(&event_path_str);
         let hash_value = hex::encode(hasher.finalize());
-        let type_id_fn_name_str = format!("_mhe{}", hash_value);
-        let event_type_id_fn = syn::Ident::new(&type_id_fn_name_str, fn_name.span());
+
+        let type_id_fn_name =
+            syn::Ident::new(&format!("_mhe_type_id_{}", hash_value), fn_name.span());
+        let wrapper_fn_name =
+            syn::Ident::new(&format!("_mhe_wrap_id_{}", hash_value), fn_name.span());
+
         let trait_check = quote! {
             const _: () = {
-                struct Checker<T: ServerEvent>(core::marker::PhantomData<T>);
+                struct Checker<T: crate::core::event::ServerEvent>(core::marker::PhantomData<T>);
                 let _ = Checker::<#event_path>(core::marker::PhantomData);
             };
         };
+
         let code_for_one_event = quote! {
             #trait_check
-            fn #event_type_id_fn() -> ::std::any::TypeId {
+
+            fn #type_id_fn_name() -> ::std::any::TypeId {
                 ::std::any::TypeId::of::<#event_path>()
             }
+
+            fn #wrapper_fn_name<'a>(
+                event: &'a mut dyn crate::core::event::ServerEvent,
+                ctx: std::sync::Arc<crate::core::context::Context>,
+                flow: crate::core::business::LogicFlow,
+            ) -> std::pin::Pin<Box<dyn std::future::Future<Output = &'a dyn ServerEvent> + Send + 'a>> {
+                Box::pin(#fn_name(event, ctx, flow))
+            }
+
             inventory::submit! {
                 LogicRegistry {
-                    event_type_id_fn: #event_type_id_fn,
-                    event_handle_fn: #fn_name,
+                    event_type_id_fn: #type_id_fn_name,
+                    event_handle_fn: #wrapper_fn_name,
                 }
             }
         };

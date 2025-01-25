@@ -8,26 +8,11 @@ use crate::core::context::Context;
 use crate::core::packet::{BinaryPacket, PacketReader, PacketType, SsoPacket};
 use bytes::Bytes;
 use once_cell::sync::Lazy;
-use std::any::{Any, TypeId};
+use std::any::Any;
 use std::collections::HashMap;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::sync::Arc;
 use thiserror::Error;
-
-#[derive(Copy, Clone, Debug)]
-pub enum LogicFlow {
-    InComing,
-    OutGoing,
-}
-
-impl Display for LogicFlow {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LogicFlow::InComing => write!(f, ">>> InComing"),
-            LogicFlow::OutGoing => write!(f, "<<< OutGoing"),
-        }
-    }
-}
 
 pub trait ServerEvent: Debug + Send + Sync {
     fn as_any(&self) -> &dyn Any;
@@ -67,31 +52,6 @@ static EVENT_MAP: Lazy<EventMap> = Lazy::new(|| {
     map
 });
 
-type LogicHandleFn = fn(&mut dyn ServerEvent, LogicFlow) -> &dyn ServerEvent;
-pub struct LogicRegistry {
-    pub event_type_id_fn: fn() -> TypeId,
-    pub event_handle_fn: LogicHandleFn,
-}
-
-inventory::collect!(LogicRegistry);
-
-type LogicHandlerMap = HashMap<TypeId, Vec<LogicHandleFn>>;
-static LOGIC_MAP: Lazy<LogicHandlerMap> = Lazy::new(|| {
-    let mut map = HashMap::new();
-    for item in inventory::iter::<LogicRegistry> {
-        let tid = (item.event_type_id_fn)();
-        map.entry(tid)
-            .or_insert_with(Vec::new)
-            .push(item.event_handle_fn);
-        tracing::debug!(
-            "Registered event handler {:?} for type: {:?}",
-            item.event_handle_fn,
-            tid
-        );
-    }
-    map
-});
-
 pub async fn resolve_event(
     packet: SsoPacket,
     context: &Arc<Context>,
@@ -110,19 +70,6 @@ pub async fn resolve_event(
     };
     let events = parse(payload, context)?;
     Ok(events)
-}
-
-pub fn dispatch_logic(event: &mut dyn ServerEvent, flow: LogicFlow) -> &dyn ServerEvent {
-    let tid = event.as_any().type_id();
-    if let Some(fns) = LOGIC_MAP.get(&tid) {
-        tracing::debug!("[{}] Found {} handlers for {:?}.", flow, fns.len(), event);
-        for handle_fn in fns.iter() {
-            handle_fn(event, flow);
-        }
-    } else {
-        tracing::debug!("[{}] No handler found for {:?}", flow, event);
-    }
-    event
 }
 
 pub fn downcast_event<T: ServerEvent + 'static>(event: &impl AsRef<dyn ServerEvent>) -> Option<&T> {
@@ -150,7 +97,7 @@ pub enum ParseEventError {
     UnknownRetCode(i32),
 }
 
-mod prelude {
+pub(crate) mod prelude {
     pub use crate::core::context::Context;
     pub use crate::core::event::{
         CECommandMarker, ClientEvent, ClientEventRegistry, ParseEventError, ServerEvent,
