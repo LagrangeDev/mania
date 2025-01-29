@@ -1,11 +1,11 @@
 use crate::core::event::prelude::*;
-use crate::core::proto::sso_info_sync::*;
+use crate::core::protos::sso_info_sync::*;
 
 #[ce_commend("trpc.msg.register_proxy.RegisterProxy.SsoInfoSync")]
 #[derive(Debug, ServerEvent)]
-pub struct InfoSync;
+pub struct InfoSyncEvent;
 
-impl ClientEvent for InfoSync {
+impl ClientEvent for InfoSyncEvent {
     fn build(&self, ctx: &Context) -> BinaryPacket {
         let request = SsoInfoSyncRequest {
             SyncFlag: 735,

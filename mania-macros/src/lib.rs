@@ -90,10 +90,10 @@ pub fn handle_event(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             fn #wrapper_fn_name<'a>(
                 event: &'a mut dyn crate::core::event::ServerEvent,
-                ctx: std::sync::Arc<crate::core::context::Context>,
+                handle: std::sync::Arc<crate::core::business::BusinessHandle>,
                 flow: crate::core::business::LogicFlow,
             ) -> std::pin::Pin<Box<dyn std::future::Future<Output = &'a dyn ServerEvent> + Send + 'a>> {
-                Box::pin(#fn_name(event, ctx, flow))
+                Box::pin(#fn_name(event, handle, flow))
             }
 
             inventory::submit! {

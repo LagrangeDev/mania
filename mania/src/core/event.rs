@@ -95,6 +95,9 @@ pub enum ParseEventError {
 
     #[error("unknown ret code: {0}")]
     UnknownRetCode(i32),
+
+    #[error("parse error: {0}")]
+    ParseError(String),
 }
 
 pub(crate) mod prelude {

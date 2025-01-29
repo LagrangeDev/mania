@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 use std::cmp::PartialEq;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::sync::atomic::AtomicU32;
 
-use crate::core::proto::nt_device_sign::{NTDeviceSign, Sign};
-use crate::core::proto::nt_packet_uid::NTPacketUid;
+use crate::core::protos::nt_device_sign::{NTDeviceSign, Sign};
+use crate::core::protos::nt_packet_uid::NTPacketUid;
+use crate::core::protos::oidb_base::OidbSvcTrpcTcpBase;
 use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use protobuf::{Message, MessageField};
@@ -13,6 +14,8 @@ use thiserror::Error;
 
 use crate::core::context::Context;
 use crate::core::crypto::tea;
+use crate::core::event::prelude::ProtoMessageField;
+use crate::core::protos::generics::OidbLafter;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -36,6 +39,30 @@ impl TryFrom<u32> for PacketType {
 #[derive(Debug)]
 pub struct BinaryPacket(pub Bytes);
 
+impl BinaryPacket {
+    pub(crate) fn oidb(
+        commend: u32,
+        sub_commend: u32,
+        body: Vec<u8>,
+        is_lafter: bool,
+        is_uid: bool,
+    ) -> Self {
+        let base = OidbSvcTrpcTcpBase {
+            Command: commend,
+            SubCommand: sub_commend,
+            Body: body,
+            Reserved: i32::from(is_uid),
+            Lafter: if is_lafter {
+                ProtoMessageField::from(Some(OidbLafter::default()))
+            } else {
+                ProtoMessageField::from(None)
+            },
+            ..Default::default()
+        };
+        BinaryPacket(Bytes::from(base.write_to_bytes().unwrap()))
+    }
+}
+
 pub struct SsoPacket {
     packet_type: PacketType,
     command: Cow<'static, str>,
@@ -43,7 +70,7 @@ pub struct SsoPacket {
     payload: BinaryPacket,
 }
 
-impl Debug for SsoPacket {
+impl Display for SsoPacket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SsoPacket")
             .field("packet_type", &self.packet_type)

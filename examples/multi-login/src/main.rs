@@ -1,5 +1,5 @@
-use mania::*;
 use std::io::Write;
+use mania::{Client, ClientConfig, DeviceInfo, KeyStore};
 
 #[tokio::main]
 async fn main() {
@@ -14,6 +14,7 @@ async fn main() {
                     .with_filter(tracing_subscriber::EnvFilter::new("debug")),
             )
             .init();
+        tracing::info!("tokio-tracing initialized.");
     }
     #[cfg(not(feature = "tokio-tracing"))]
     {
@@ -34,17 +35,15 @@ async fn main() {
         key_store.save("keystore.json").unwrap();
         key_store
     });
-    let need_login = key_store.is_session_expired()
-        || key_store.session.d2.load().is_empty()
-        || key_store.session.tgt.load().is_empty();
+    let need_login = key_store.is_expired();
     let mut client = Client::new(config, device, key_store).await.unwrap();
-    let client_handle = client.handle();
+    let operator = client.handle().operator();
     tokio::spawn(async move {
         client.spawn().await;
     });
     if need_login {
         tracing::info!("Session is invalid, need to login again!");
-        match client_handle.fetch_qrcode().await {
+        match operator.fetch_qrcode().await {
             Ok((url, bytes)) => {
                 tracing::info!(
                     "QR code fetched successfully! url: {}, also saved to qr.png",
@@ -57,15 +56,15 @@ async fn main() {
             }
             Err(e) => tracing::error!("Failed to fetch QR code: {:?}", e),
         }
-        client_handle
+        operator
             .login_by_qrcode()
             .await
             .expect("Failed to login by QR code");
     } else {
         tracing::info!("Session is still valid, no need to login again.");
     }
-    let _tx = client_handle.online().await.unwrap();
-    client_handle
+    let _tx = operator.online().await.unwrap();
+    operator
         .update_key_store()
         .save("keystore.json")
         .unwrap_or_else(|e| tracing::error!("Failed to save key store: {:?}", e));

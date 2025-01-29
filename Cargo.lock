@@ -977,6 +977,7 @@ dependencies = [
  "glob",
  "hex",
  "inventory",
+ "log",
  "mania-macros",
  "md-5",
  "once_cell",

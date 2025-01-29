@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+message ServiceKickNTResponse {
+  uint32 Uin = 1;
+  string Tips = 3;
+  string Title = 4;
+  int32 Field5 = 5;
+  int32 Field6 = 6;
+  int32 Field8 = 8;
+}

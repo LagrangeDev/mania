@@ -1,4 +1,4 @@
-use crate::core::proto::tlv::Tlv543;
+use crate::core::protos::tlv::Tlv543;
 use crate::core::tlv::prelude::*;
 use protobuf::Message;
 pub struct T543 {

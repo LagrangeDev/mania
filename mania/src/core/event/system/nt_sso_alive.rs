@@ -1,11 +1,11 @@
 use crate::core::event::prelude::*;
-use crate::core::proto::nt_sso_heartbeat::*;
+use crate::core::protos::nt_sso_heartbeat::*;
 
 #[ce_commend("trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat")]
 #[derive(Debug, ServerEvent)]
-pub struct NtSsoAlive;
+pub struct NtSsoAliveEvent;
 
-impl ClientEvent for NtSsoAlive {
+impl ClientEvent for NtSsoAliveEvent {
     fn build(&self, _: &Context) -> BinaryPacket {
         let request = NTSsoHeartBeat {
             type_: 1,

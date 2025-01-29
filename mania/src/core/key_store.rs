@@ -6,11 +6,11 @@ use std::{fs, io};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct KeyStore {
-    pub uin: ArcSwap<u32>,
-    pub uid: ArcSwapOption<String>,
-    pub password_md5: ArcSwap<Bytes>,
-    pub session: WtLoginSession,
-    pub info: ArcSwap<AccountInfo>,
+    pub(crate) uin: ArcSwap<u32>,
+    pub(crate) uid: ArcSwapOption<String>,
+    pub(crate) password_md5: ArcSwap<Bytes>,
+    pub(crate) session: WtLoginSession,
+    pub(crate) info: ArcSwap<AccountInfo>,
 }
 
 impl KeyStore {
@@ -33,17 +33,23 @@ impl KeyStore {
         let duration = now.signed_duration_since(**self.session.session_date.load());
         duration.num_seconds() > 15 * 86400
     }
+
+    pub fn is_expired(&self) -> bool {
+        self.is_session_expired()
+            || self.session.d2.load().is_empty()
+            || self.session.tgt.load().is_empty()
+    }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct AccountInfo {
+pub(crate) struct AccountInfo {
     pub age: u8,
     pub gender: u8,
     pub name: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct WtLoginSession {
+pub(crate) struct WtLoginSession {
     pub d2_key: ArcSwap<[u8; 16]>,
     pub d2: ArcSwap<Bytes>,
     pub tgt: ArcSwap<Bytes>,

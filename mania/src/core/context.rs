@@ -17,12 +17,12 @@ pub enum Protocol {
 }
 
 pub struct Context {
-    pub app_info: &'static AppInfo,
-    pub device: DeviceInfo,
-    pub key_store: KeyStore,
-    pub sign_provider: Box<dyn SignProvider>,
-    pub crypto: Crypto,
-    pub session: Session,
+    pub(crate) app_info: &'static AppInfo,
+    pub(crate) device: DeviceInfo,
+    pub(crate) key_store: KeyStore,
+    pub(crate) sign_provider: Box<dyn SignProvider>,
+    pub(crate) crypto: Crypto,
+    pub(crate) session: Session,
 }
 
 pub struct Crypto {
