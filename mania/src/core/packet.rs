@@ -272,7 +272,9 @@ impl SsoPacket {
             0 => body,
             1 => tea::tea_decrypt(&body, ctx.key_store.session.d2_key.load().as_ref()).into(),
             2 => tea::tea_decrypt(&body, &[0u8; 16]).into(),
-            _ => panic!("Invalid auth flag"),
+            _ => {
+                return Err(ParsePacketError::UnknownAuthFlag(auth_flag));
+            }
         };
 
         // Lagrange.Core.Internal.Packets.SsoPacker.Parse
@@ -325,6 +327,9 @@ impl SsoPacket {
 pub enum ParsePacketError {
     #[error("unknown packet type: {0}")]
     UnknownPacketType(u32),
+    
+    #[error("unknown auth flag: {0}")]
+    UnknownAuthFlag(u8),
 
     #[error("invalid uin: {0}")]
     InvalidUin(String),

@@ -21,12 +21,12 @@ async fn messaging_logic(
 
 async fn messaging_logic_incoming(
     event: &mut dyn ServerEvent,
-    handle: Arc<BusinessHandle>,
+    _: Arc<BusinessHandle>,
 ) -> &dyn ServerEvent {
     match event {
         _ if let Some(alive) = event.as_any_mut().downcast_mut::<AliveEvent>() => {
             alive.test = 114514; // FIXME: This is a test
-            handle.fetch_rkey().await.unwrap();
+            // handle.fetch_rkey().await.unwrap();
         }
         _ if let Some(info_sync) = event.as_any_mut().downcast_mut::<InfoSyncEvent>() => {
             tracing::debug!("Handling InfoSync event: {:?}", info_sync);
