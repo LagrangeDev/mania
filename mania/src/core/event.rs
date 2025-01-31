@@ -113,5 +113,5 @@ pub(crate) mod prelude {
     pub use inventory;
     pub use mania_macros::{ce_commend, ServerEvent};
     pub use prost::Message;
-    pub use std::{fmt::Debug};
+    pub use std::fmt::Debug;
 }

@@ -7,9 +7,7 @@ pub struct NtSsoAliveEvent;
 
 impl ClientEvent for NtSsoAliveEvent {
     fn build(&self, _: &Context) -> BinaryPacket {
-        let request = NtSsoHeartBeat {
-            r#type: 1,
-        };
+        let request = NtSsoHeartBeat { r#type: 1 };
         BinaryPacket(request.encode_to_vec().into())
     }
 

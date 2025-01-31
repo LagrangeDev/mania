@@ -172,18 +172,15 @@ impl SsoPacket {
                                 .as_ref()
                                 .map(|arc| arc.as_ref().clone()),
                             sign: match sign {
-                                Some(sign) => Some(
-                                    Sign {
-                                        sec_sign: Some(hex::decode(sign.sign).unwrap()),
-                                        sec_extra: Some(hex::decode(sign.extra).unwrap()),
-                                        sec_token: Some(sign.token),
-                                    }
-                                ),
+                                Some(sign) => Some(Sign {
+                                    sec_sign: Some(hex::decode(sign.sign).unwrap()),
+                                    sec_extra: Some(hex::decode(sign.extra).unwrap()),
+                                    sec_token: Some(sign.token),
+                                }),
                                 None => None,
                             },
                         };
-                        let device_sign = device_sign
-                            .encode_to_vec();
+                        let device_sign = device_sign.encode_to_vec();
                         signature.bytes(&device_sign)
                     }) // signature
             })
@@ -322,7 +319,7 @@ impl SsoPacket {
 pub enum ParsePacketError {
     #[error("unknown packet type: {0}")]
     UnknownPacketType(u32),
-    
+
     #[error("unknown auth flag: {0}")]
     UnknownAuthFlag(u8),
 

@@ -268,8 +268,8 @@ mod prelude {
     pub use crate::core::crypto::tea::tea_encrypt;
     pub use crate::core::packet::{PacketBuilder, PacketReader};
     pub use crate::core::tlv::{serialize_tlv_set, ParseTlvError, TlvDe, TlvSer};
-    pub use prost::Message;
     pub use bytes::Bytes;
+    pub use prost::Message;
     pub use uuid::Uuid;
 
     impl PacketBuilder {
