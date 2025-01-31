@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package system;
+
 message ServiceKickNTResponse {
   uint32 Uin = 1;
   string Tips = 3;

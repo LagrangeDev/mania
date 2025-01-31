@@ -112,6 +112,6 @@ pub(crate) mod prelude {
     pub use bytes::Bytes;
     pub use inventory;
     pub use mania_macros::{ce_commend, ServerEvent};
-    pub use protobuf::{Message as ProtoMessage, MessageField as ProtoMessageField};
-    pub use std::{collections::HashMap, fmt::Debug};
+    pub use prost::Message;
+    pub use std::{fmt::Debug};
 }

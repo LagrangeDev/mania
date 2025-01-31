@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package system;
+
 message NTDeviceSign {
     string trace = 15;
     optional string uid = 16;

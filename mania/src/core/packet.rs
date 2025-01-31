@@ -3,19 +3,16 @@ use std::cmp::PartialEq;
 use std::fmt::{Debug, Display};
 use std::sync::atomic::AtomicU32;
 
-use crate::core::protos::nt_device_sign::{NTDeviceSign, Sign};
-use crate::core::protos::nt_packet_uid::NTPacketUid;
-use crate::core::protos::oidb_base::OidbSvcTrpcTcpBase;
 use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use protobuf::{Message, MessageField};
+use prost::Message;
 use rand::Rng;
 use thiserror::Error;
 
 use crate::core::context::Context;
 use crate::core::crypto::tea;
-use crate::core::event::prelude::ProtoMessageField;
-use crate::core::protos::generics::OidbLafter;
+use crate::core::protos::service::oidb::{OidbLafter, OidbSvcTrpcTcpBase};
+use crate::core::protos::system::{NtDeviceSign, NtPacketUid, Sign};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -48,18 +45,18 @@ impl BinaryPacket {
         is_uid: bool,
     ) -> Self {
         let base = OidbSvcTrpcTcpBase {
-            Command: commend,
-            SubCommand: sub_commend,
-            Body: body,
-            Reserved: i32::from(is_uid),
-            Lafter: if is_lafter {
-                ProtoMessageField::from(Some(OidbLafter::default()))
+            command: commend,
+            sub_command: sub_commend,
+            body,
+            reserved: i32::from(is_uid),
+            lafter: if is_lafter {
+                Some(OidbLafter::default())
             } else {
-                ProtoMessageField::from(None)
+                None
             },
             ..Default::default()
         };
-        BinaryPacket(Bytes::from(base.write_to_bytes().unwrap()))
+        BinaryPacket(Bytes::from(base.encode_to_vec()))
     }
 }
 
@@ -166,7 +163,7 @@ impl SsoPacket {
                         let sign =
                             ctx.sign_provider
                                 .sign(&self.command, self.sequence, &self.payload.0);
-                        let device_sign = NTDeviceSign {
+                        let device_sign = NtDeviceSign {
                             trace: random_trace(),
                             uid: ctx
                                 .key_store
@@ -175,19 +172,18 @@ impl SsoPacket {
                                 .as_ref()
                                 .map(|arc| arc.as_ref().clone()),
                             sign: match sign {
-                                Some(sign) => MessageField::some(Sign {
-                                    SecSign: Some(hex::decode(sign.sign).unwrap()),
-                                    SecToken: Some(sign.token),
-                                    SecExtra: Some(hex::decode(sign.extra).unwrap()),
-                                    special_fields: Default::default(),
-                                }),
-                                None => MessageField::none(),
+                                Some(sign) => Some(
+                                    Sign {
+                                        sec_sign: Some(hex::decode(sign.sign).unwrap()),
+                                        sec_extra: Some(hex::decode(sign.extra).unwrap()),
+                                        sec_token: Some(sign.token),
+                                    }
+                                ),
+                                None => None,
                             },
-                            special_fields: Default::default(),
                         };
                         let device_sign = device_sign
-                            .write_to_bytes()
-                            .expect("failed to serialize device_sign into signature");
+                            .encode_to_vec();
                         signature.bytes(&device_sign)
                     }) // signature
             })
@@ -231,11 +227,10 @@ impl SsoPacket {
                                 p.bytes(&if let Some(ref uid) =
                                     ctx.key_store.uid.load().as_ref().map(|arc| arc.to_string())
                                 {
-                                    let uid = NTPacketUid {
+                                    let uid = NtPacketUid {
                                         uid: Some(uid.clone()),
-                                        special_fields: Default::default(),
                                     };
-                                    uid.write_to_bytes().expect("failed to serialize uid")
+                                    uid.encode_to_vec()
                                 } else {
                                     Vec::new()
                                 })

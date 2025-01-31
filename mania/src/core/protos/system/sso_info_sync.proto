@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package system;
+
 message SsoInfoSyncRequest {
   uint32 SyncFlag = 1;
   uint32 ReqRandom = 2;

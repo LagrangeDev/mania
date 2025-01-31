@@ -2,6 +2,8 @@ syntax = "proto3";
 
 import "service/oidb/generics.proto";
 
+package service.oidb;
+
 message OidbSvcTrpcTcpBase {
   uint32 Command = 1;
   uint32 SubCommand = 2;

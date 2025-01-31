@@ -1,4 +1,4 @@
-use crate::core::protos::tlv::{TlvQrCodeD1, TlvQrCodeD1Resp, NTOS};
+use crate::core::protos::tlv::{TlvQrCodeD1, TlvQrCodeD1Resp, Ntos};
 use crate::core::tlv::prelude::*;
 
 pub struct T0d1q {
@@ -9,14 +9,11 @@ impl TlvSer for T0d1q {
     fn from_context(ctx: &Context) -> Box<dyn TlvSer> {
         Box::new(Self {
             proto: TlvQrCodeD1 {
-                sys: Some(NTOS {
+                sys: Some(Ntos {
                     name: ctx.device.device_name.clone(),
                     os: ctx.app_info.os.to_string(),
-                    special_fields: Default::default(),
-                })
-                .into(),
-                type_: vec![0x30, 0x01], // actually there is a type ext but i'm too lazy to implement it so i just hardcode it
-                special_fields: Default::default(),
+                }),
+                r#type: vec![0x30, 0x01], // actually there is a type ext but i'm too lazy to implement it so i just hardcode it
             },
         })
     }

@@ -1,6 +1,6 @@
 use crate::core::protos::tlv::Tlv543;
 use crate::core::tlv::prelude::*;
-use protobuf::Message;
+
 pub struct T543 {
     pub uid: String,
 }
@@ -8,9 +8,9 @@ pub struct T543 {
 impl TlvDe for T543 {
     fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
         Ok(Box::new(p.length_value(|p| {
-            let proto = Tlv543::parse_from_bytes(&p.bytes()).unwrap();
+            let proto = Tlv543::decode(&mut p.bytes()).unwrap();
             Self {
-                uid: proto.layer1.layer2.uid.clone(),
+                uid: proto.layer1.unwrap().layer2.unwrap().uid.clone(),
             }
         })))
     }

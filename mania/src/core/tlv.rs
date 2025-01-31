@@ -258,8 +258,8 @@ pub enum ParseTlvError {
     #[error("unsupported TLV tag: 0x{0:04x}")]
     UnsupportedTag(u16),
 
-    #[error("protobuf error: {0}")]
-    ProtobufError(#[from] protobuf::Error),
+    #[error("protobuf decode error: {0}")]
+    ProtobufDecodeError(#[from] prost::DecodeError),
 }
 
 mod prelude {
@@ -268,6 +268,7 @@ mod prelude {
     pub use crate::core::crypto::tea::tea_encrypt;
     pub use crate::core::packet::{PacketBuilder, PacketReader};
     pub use crate::core::tlv::{serialize_tlv_set, ParseTlvError, TlvDe, TlvSer};
+    pub use prost::Message;
     pub use bytes::Bytes;
     pub use uuid::Uuid;
 
@@ -280,8 +281,8 @@ mod prelude {
             self.u16(tag).section_16_with_addition::<_, 0>(f)
         }
 
-        pub(in crate::core::tlv) fn proto<T: protobuf::Message>(self, proto: &T) -> PacketBuilder {
-            self.bytes(proto.write_to_bytes().unwrap().as_slice())
+        pub(in crate::core::tlv) fn proto<T: prost::Message>(self, proto: &T) -> PacketBuilder {
+            self.bytes(proto.encode_to_vec().as_slice())
         }
 
         pub(in crate::core::tlv) fn bytes_with_length(self, bytes: &[u8]) -> PacketBuilder {
@@ -302,10 +303,10 @@ mod prelude {
             self.section_16_with_addition::<_, 0>(f)
         }
 
-        pub(in crate::core::tlv) fn proto<T: protobuf::Message>(
+        pub(in crate::core::tlv) fn proto<T: prost::Message + Default>(
             &mut self,
         ) -> Result<T, ParseTlvError> {
-            T::parse_from_bytes(&self.bytes()).map_err(ParseTlvError::ProtobufError)
+            T::decode(&mut self.bytes()).map_err(ParseTlvError::ProtobufDecodeError)
         }
 
         pub(in crate::core::tlv) fn bytes_with_length(&mut self) -> Bytes {

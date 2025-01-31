@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package tlv;
+
 message TlvQrCodeD1 {
     NTOS sys = 1;
     bytes type = 4;

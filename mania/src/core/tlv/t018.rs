@@ -16,7 +16,7 @@ impl TlvSer for T018 {
             ping_version: 0,
             sso_version: 0x00000005,
             app_id: 0,
-            app_client_version: 30366,
+            app_client_version: ctx.app_info.app_client_version as u32,
             uin: **ctx.key_store.uin.load(),
             field0: 0,
             field1: 0,

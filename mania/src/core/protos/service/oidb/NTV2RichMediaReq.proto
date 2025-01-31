@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package service.oidb;
+
 message NTV2RichMediaReq {
   MultiMediaReqHead ReqHead = 1;
   UploadReq Upload = 2;

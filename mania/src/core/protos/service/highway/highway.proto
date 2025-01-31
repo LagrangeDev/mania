@@ -2,6 +2,8 @@ syntax = "proto3";
 
 import "service/oidb/NTV2RichMediaReq.proto";
 
+package service.highway;
+
 message DataHighwayHead {
   uint32 Version = 1;
   optional string Uin = 2;
@@ -84,7 +86,7 @@ message NTV2RichMediaHighwayExt {
   string FileUuid = 1;
   string UKey = 2;
   NTHighwayNetwork Network = 5;
-  repeated MsgInfoBody MsgInfoBody = 6;
+  repeated service.oidb.MsgInfoBody MsgInfoBody = 6;
   uint32 BlockSize = 10;
   NTHighwayHash Hash = 11;
 }
