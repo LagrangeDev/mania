@@ -28,7 +28,7 @@ pub struct NTLoginHttpResponse {
     pub face_update_time: i64,
 }
 
-#[ce_commend("wtlogin.trans_emp")]
+#[commend("wtlogin.trans_emp")]
 #[derive(Debug, ServerEvent)]
 pub struct TransEmp {
     pub status: TransEmpStatus,

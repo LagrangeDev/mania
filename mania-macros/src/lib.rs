@@ -6,7 +6,7 @@ use syn::{
 };
 
 #[proc_macro_attribute]
-pub fn ce_commend(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn commend(attr: TokenStream, item: TokenStream) -> TokenStream {
     let command_str = parse_macro_input!(attr as LitStr);
     let command_value = command_str.value();
     let input_struct = parse_macro_input!(item as ItemStruct);

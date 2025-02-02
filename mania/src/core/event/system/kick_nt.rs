@@ -1,7 +1,7 @@
 use crate::core::event::prelude::*;
 use crate::core::protos::system::ServiceKickNtResponse;
 
-#[ce_commend("trpc.qq_new_tech.status_svc.StatusService.KickNT")]
+#[commend("trpc.qq_new_tech.status_svc.StatusService.KickNT")]
 #[derive(Debug, ServerEvent)]
 pub struct KickNTEvent {
     tips: String,
@@ -15,7 +15,7 @@ impl ClientEvent for KickNTEvent {
 
     fn parse(mut bytes: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
         let res = ServiceKickNtResponse::decode(&mut bytes).map_err(|e| {
-            ParseEventError::ParseError(format!("Failed to parse KickNTEvent: {:?}", e))
+            ParseEventError::ProtoParseError(format!("Failed to parse KickNTEvent: {:?}", e))
         })?;
         Ok(Box::new(Self {
             tips: res.tips,

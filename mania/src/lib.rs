@@ -2,8 +2,10 @@
 #![allow(dead_code)] // TODO: remove this after stable
 #![feature(if_let_guard)]
 mod core;
-mod event;
-mod message;
+pub mod entity;
+pub mod event;
+pub mod message;
+pub mod utility;
 
 use crate::core::business::{Business, BusinessHandle};
 use crate::core::connect::optimum_server;

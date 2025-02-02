@@ -96,8 +96,11 @@ pub enum ParseEventError {
     #[error("unknown ret code: {0}")]
     UnknownRetCode(i32),
 
-    #[error("parse error: {0}")]
-    ParseError(String),
+    #[error("parse proto error: {0}")]
+    ProtoParseError(String),
+
+    #[error("unexpected error occurred: {0}")]
+    OtherError(String),
 }
 
 pub(crate) mod prelude {
@@ -105,13 +108,17 @@ pub(crate) mod prelude {
     pub use crate::core::event::{
         CECommandMarker, ClientEvent, ClientEventRegistry, ParseEventError, ServerEvent,
     };
+    pub use crate::core::packet::OidbPacket;
     pub use crate::core::packet::{
         BinaryPacket, PacketBuilder, PacketReader, PacketType, PREFIX_LENGTH_ONLY, PREFIX_U16,
         PREFIX_U8, PREFIX_WITH,
     };
+    pub use crate::dda;
     pub use bytes::Bytes;
     pub use inventory;
-    pub use mania_macros::{ce_commend, ServerEvent};
+    pub use mania_macros::{commend, ServerEvent};
+    pub use num_enum::TryFromPrimitive;
     pub use prost::Message;
+    pub use std::convert::TryFrom;
     pub use std::fmt::Debug;
 }

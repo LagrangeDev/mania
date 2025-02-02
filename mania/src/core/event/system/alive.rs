@@ -1,6 +1,6 @@
 use crate::core::event::prelude::*;
 
-#[ce_commend("Heartbeat.Alive")]
+#[commend("Heartbeat.Alive")]
 #[derive(Debug, ServerEvent)]
 pub struct AliveEvent {
     pub test: u32,

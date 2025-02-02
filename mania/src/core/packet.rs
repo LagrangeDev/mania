@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::cmp::PartialEq;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::sync::atomic::AtomicU32;
 
 use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
@@ -11,8 +11,10 @@ use thiserror::Error;
 
 use crate::core::context::Context;
 use crate::core::crypto::tea;
+use crate::core::event::ParseEventError;
 use crate::core::protos::service::oidb::{OidbLafter, OidbSvcTrpcTcpBase};
 use crate::core::protos::system::{NtDeviceSign, NtPacketUid, Sign};
+use crate::dda;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -36,27 +38,78 @@ impl TryFrom<u32> for PacketType {
 #[derive(Debug)]
 pub struct BinaryPacket(pub Bytes);
 
-impl BinaryPacket {
-    pub(crate) fn oidb(
+pub struct OidbPacket {
+    commend: u32,
+    sub_commend: u32,
+    body: Bytes,
+    is_lafter: bool,
+    is_uid: bool, // aka reserved
+}
+
+impl OidbPacket {
+    pub fn new(
         commend: u32,
         sub_commend: u32,
         body: Vec<u8>,
         is_lafter: bool,
         is_uid: bool,
     ) -> Self {
-        let base = OidbSvcTrpcTcpBase {
-            command: commend,
-            sub_command: sub_commend,
-            body,
-            reserved: i32::from(is_uid),
-            lafter: if is_lafter {
+        Self {
+            commend,
+            sub_commend,
+            body: Bytes::from(body),
+            is_lafter,
+            is_uid,
+        }
+    }
+
+    pub fn to_binary(&self) -> BinaryPacket {
+        let base = dda!(OidbSvcTrpcTcpBase {
+            command: self.commend,
+            sub_command: self.sub_commend,
+            body: self.body.to_vec(),
+            reserved: i32::from(self.is_uid),
+            lafter: if self.is_lafter {
                 Some(OidbLafter::default())
             } else {
                 None
             },
-            ..Default::default()
-        };
+        });
         BinaryPacket(Bytes::from(base.encode_to_vec()))
+    }
+
+    pub fn parse(packet: Bytes) -> Result<Self, ParsePacketError> {
+        match OidbSvcTrpcTcpBase::decode(packet) {
+            Ok(base) => Ok(OidbPacket {
+                commend: base.command,
+                sub_commend: base.sub_command,
+                body: Bytes::from(base.body),
+                is_lafter: base.lafter.is_some(),
+                is_uid: base.reserved != 0,
+            }),
+            Err(e) => Err(ParsePacketError::PacketParseFailed(e)),
+        }
+    }
+
+    pub fn parse_into<T>(packet: Bytes) -> Result<T, ParsePacketError>
+    where
+        T: prost::Message + Default,
+    {
+        Ok(Self::parse(packet)
+            .map_err(|e| {
+                ParseEventError::ProtoParseError(format!("Failed to parse OidbPacket: {}", e))
+            })
+            .unwrap()
+            .into_body::<T>()
+            .map_err(|e| ParseEventError::ProtoParseError(format!("Failed to convert body: {}", e)))
+            .unwrap())
+    }
+
+    fn into_body<T>(self) -> Result<T, prost::DecodeError>
+    where
+        T: prost::Message + Default,
+    {
+        T::decode(self.body)
     }
 }
 
@@ -67,7 +120,7 @@ pub struct SsoPacket {
     payload: BinaryPacket,
 }
 
-impl Display for SsoPacket {
+impl Debug for SsoPacket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SsoPacket")
             .field("packet_type", &self.packet_type)
@@ -305,7 +358,7 @@ impl SsoPacket {
                 BinaryPacket(body),
             ))
         } else {
-            Err(ParsePacketError::PacketFailed {
+            Err(ParsePacketError::PacketRetFailed {
                 command,
                 sequence,
                 ret_code,
@@ -332,13 +385,16 @@ pub enum ParsePacketError {
     #[error("failed to inflate packet")]
     InflateFailed(#[from] std::io::Error),
 
-    #[error("packet {command}#{sequence} failed with code {ret_code}, extra: {extra}")]
-    PacketFailed {
+    #[error("packet {command}#{sequence} ret failed with code {ret_code}, extra: {extra}")]
+    PacketRetFailed {
         command: String,
         sequence: u32,
         ret_code: i32,
         extra: String,
     },
+
+    #[error("failed to parse packet from raw proto: {0}")]
+    PacketParseFailed(#[from] prost::DecodeError),
 }
 
 fn random_trace() -> String {

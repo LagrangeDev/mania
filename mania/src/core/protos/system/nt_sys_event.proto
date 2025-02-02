@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package system;
+
+message NTSysEvent {
+  string IP = 1;
+  int64 Sid = 2;
+  NTSysEventSub Sub = 3;
+}
+
+message NTSysEventSub {
+  int64 State = 2;
+  int32 Field3 = 3;
+  int64 Field4 = 4;
+  int64 Uin = 5;
+  int32 Flag = 6;
+  int32 On = 7;
+  uint32 GroupUin = 8;
+}

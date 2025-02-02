@@ -3,9 +3,10 @@ use crate::core::protos::system::{
     CurAppState, NormalConfig, OnlineBusinessInfo, OnlineDeviceInfo, RegisterInfo, SsoC2cInfoSync,
     SsoC2cMsgCookie, SsoInfoSyncRequest, UnknownStructure,
 };
+use crate::utility::random_gen::RandomGenerator;
 use prost::Message;
 
-#[ce_commend("trpc.msg.register_proxy.RegisterProxy.SsoInfoSync")]
+#[commend("trpc.msg.register_proxy.RegisterProxy.SsoInfoSync")]
 #[derive(Debug, ServerEvent)]
 pub struct InfoSyncEvent;
 
@@ -13,7 +14,7 @@ impl ClientEvent for InfoSyncEvent {
     fn build(&self, ctx: &Context) -> BinaryPacket {
         let request = SsoInfoSyncRequest {
             sync_flag: 735,
-            req_random: 298191, // FIXME:
+            req_random: RandomGenerator::rand_u32(),
             cur_active_status: 2,
             group_last_msg_time: 0,
             c2c_info_sync: Some(SsoC2cInfoSync {

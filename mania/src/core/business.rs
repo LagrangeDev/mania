@@ -241,7 +241,7 @@ impl BusinessHandle {
     }
 
     async fn send_packet(&self, packet: SsoPacket) -> Result<Box<dyn ServerEvent>> {
-        tracing::debug!("sending packet: {}", packet);
+        tracing::debug!("sending packet: {:?}", packet);
         let sequence = packet.sequence();
         let (tx, rx) = oneshot::channel();
         self.pending_requests.insert(sequence, tx);

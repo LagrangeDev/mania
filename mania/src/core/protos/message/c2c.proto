@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package message;
+
+message C2C {
+  optional uint32 Uin = 1;
+  optional string Uid = 2;
+  optional uint32 Field3 = 3;
+  optional uint32 Sig = 4;
+  optional uint32 ReceiverUin = 5;
+  optional string ReceiverUid = 6;
+}
+
+message C2CRecallMsg {
+  uint32 Type = 1;
+  string TargetUid = 3;
+  C2CRecallMsgInfo Info = 4;
+  C2CRecallMsgSettings Settings = 5;
+  bool Field6 = 6;
+}
+
+message C2CRecallMsgInfo {
+  uint32 ClientSequence = 1;
+  uint32 Random = 2;
+  uint64 MessageId = 3;
+  uint32 Timestamp = 4;
+  uint32 Field5 = 5;
+  uint32 MessageSequence = 6;
+}
+
+message C2CRecallMsgSettings {
+  bool Field1 = 1;
+  bool Field2 = 2;
+}

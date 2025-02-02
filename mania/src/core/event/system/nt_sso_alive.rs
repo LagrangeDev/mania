@@ -1,7 +1,7 @@
 use crate::core::event::prelude::*;
 use crate::core::protos::system::NtSsoHeartBeat;
 
-#[ce_commend("trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat")]
+#[commend("trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat")]
 #[derive(Debug, ServerEvent)]
 pub struct NtSsoAliveEvent;
 
