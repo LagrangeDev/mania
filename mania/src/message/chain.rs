@@ -14,11 +14,13 @@ enum MessageTag {
     Temp,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum MessageType {
     Friend(FriendMessageUniqueElem),
     Group(GroupMessageUniqueElem),
     Temp,
+    #[default]
+    None,
 }
 
 #[derive(Debug, Default)]
@@ -51,6 +53,7 @@ impl Default for ClientSequence {
     }
 }
 
+#[derive(Default)]
 pub struct MessageChain {
     pub typ: MessageType,
     pub(crate) uid: String,
@@ -64,26 +67,6 @@ pub struct MessageChain {
     pub entities: Vec<Entity>,
 }
 
-impl Default for MessageChain {
-    fn default() -> Self {
-        Self {
-            typ: MessageType::Friend(FriendMessageUniqueElem {
-                friend_info: None,
-                client_sequence: ClientSequence::default(),
-            }),
-            message_id: MessageId::default(),
-            time: Utc::now(),
-            sequence: 0,
-            self_uid: "".to_string(),
-            friend_uin: 0,
-            target_uin: 0,
-            uid: String::new(),
-            elements: Vec::new(),
-            entities: Vec::new(),
-        }
-    }
-}
-
 /// For debugging output, console, and log display
 ///
 /// aka ToPreviewString() in [Lagrange.Core](https://github.com/LagrangeDev/Lagrange.Core)
@@ -91,10 +74,10 @@ impl Debug for MessageChain {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let header = match &self.typ {
             MessageType::Group(group_elem) => format!("[MessageChain({})] ", group_elem.group_uin),
-            MessageType::Friend(_) => {
+            MessageType::Friend(_) | MessageType::Temp => {
                 format!("[MessageChain({})] ", self.friend_uin)
             }
-            MessageType::Temp => "[MessageChain(Temp)] ".to_string(),
+            MessageType::None => "[MessageChain(Empty)] ".to_string(),
         };
         let entities_preview = self
             .entities
@@ -119,7 +102,7 @@ impl Display for MessageChain {
 }
 
 impl MessageChain {
-    pub fn friend(friend_uin: u32, friend_uid: String, self_uid: String) -> Self {
+    pub(crate) fn friend(friend_uin: u32, friend_uid: String, self_uid: String) -> Self {
         dda!(Self {
             typ: MessageType::Friend(FriendMessageUniqueElem::default()),
             self_uid: self_uid.parse().unwrap(),
@@ -128,7 +111,7 @@ impl MessageChain {
         })
     }
 
-    pub fn group(group_uin: u32) -> Self {
+    pub(crate) fn group(group_uin: u32) -> Self {
         dda!(Self {
             typ: MessageType::Group(dda!(GroupMessageUniqueElem { group_uin })),
         })
