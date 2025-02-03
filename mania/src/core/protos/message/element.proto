@@ -339,9 +339,9 @@ message SrcMsg {
 
 message Preserve {
   uint64 MessageId = 3;
-  string SenderUid = 6;
-  string ReceiverUid = 7;
-  uint32 ClientSequence = 8;
+  optional string SenderUid = 6;
+  optional string ReceiverUid = 7;
+  optional uint32 ClientSequence = 8;
 }
 
 message Text {
@@ -406,21 +406,21 @@ message MentionExtra {
   optional string Uid = 9;
 }
 
-message QFaceExtra {
-  optional string PackId = 1;
-  optional string StickerId = 2;
-  optional int32 Qsid = 3;
+message QBigFaceExtra {
+  optional string AniStickerPackId = 1;
+  optional string AniStickerId = 2;
+  optional int32 FaceId = 3;
   optional int32 SourceType = 4;
-  optional int32 StickerType = 5;
+  optional int32 AniStickerType = 5;
   optional string ResultId = 6;
-  optional string Text = 7;
+  optional string Preview = 7;
   //optional bytes SurpriseId = 8;
   optional int32 RandomType = 9;
 }
 
 message QSmallFaceExtra {
   uint32 FaceId = 1;
-  string Preview = 2;
-  string Preview2 = 3;
+  string Text = 2;
+  string CompatText = 3;
 }
 

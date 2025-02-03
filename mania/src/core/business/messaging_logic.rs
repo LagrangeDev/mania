@@ -51,7 +51,6 @@ async fn messaging_logic_incoming(
                     _ => {}
                 }
             }
-            tracing::info!("{:?}", chain);
         }
         _ if let Some(info_sync) = event.as_any_mut().downcast_mut::<InfoSyncEvent>() => {
             tracing::debug!("Handling InfoSync event: {:?}", info_sync);

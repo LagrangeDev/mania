@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)] // TODO: remove this after stable
 #![feature(if_let_guard)]
+#![feature(let_chains)]
+
 mod core;
 pub mod entity;
 pub mod event;

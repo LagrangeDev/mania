@@ -1,7 +1,11 @@
+pub mod face;
+pub mod forward;
 pub mod image;
 pub mod json;
 pub mod text;
 
+pub use face::FaceEntity as Face;
+pub use forward::ForwardEntity as Forward;
 pub use image::ImageEntity as Image;
 pub use json::JsonEntity as Json;
 pub use text::TextEntity as Text;
@@ -24,6 +28,8 @@ pub enum Entity {
     Text(text::TextEntity),
     Json(json::JsonEntity),
     Image(image::ImageEntity),
+    Face(face::FaceEntity),
+    Forward(forward::ForwardEntity),
 }
 
 macro_rules! impl_entity_show {
@@ -85,9 +91,9 @@ macro_rules! impl_entity_unpack {
     }
 }
 
-impl_entity_show!(Text, Json, Image);
-impl_entity_pack!(Text, Json, Image);
-impl_entity_unpack!(Text, Json, Image);
+impl_entity_show!(Text, Json, Image, Face, Forward);
+impl_entity_pack!(Text, Json, Image, Face, Forward);
+impl_entity_unpack!(Text, Json, Image, Face, Forward);
 
 impl Entity {
     pub fn from_elems(elems: &[Elem]) -> Vec<Self> {
@@ -101,10 +107,12 @@ impl Entity {
 mod prelude {
     pub use crate::core::protos::message::*;
     pub use crate::dda;
+    pub use crate::message::chain::{ClientSequence, MessageId};
     pub use crate::message::entity::MessageEntity;
     pub use crate::utility::compress::*;
     pub use bytes::Bytes;
+    pub use chrono::{DateTime, Utc};
     pub use prost::Message;
     pub use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
-    pub use std::io::Write;
+    pub use std::io::{Read, Write};
 }

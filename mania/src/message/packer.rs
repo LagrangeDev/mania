@@ -8,7 +8,7 @@ use crate::message::chain::{
 use crate::message::entity::Entity;
 use chrono::{DateTime, Utc};
 
-pub struct MessagePacker;
+pub(crate) struct MessagePacker;
 
 impl MessagePacker {
     pub(crate) fn parse_chain(push_msg_body: PushMsgBody) -> Result<MessageChain, ParseEventError> {

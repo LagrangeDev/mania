@@ -73,7 +73,10 @@ pub struct MessageChain {
 impl Debug for MessageChain {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let header = match &self.typ {
-            MessageType::Group(group_elem) => format!("[MessageChain({})] ", group_elem.group_uin),
+            MessageType::Group(group_elem) => format!(
+                "[MessageChain({} -> {})] ",
+                self.friend_uin, group_elem.group_uin
+            ),
             MessageType::Friend(_) | MessageType::Temp => {
                 format!("[MessageChain({})] ", self.friend_uin)
             }

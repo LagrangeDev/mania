@@ -19,7 +19,7 @@ async fn main() {
     #[cfg(not(feature = "tokio-tracing"))]
     {
         tracing_subscriber::fmt()
-            .with_env_filter(tracing_subscriber::EnvFilter::new("debug"))
+            .with_env_filter(tracing_subscriber::EnvFilter::new("info"))
             .init();
     }
     let config = ClientConfig::default();
