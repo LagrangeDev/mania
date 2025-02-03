@@ -37,14 +37,20 @@ impl MessageEntity for FaceEntity {
             }));
         }
 
-        elem.common_elem.as_ref().and_then(|common_elem| {
-            let pb_elem = common_elem
-                .pb_elem
-                .bytes()
-                .filter_map(Result::ok)
-                .collect::<Vec<_>>();
-            match common_elem.service_type {
-                37 => QBigFaceExtra::decode(Bytes::from(pb_elem))
+        let pb_elem = |common_elem: &CommonElem| {
+            Bytes::from(
+                common_elem
+                    .pb_elem
+                    .bytes()
+                    .filter_map(Result::ok)
+                    .collect::<Vec<_>>(),
+            )
+        };
+
+        elem.common_elem
+            .as_ref()
+            .and_then(|common_elem| match common_elem.service_type {
+                37 => QBigFaceExtra::decode(pb_elem(common_elem))
                     .ok()
                     .and_then(|qface| {
                         qface.face_id.map(|id| {
@@ -54,7 +60,7 @@ impl MessageEntity for FaceEntity {
                             })
                         })
                     }),
-                33 => QSmallFaceExtra::decode(Bytes::from(pb_elem))
+                33 => QSmallFaceExtra::decode(pb_elem(common_elem))
                     .ok()
                     .map(|small_face| {
                         dda!(Self {
@@ -63,7 +69,6 @@ impl MessageEntity for FaceEntity {
                         })
                     }),
                 _ => None,
-            }
-        })
+            })
     }
 }
