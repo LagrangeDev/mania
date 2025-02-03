@@ -10,7 +10,7 @@ pub struct ImageEntity {
     pub size: u32,
     pub url: String,
     // TODO: lazy stream
-    pub(crate) msg_info: MsgInfo,
+    pub(crate) msg_info: Option<MsgInfo>,
     pub(crate) not_online_image: NotOnlineImage,
     pub(crate) custom_face: CustomFace,
     pub summary: Option<String>,
@@ -72,7 +72,7 @@ impl MessageEntity for ImageEntity {
                     file_path: index.info.as_ref().unwrap().file_name.clone(),
                     md5: Bytes::from(hex::decode(&index.info.as_ref().unwrap().file_hash).unwrap()),
                     size: index.info.as_ref().unwrap().file_size,
-                    msg_info: extra.clone(),
+                    msg_info: Some(extra.clone()),
                     sub_type: ext_biz_info.pic.as_ref().unwrap().biz_type,
                     is_group: ext_biz_info.pic.as_ref().unwrap().ext_data.is_some(),
                     summary: if ext_biz_info.pic.as_ref().unwrap().text_summary.is_empty() {
@@ -90,7 +90,11 @@ impl MessageEntity for ImageEntity {
             } else {
                 format!("https://gchat.qpic.cn{}", image.orig_url)
             };
-            let pb_res = image.pb_res.as_ref().unwrap();
+            let pb_res = if let Some(ref pb) = image.pb_res {
+                pb
+            } else {
+                &not_online_image::PbReserve::default()
+            };
             return Some(dda!(ImageEntity {
                 height: image.pic_height,
                 width: image.pic_width,
@@ -98,7 +102,6 @@ impl MessageEntity for ImageEntity {
                 md5: Bytes::from(image.pic_md5.clone()),
                 size: image.file_len,
                 url,
-                msg_info: MsgInfo::default(),
                 not_online_image: image.clone(),
                 sub_type: pb_res.sub_type as u32,
                 is_group: false,
@@ -112,7 +115,11 @@ impl MessageEntity for ImageEntity {
             } else {
                 format!("https://gchat.qpic.cn{}", face.orig_url)
             };
-            let pb_res = face.pb_res.as_ref().unwrap();
+            let pb_res = if let Some(ref pb) = face.pb_res {
+                pb
+            } else {
+                &custom_face::PbReserve::default()
+            };
             return Some(dda!(ImageEntity {
                 height: face.height as u32,
                 width: face.width as u32,
@@ -120,7 +127,6 @@ impl MessageEntity for ImageEntity {
                 md5: Bytes::from(face.md5.clone()),
                 size: face.size,
                 url,
-                msg_info: MsgInfo::default(),
                 custom_face: face.clone(),
                 sub_type: pb_res.sub_type as u32,
                 is_group: true,

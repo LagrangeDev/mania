@@ -33,20 +33,34 @@ async fn messaging_logic_incoming(
             for entity in &mut chain.entities {
                 match entity {
                     Entity::Image(ref mut image) => {
-                        // FIXME: index out of bounds: the len is 0 but the index is 0 ?
-                        let index_node = image.msg_info.msg_info_body[0].index.clone().unwrap();
-                        match &chain.typ {
-                            MessageType::Group(group) => {
-                                let url = handle
-                                    .download_group_image(group.group_uin, index_node)
-                                    .await;
-                                image.url = url.expect("Failed to download image");
+                        if !image.url.contains("&rkey=") {
+                            continue;
+                        }
+                        let index_node = match image
+                            .msg_info
+                            .as_ref()
+                            .and_then(|info| info.msg_info_body.get(0))
+                            .and_then(|node| node.index.clone())
+                        {
+                            Some(idx) => idx,
+                            None => continue,
+                        };
+                        let download = match &chain.typ {
+                            MessageType::Group(grp) => {
+                                handle.download_group_image(grp.group_uin, index_node).await
                             }
-                            MessageType::Friend(_) => {
-                                let url = handle.download_c2c_image(index_node).await;
-                                image.url = url.expect("Failed to download image");
+                            MessageType::Friend(_) | MessageType::Temp => {
+                                handle.download_c2c_image(index_node).await
                             }
-                            _ => {}
+                            _ => continue,
+                        };
+                        match download {
+                            Ok(url) => {
+                                image.url = url;
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to download image: {:?}", e);
+                            }
                         }
                     }
                     _ => {}
