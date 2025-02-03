@@ -1,5 +1,6 @@
 use super::prelude::*;
 
+#[derive(Default)]
 pub struct JsonEntity {
     pub json: String,
     pub res_id: String,
@@ -40,11 +41,9 @@ impl MessageEntity for JsonEntity {
         match rich_msg.service_id? {
             1 => {
                 let template1 = rich_msg.template1.as_ref()?;
-                let mut data = zlib::decompress(template1)?;
-                data.pop()?;
+                let data = zlib::decompress(&template1[1..])?;
                 let json = String::from_utf8(data).ok()?;
-                let res_id = elem.text.as_ref()?.str.as_ref()?.clone();
-                Some(JsonEntity { json, res_id })
+                Some(dda!(JsonEntity { json: json }))
             }
             _ => None,
         }
