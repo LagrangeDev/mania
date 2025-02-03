@@ -1,0 +1,56 @@
+<div align="center">
+
+# Mania
+
+-------------------------
+
+An Implementation of NTQQ Protocol, with Pure Rust🦀, **Derived from Lagrange.Core**
+
+![nightly](https://img.shields.io/badge/toolchain-nightly-important)
+![wip](https://img.shields.io/badge/develop-wip-blue)
+
+</div>
+
+> [!NOTE]\
+> This project is originally frozen in [radicle](https://app.radicle.xyz/nodes/seed.radicle.garden/rad:z4QZVPDxLbGgd1oHFsjtJLQYtZ8ma)
+
+
+> [!WARNING]  
+> This project is still in active development. The internal and external interfaces are still unstable
+
+
+## Disclaimer
+[See Lagrange.Core](https://github.com/LagrangeDev/Lagrange.Core#disclaimer)
+
+## Features List
+
+| Protocol | Support | Login                     | Support | Messages      | Support | Operations        | Support | Events              | Support |
+|----------|:-------:|---------------------------|:-------:|:--------------|:-------:|:------------------|:-------:|:--------------------|:-------:|
+| Windows  |   🔴    | QrCode                    |   🟢    | BounceFace    |   🔴    | Poke              |   🔴    | Captcha             |   🔴    |
+| macOS    |   🔴    | ~~Password~~              |   🔴    | Face          | 🟡 [^1] | Recall            |   🔴    | BotOnline           |   🔴    |
+| Linux    |   🟢    | EasyLogin                 |   🟢    | File          |   🔴    | Leave Group       |   🔴    | BotOffline          |   🔴    |
+|          |         | UnusalDevice<br/>Password |   🔴    | Forward       | 🟡[^1]  | Set Special Title |   🔴    | Message             |   🔴    |
+|          |         | UnusalDevice<br/>Easy     |   🔴    | ~~GreyTip~~   |   🔴    | Kick Member       |   🔴    | Poke                |   🔴    |
+|          |         | ~~NewDeviceVerify~~       |   🔴    | GroupReaction |   🔴    | Mute Member       |   🔴    | MessageRecall       |   🔴    |
+|          |         |                           |         | Image         | 🟡[^1]  | Set Admin         |   🔴    | GroupMemberDecrease |   🔴    |
+|          |         |                           |         | Json          |   🟢    | Friend Request    |   🔴    | GroupMemberIncrease |   🔴    |
+|          |         |                           |         | KeyBoard      |   🔴    | Group Request     |   🔴    | GroupPromoteAdmin   |   🔴    |
+|          |         |                           |         | LightApp      |   🔴    | ~~Voice Call~~    |   🔴    | GroupInvite         |   🔴    |
+|          |         |                           |         | LongMsg       |   🔴    | Client Key        |   🔴    | GroupRequestJoin    |   🔴    |
+|          |         |                           |         | Markdown      |   🔴    | Cookies           |   🔴    | FriendRequest       |   🔴    |
+|          |         |                           |         | MarketFace    |   🔴    | Send Message      |   🔴    | ~~FriendTyping~~    |   🔴    |
+|          |         |                           |         | Mention       |   🔴    |                   |         | ~~FriendVoiceCall~~ |   🔴    |
+|          |         |                           |         | MultiMsg      |   🔴    |                   |         |                     |         |
+|          |         |                           |         | Poke          |   🔴    |                   |         |                     |         |
+|          |         |                           |         | Record        |   🔴    |                   |         |                     |         |
+|          |         |                           |         | SpecialPoke   |   🔴    |                   |         |                     |         |
+|          |         |                           |         | Text          |   🟢    |                   |         |                     |         |
+|          |         |                           |         | Video         |   🔴    |                   |         |                     |         |
+|          |         |                           |         | Xml           |   🔴    |                   |         |                     |         |
+
+[^1]: Only implemented event parsing
+
+## References
+- All projects in [LagrangeDev](https://github.com/lagrangeDev) (and their twin projects)
+- [lz1998/ricq](https://github.com/lz1998/ricq)
+- [inmes-dev/qqbot.rs](https://github.com/inmes-dev/qqbot.rs)
