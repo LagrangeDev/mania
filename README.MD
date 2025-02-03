@@ -35,10 +35,10 @@ An Implementation of NTQQ Protocol, with Pure Rust🦀, **Derived from Lagrange.
 |          |         |                           |         | Image         | 🟡[^1]  | Set Admin         |   🔴    | GroupMemberDecrease |   🔴    |
 |          |         |                           |         | Json          |   🟢    | Friend Request    |   🔴    | GroupMemberIncrease |   🔴    |
 |          |         |                           |         | KeyBoard      |   🔴    | Group Request     |   🔴    | GroupPromoteAdmin   |   🔴    |
-|          |         |                           |         | LightApp      |   🔴    | ~~Voice Call~~    |   🔴    | GroupInvite         |   🔴    |
+|          |         |                           |         | LightApp      | 🟡[^1]  | ~~Voice Call~~    |   🔴    | GroupInvite         |   🔴    |
 |          |         |                           |         | LongMsg       |   🔴    | Client Key        |   🔴    | GroupRequestJoin    |   🔴    |
 |          |         |                           |         | Markdown      |   🔴    | Cookies           |   🔴    | FriendRequest       |   🔴    |
-|          |         |                           |         | MarketFace    |   🔴    | Send Message      |   🔴    | ~~FriendTyping~~    |   🔴    |
+|          |         |                           |         | MarketFace    | 🟡[^1]  | Send Message      |   🔴    | ~~FriendTyping~~    |   🔴    |
 |          |         |                           |         | Mention       |   🔴    |                   |         | ~~FriendVoiceCall~~ |   🔴    |
 |          |         |                           |         | MultiMsg      |   🔴    |                   |         |                     |         |
 |          |         |                           |         | Poke          |   🔴    |                   |         |                     |         |

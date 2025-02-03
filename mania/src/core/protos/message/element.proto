@@ -185,16 +185,16 @@ message MarketFace {
   optional string FaceName = 1;
   optional uint32 ItemType = 2;
   optional uint32 FaceInfo = 3;
-  optional bytes  FaceId = 4;
+  optional bytes FaceId = 4;
   optional uint32 TabId = 5;
   optional uint32 SubType = 6;
-  optional bytes  Key = 7;
-  optional bytes  Param = 8;
+  optional string Key = 7;
+  optional bytes Param = 8;
   optional uint32 MediaType = 9;
   optional uint32 ImageWidth = 10;
   optional uint32 ImageHeight = 11;
-  optional bytes  MobileParam = 12;
-  optional bytes  PbReserve = 13;
+  optional bytes MobileParam = 12;
+  optional bytes PbReserve = 13;
 }
 
 message MarketFacePbReserve {

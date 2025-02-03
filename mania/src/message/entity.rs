@@ -2,12 +2,16 @@ pub mod face;
 pub mod forward;
 pub mod image;
 pub mod json;
+pub mod light_app;
+pub mod market_face;
 pub mod text;
 
 pub use face::FaceEntity as Face;
 pub use forward::ForwardEntity as Forward;
 pub use image::ImageEntity as Image;
 pub use json::JsonEntity as Json;
+pub use light_app::LightAppEntity as LightApp;
+pub use market_face::MarketFaceEntity as MarketFace;
 pub use text::TextEntity as Text;
 
 use crate::core::protos::message::Elem;
@@ -30,6 +34,8 @@ pub enum Entity {
     Image(image::ImageEntity),
     Face(face::FaceEntity),
     Forward(forward::ForwardEntity),
+    MarketFace(market_face::MarketFaceEntity),
+    LightApp(light_app::LightAppEntity),
 }
 
 macro_rules! impl_entity_show {
@@ -91,9 +97,9 @@ macro_rules! impl_entity_unpack {
     }
 }
 
-impl_entity_show!(Text, Json, Image, Face, Forward);
-impl_entity_pack!(Text, Json, Image, Face, Forward);
-impl_entity_unpack!(Text, Json, Image, Face, Forward);
+impl_entity_show!(Text, Json, Image, Face, Forward, MarketFace, LightApp);
+impl_entity_pack!(Text, Json, Image, Face, Forward, MarketFace, LightApp);
+impl_entity_unpack!(Text, Json, Image, Face, Forward, MarketFace, LightApp);
 
 impl Entity {
     pub fn from_elems(elems: &[Elem]) -> Vec<Self> {

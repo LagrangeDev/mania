@@ -1,6 +1,7 @@
 use super::prelude::*;
 use std::fmt::Debug;
 
+#[derive(Default)]
 pub struct TextEntity {
     pub text: String,
 }

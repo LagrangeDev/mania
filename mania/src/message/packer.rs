@@ -71,7 +71,7 @@ impl MessagePacker {
         }))
     }
 
-    fn parse_fake_chain(push_msg_body: PushMsgBody) -> Result<MessageChain, ParseEventError> {
+    fn parse_fake_chain(_: PushMsgBody) -> Result<MessageChain, ParseEventError> {
         todo!()
     }
 }

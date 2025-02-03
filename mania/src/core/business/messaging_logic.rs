@@ -33,6 +33,7 @@ async fn messaging_logic_incoming(
             for entity in &mut chain.entities {
                 match entity {
                     Entity::Image(ref mut image) => {
+                        // FIXME: index out of bounds: the len is 0 but the index is 0 ?
                         let index_node = image.msg_info.msg_info_body[0].index.clone().unwrap();
                         match &chain.typ {
                             MessageType::Group(group) => {

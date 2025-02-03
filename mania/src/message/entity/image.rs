@@ -1,5 +1,6 @@
 use super::prelude::*;
 use crate::core::protos::service::oidb::MsgInfo;
+
 #[derive(Default)]
 pub struct ImageEntity {
     pub height: u32,
