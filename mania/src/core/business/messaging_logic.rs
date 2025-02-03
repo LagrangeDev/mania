@@ -39,7 +39,7 @@ async fn messaging_logic_incoming(
                         let index_node = match image
                             .msg_info
                             .as_ref()
-                            .and_then(|info| info.msg_info_body.get(0))
+                            .and_then(|info| info.msg_info_body.first())
                             .and_then(|node| node.index.clone())
                         {
                             Some(idx) => idx,
