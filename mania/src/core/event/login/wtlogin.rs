@@ -32,7 +32,7 @@ impl ClientEvent for WtLogin {
         BinaryPacket(body.into())
     }
 
-    fn parse(packet: Bytes, ctx: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
+    fn parse(packet: Bytes, ctx: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
         let packet = parse_wtlogin_packet(packet, ctx)?;
         let mut reader = PacketReader::new(packet);
         reader.skip(2);
@@ -41,24 +41,24 @@ impl ClientEvent for WtLogin {
         if typ == 0 {
             let enc_tlvs_data = original_tlvs
                 .get::<t119::T119>()
-                .map_err(ParseEventError::MissingTlv)?
+                .map_err(TlvError::MissingTlv)?
                 .encrypted_tlv
                 .clone();
             let dec_tlvs_data = tea_decrypt(&enc_tlvs_data, &ctx.session.stub.tgtgt_key.load());
             let tlvs = TlvSet::deserialize(Bytes::from(dec_tlvs_data));
             let tgt = tlvs
                 .get::<t10a::T10A>()
-                .map_err(ParseEventError::MissingTlv)?
+                .map_err(TlvError::MissingTlv)?
                 .tgt
                 .clone();
             let d2 = tlvs
                 .get::<t143::T143>()
-                .map_err(ParseEventError::MissingTlv)?
+                .map_err(TlvError::MissingTlv)?
                 .d2
                 .clone();
             let d2_key = tlvs
                 .get::<t305::T305>()
-                .map_err(ParseEventError::MissingTlv)?
+                .map_err(TlvError::MissingTlv)?
                 .d2key
                 .clone();
             let trans_d2_key: &[u8; 16] = (&d2_key[..])
@@ -67,17 +67,15 @@ impl ClientEvent for WtLogin {
             let tgtgt = Bytes::copy_from_slice(&Md5::digest(&d2_key));
             let temp_pwd = tlvs
                 .get::<t106::T106>()
-                .map_err(ParseEventError::MissingTlv)?
+                .map_err(TlvError::MissingTlv)?
                 .temp
                 .clone();
             let uid = tlvs
                 .get::<t543::T543>()
-                .map_err(ParseEventError::MissingTlv)?
+                .map_err(TlvError::MissingTlv)?
                 .uid
                 .clone();
-            let self_info = tlvs
-                .get::<t11a::T11A>()
-                .map_err(ParseEventError::MissingTlv)?;
+            let self_info = tlvs.get::<t11a::T11A>().map_err(TlvError::MissingTlv)?;
             ctx.session.stub.tgtgt_key.store(Arc::from(tgtgt));
             ctx.key_store.session.tgt.store(Arc::from(tgt));
             ctx.key_store.session.d2.store(Arc::from(d2));
@@ -101,10 +99,12 @@ impl ClientEvent for WtLogin {
             }));
             Ok(Box::new(Self { code: 0, msg: None }))
         } else {
-            let tlv146 = original_tlvs.get::<t146::T146>().ok();
+            let tlv146 = original_tlvs
+                .get::<t146::T146>()
+                .map_err(TlvError::MissingTlv)?;
             Ok(Box::new(Self {
                 code: typ as i32,
-                msg: tlv146.map(|t| t.message.clone()),
+                msg: Some(tlv146.message.clone()),
             }))
         }
     }

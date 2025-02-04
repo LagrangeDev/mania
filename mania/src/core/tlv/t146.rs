@@ -8,7 +8,7 @@ pub struct T146 {
 }
 
 impl TlvDe for T146 {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| Self {
             state: p.u32(),
             tag: p.section_16_with_addition::<_, 0>(|p| p.string()),

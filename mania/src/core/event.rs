@@ -30,11 +30,11 @@ pub trait ClientEvent: CECommandMarker {
     fn packet_type(&self) -> PacketType {
         PacketType::T12 // most common packet type
     }
-    fn build(&self, context: &Context) -> BinaryPacket;
-    fn parse(packet: Bytes, context: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError>;
+    fn build(&self, _: &Context) -> BinaryPacket;
+    fn parse(packet: Bytes, context: &Context) -> Result<Box<dyn ServerEvent>, EventError>;
 }
 
-type ParseEvent = fn(Bytes, &Context) -> Result<Box<dyn ServerEvent>, ParseEventError>;
+type ParseEvent = fn(Bytes, &Context) -> Result<Box<dyn ServerEvent>, EventError>;
 
 pub struct ClientEventRegistry {
     pub command: &'static str,
@@ -55,7 +55,7 @@ static EVENT_MAP: Lazy<EventMap> = Lazy::new(|| {
 pub async fn resolve_event(
     packet: SsoPacket,
     context: &Arc<Context>,
-) -> Result<Box<dyn ServerEvent>, ParseEventError> {
+) -> Result<Box<dyn ServerEvent>, EventError> {
     // Lagrange.Core.Internal.Context.ServiceContext.ResolveEventByPacket
     let payload = PacketReader::new(packet.payload()).section(|p| p.bytes());
     tracing::debug!(
@@ -64,9 +64,7 @@ pub async fn resolve_event(
         hex::encode(&payload)
     );
     let Some(parse) = EVENT_MAP.get(packet.command()) else {
-        return Err(ParseEventError::UnsupportedEvent(
-            packet.command().to_string(),
-        ));
+        return Err(EventError::UnsupportedEvent(packet.command().to_string()));
     };
     let events = parse(payload, context)?;
     Ok(events)
@@ -77,41 +75,34 @@ pub fn downcast_event<T: ServerEvent + 'static>(event: &impl AsRef<dyn ServerEve
 }
 
 #[derive(Debug, Error)]
-pub enum ParseEventError {
-    #[error("unsupported event: {0}")]
+pub enum EventError {
+    #[error("unsupported event, commend: {0}")]
     UnsupportedEvent(String),
 
-    #[error("invalid packet header")]
-    InvalidPacketHeader,
+    #[error("TLV error occurred: {0}")]
+    MissingTlv(#[from] crate::core::tlv::TlvError),
 
-    #[error("invalid packet end")]
-    InvalidPacketEnd,
+    #[error("failed to parse packet from raw proto in mania internal event: {0}")]
+    ProtoParseError(#[from] prost::DecodeError),
 
-    #[error("unsupported trans_emp command: {0}")]
-    UnsupportedTransEmp(u16),
+    #[error("failed to parse mania internal packet: {0}")]
+    PacketParseError(#[from] crate::core::packet::PacketError),
 
-    #[error("missing or corrupted TLV: {0}")]
-    MissingTlv(u16),
+    #[error("Unknown olpush message type {0}")]
+    UnknownOlpushMessageTypeError(u32),
 
-    #[error("unknown ret code: {0}")]
-    UnknownRetCode(i32),
-
-    #[error("parse proto error: {0}")]
-    ProtoParseError(String),
-
-    #[error("unexpected error occurred: {0}")]
+    #[error("An mania internal event error occurred: {0}")]
     OtherError(String),
 }
 
 pub(crate) mod prelude {
     pub use crate::core::context::Context;
     pub use crate::core::event::{
-        CECommandMarker, ClientEvent, ClientEventRegistry, ParseEventError, ServerEvent,
+        CECommandMarker, ClientEvent, ClientEventRegistry, EventError, ServerEvent,
     };
-    pub use crate::core::packet::OidbPacket;
     pub use crate::core::packet::{
-        BinaryPacket, PacketBuilder, PacketReader, PacketType, PREFIX_LENGTH_ONLY, PREFIX_U16,
-        PREFIX_U8, PREFIX_WITH,
+        BinaryPacket, OidbPacket, PacketBuilder, PacketError, PacketReader, PacketType,
+        PREFIX_LENGTH_ONLY, PREFIX_U16, PREFIX_U8, PREFIX_WITH,
     };
     pub use crate::dda;
     pub use bytes::Bytes;

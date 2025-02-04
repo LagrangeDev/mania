@@ -13,10 +13,8 @@ impl ClientEvent for KickNTEvent {
         unreachable!("KickNTEvent should not be sent by client")
     }
 
-    fn parse(mut bytes: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
-        let res = ServiceKickNtResponse::decode(&mut bytes).map_err(|e| {
-            ParseEventError::ProtoParseError(format!("Failed to parse KickNTEvent: {:?}", e))
-        })?;
+    fn parse(mut bytes: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+        let res = ServiceKickNtResponse::decode(&mut bytes)?;
         Ok(Box::new(Self {
             tips: res.tips,
             title: res.title,

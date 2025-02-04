@@ -5,7 +5,7 @@ pub struct T018q {
 }
 
 impl TlvDe for T018q {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| Self {
             temp_password: p.bytes(),
         })))

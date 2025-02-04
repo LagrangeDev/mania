@@ -9,7 +9,7 @@ pub struct T11A {
 }
 
 impl TlvDe for T11A {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| {
             let face_id = p.u16();
             let age = p.u8();

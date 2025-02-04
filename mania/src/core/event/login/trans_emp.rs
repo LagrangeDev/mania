@@ -138,7 +138,7 @@ impl ClientEvent for TransEmp {
         BinaryPacket(packet.into())
     }
 
-    fn parse(packet: Bytes, context: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
+    fn parse(packet: Bytes, context: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
         // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp.DeserializeBody
         let packet = parse_wtlogin_packet(packet, context)?;
         let mut reader = PacketReader::new(packet);
@@ -162,16 +162,16 @@ impl ClientEvent for TransEmp {
 
                 let qr_code = tlvs
                     .get::<t017q::T017q>()
-                    .map_err(ParseEventError::MissingTlv)?
+                    .map_err(TlvError::MissingTlv)?
                     .qr_code
                     .clone();
                 let expiration = tlvs
                     .get::<t01cq::T01cq>()
-                    .map_err(ParseEventError::MissingTlv)?
+                    .map_err(TlvError::MissingTlv)?
                     .expire_sec;
                 let t0d1 = tlvs
                     .get::<t0d1q::T0d1Resp>()
-                    .map_err(ParseEventError::MissingTlv)?;
+                    .map_err(TlvError::MissingTlv)?;
                 let url = t0d1.proto.url.clone();
                 let qr_sig = t0d1.proto.qr_sig.clone();
 
@@ -197,17 +197,17 @@ impl ClientEvent for TransEmp {
                         let tlvs = TlvSet::deserialize_qrcode(reader.bytes());
                         let tgtgt_key = tlvs
                             .get::<t01eq::T01eq>()
-                            .map_err(ParseEventError::MissingTlv)?
+                            .map_err(TlvError::MissingTlv)?
                             .tgtgt_key
                             .clone();
                         let temp_password = tlvs
                             .get::<t018q::T018q>()
-                            .map_err(ParseEventError::MissingTlv)?
+                            .map_err(TlvError::MissingTlv)?
                             .temp_password
                             .clone();
                         let no_pic_sig = tlvs
                             .get::<t019q::T019q>()
-                            .map_err(ParseEventError::MissingTlv)?
+                            .map_err(TlvError::MissingTlv)?
                             .no_pic_sig
                             .clone();
 
@@ -221,20 +221,25 @@ impl ClientEvent for TransEmp {
                     48 => TransEmp12Res::WaitingForScan,
                     53 => TransEmp12Res::WaitingForConfirm,
                     54 => TransEmp12Res::Canceled,
-                    _ => Err(ParseEventError::UnknownRetCode(state as i32))?,
+                    _ => Err(EventError::OtherError(format!(
+                        "unknown trans_emp ret code: {}",
+                        state
+                    )))?,
                 };
                 Ok(Box::new(Self {
                     status: TransEmpStatus::QueryResult,
                     result: Some(TransEmpResult::Emp12(result)),
                 }))
             }
-            _ => Err(ParseEventError::UnsupportedTransEmp(command)),
+            _ => Err(EventError::OtherError(format!(
+                "unsupported trans_emp command: {:#x}",
+                command
+            )))?,
         }
     }
 }
 
 fn build_trans_emp_body(ctx: &Context, qr_cmd: u16, tlvs: Vec<u8>) -> Vec<u8> {
-    // newPacket
     let new_packet = PacketBuilder::new()
         .u8(2)
         .u16((43 + tlvs.len() + 1) as u16)
@@ -297,26 +302,30 @@ pub fn build_wtlogin_packet(ctx: &Context, cmd: u16, body: &[u8]) -> Vec<u8> {
 }
 
 // TODO: decouple
-pub fn parse_wtlogin_packet(packet: Bytes, ctx: &Context) -> Result<Bytes, ParseEventError> {
+pub fn parse_wtlogin_packet(packet: Bytes, ctx: &Context) -> Result<Bytes, PacketError> {
     // Lagrange.Core.Internal.Packets.Login.WtLogin.WtLoginBase.DeserializePacket
     let mut reader = PacketReader::new(packet);
     let header = reader.u8();
     if header != 2 {
-        return Err(ParseEventError::InvalidPacketHeader);
+        return Err(PacketError::OtherError(
+            "invalid packet header when parse_wtlogin_packet".to_string(),
+        ));
     }
 
-    let _length = reader.u16();
-    let _ver = reader.u16();
-    let _cmd = reader.u16();
-    let _sequence = reader.u16();
-    let _uin = reader.u32();
-    let _flag = reader.u8();
-    let _retry_time = reader.u16();
+    reader.u16(); // length
+    reader.u16(); // ver
+    reader.u16(); // cmd
+    reader.u16(); // seq
+    reader.u32(); // uin
+    reader.u8(); // flag
+    reader.u16(); // retry time
 
     let mut encrypted = reader.bytes();
     let tail = encrypted.split_off(encrypted.len() - 1)[0];
     if tail != 3 {
-        return Err(ParseEventError::InvalidPacketEnd);
+        return Err(PacketError::OtherError(
+            "invalid packet end when parse_wtlogin_packet".to_string(),
+        ));
     }
 
     let decrypted = ctx.crypto.login_p256.tea_decrypt(&encrypted);

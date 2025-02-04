@@ -1,4 +1,4 @@
-use crate::core::event::ParseEventError;
+use crate::core::event::EventError;
 use crate::core::protos::message::PushMsgBody;
 use crate::dda;
 use crate::message::chain::{
@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 pub(crate) struct MessagePacker;
 
 impl MessagePacker {
-    pub(crate) fn parse_chain(push_msg_body: PushMsgBody) -> Result<MessageChain, ParseEventError> {
+    pub(crate) fn parse_chain(push_msg_body: PushMsgBody) -> Result<MessageChain, String> {
         let response_head = push_msg_body.response_head.expect("missing ResponseHead");
         let content_head = push_msg_body
             .content_head
@@ -71,7 +71,7 @@ impl MessagePacker {
         }))
     }
 
-    fn parse_fake_chain(_: PushMsgBody) -> Result<MessageChain, ParseEventError> {
+    fn parse_fake_chain(_: PushMsgBody) -> Result<MessageChain, EventError> {
         todo!()
     }
 }

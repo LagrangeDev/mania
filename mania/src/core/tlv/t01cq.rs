@@ -6,7 +6,7 @@ pub struct T01cq {
 }
 
 impl TlvDe for T01cq {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| Self {
             expire_sec: p.u32(),
             expire_min: p.u16(),

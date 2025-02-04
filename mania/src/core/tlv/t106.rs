@@ -42,7 +42,7 @@ impl TlvSer for T106 {
 }
 
 impl TlvDe for T106 {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| Self {
             app_id: 0,
             app_client_version: 0,

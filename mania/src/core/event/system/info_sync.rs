@@ -56,7 +56,7 @@ impl ClientEvent for InfoSyncEvent {
         BinaryPacket(request.encode_to_vec().into())
     }
 
-    fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
+    fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
         // TODO: parse InfoSyncRes
         Ok(Box::new(Self {}))
     }

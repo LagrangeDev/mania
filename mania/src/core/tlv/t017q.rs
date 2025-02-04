@@ -5,7 +5,7 @@ pub struct T017q {
 }
 
 impl TlvDe for T017q {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| Self { qr_code: p.bytes() })))
     }
 

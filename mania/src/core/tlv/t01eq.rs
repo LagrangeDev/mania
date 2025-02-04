@@ -5,7 +5,7 @@ pub struct T01eq {
 }
 
 impl TlvDe for T01eq {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| Self {
             tgtgt_key: p.bytes(),
         })))

@@ -32,7 +32,7 @@ impl ClientEvent for FetchRKeyEvent {
         OidbPacket::new(0x9067, 202, body, false, true).to_binary()
     }
 
-    fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
-        Ok(Box::new(Self {}))
+    fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+        Ok(Box::new(Self {})) // TODO: parse
     }
 }

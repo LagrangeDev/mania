@@ -5,7 +5,7 @@ pub struct T119 {
 }
 
 impl TlvDe for T119 {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| Self {
             encrypted_tlv: p.bytes(),
         })))

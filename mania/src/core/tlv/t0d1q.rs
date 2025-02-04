@@ -28,7 +28,7 @@ pub struct T0d1Resp {
 }
 
 impl TlvDe for T0d1Resp {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         let proto = p.length_value(|p| p.proto())?;
         Ok(Box::new(Self { proto }))
     }

@@ -6,7 +6,7 @@ pub struct T543 {
 }
 
 impl TlvDe for T543 {
-    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+    fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| {
             let proto = Tlv543::decode(&mut p.bytes()).unwrap();
             Self {

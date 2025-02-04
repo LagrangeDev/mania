@@ -64,22 +64,21 @@ impl ClientEvent for PushMessageEvent {
         todo!()
     }
 
-    fn parse(bytes: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
-        let packet = PushMsg::decode(bytes).map_err(|e| {
-            ParseEventError::ProtoParseError(format!("Failed to decode PushMsg: {:?}", e))
-        })?;
+    fn parse(bytes: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+        let packet = PushMsg::decode(bytes)?;
         let typ = packet
             .message
             .as_ref()
             .and_then(|msg| msg.content_head.as_ref())
             .map(|content_head| content_head.r#type)
             .unwrap();
-        let packet_type = PkgType::try_from(typ)
-            .map_err(|_| ParseEventError::OtherError(format!("Unknown message type: {}", typ)))?;
+        let packet_type =
+            PkgType::try_from(typ).map_err(|_| EventError::UnknownOlpushMessageTypeError(typ))?;
         let mut chain = MessageChain::default(); // FIXME: maybe exist better way to handle this
         match packet_type {
             PkgType::PrivateMessage | PkgType::GroupMessage | PkgType::TempMessage => {
-                chain = MessagePacker::parse_chain(packet.message.expect("PushMsgBody is None"))?;
+                chain = MessagePacker::parse_chain(packet.message.expect("PushMsgBody is None"))
+                    .map_err(|e| EventError::OtherError(format!("parse_chain failed: {}", e)))?;
             }
             // TODO: handle other message types
             _ => {

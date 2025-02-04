@@ -11,7 +11,6 @@ use thiserror::Error;
 
 use crate::core::context::Context;
 use crate::core::crypto::tea;
-use crate::core::event::ParseEventError;
 use crate::core::protos::service::oidb::{OidbLafter, OidbSvcTrpcTcpBase};
 use crate::core::protos::system::{NtDeviceSign, NtPacketUid, Sign};
 use crate::dda;
@@ -78,31 +77,31 @@ impl OidbPacket {
         BinaryPacket(Bytes::from(base.encode_to_vec()))
     }
 
-    pub fn parse(packet: Bytes) -> Result<Self, ParsePacketError> {
+    pub fn parse(packet: Bytes) -> Result<Self, PacketError> {
         match OidbSvcTrpcTcpBase::decode(packet) {
-            Ok(base) => Ok(OidbPacket {
-                commend: base.command,
-                sub_commend: base.sub_command,
-                body: Bytes::from(base.body),
-                is_lafter: base.lafter.is_some(),
-                is_uid: base.reserved != 0,
-            }),
-            Err(e) => Err(ParsePacketError::PacketParseFailed(e)),
+            Ok(base) => match base.error_code {
+                0 => Ok(Self {
+                    commend: base.command,
+                    sub_commend: base.sub_command,
+                    body: Bytes::from(base.body),
+                    is_lafter: base.lafter.is_some(),
+                    is_uid: base.reserved != 0,
+                }),
+                code => Err(PacketError::OidbPacketRetFailed {
+                    command: format!("0x{:x}_{}", base.command, base.sub_command),
+                    ret_code: code,
+                    client_wording: base.error_msg,
+                }),
+            },
+            Err(e) => Err(PacketError::SsoPacketParseFailed(e)),
         }
     }
 
-    pub fn parse_into<T>(packet: Bytes) -> Result<T, ParsePacketError>
+    pub fn parse_into<T>(packet: Bytes) -> Result<T, PacketError>
     where
         T: prost::Message + Default,
     {
-        Ok(Self::parse(packet)
-            .map_err(|e| {
-                ParseEventError::ProtoParseError(format!("Failed to parse OidbPacket: {}", e))
-            })
-            .unwrap()
-            .into_body::<T>()
-            .map_err(|e| ParseEventError::ProtoParseError(format!("Failed to convert body: {}", e)))
-            .unwrap())
+        Ok(Self::parse(packet)?.into_body::<T>()?)
     }
 
     fn into_body<T>(self) -> Result<T, prost::DecodeError>
@@ -291,24 +290,21 @@ impl SsoPacket {
             .build()
     }
 
-    pub fn parse(packet: Bytes, ctx: &Context) -> Result<SsoPacket, ParsePacketError> {
+    pub fn parse(packet: Bytes, ctx: &Context) -> Result<SsoPacket, PacketError> {
         // Lagrange.Core.Internal.Packets.ServicePacker.Parse
         let mut reader = PacketReader::new(packet);
         let _length = reader.u32();
         let protocol: PacketType = reader
             .u32()
             .try_into()
-            .map_err(ParsePacketError::UnknownPacketType)?;
+            .map_err(PacketError::UnknownSsoPacketType)?;
 
         let auth_flag = reader.u8();
         let _flag = reader.u8();
         let uin = reader.section(|p| p.string());
-        let uin = uin.parse().map_err(|_| ParsePacketError::InvalidUin(uin))?;
+        let uin = uin.parse().map_err(|_| PacketError::InvalidUin(uin))?;
         if uin != **ctx.key_store.uin.load() && protocol == PacketType::T12 {
-            return Err(ParsePacketError::UinMismatch(
-                **ctx.key_store.uin.load(),
-                uin,
-            ));
+            return Err(PacketError::UinMismatch(**ctx.key_store.uin.load(), uin));
         }
 
         let body = reader.bytes();
@@ -318,7 +314,7 @@ impl SsoPacket {
             1 => tea::tea_decrypt(&body, ctx.key_store.session.d2_key.load().as_ref()).into(),
             2 => tea::tea_decrypt(&body, &[0u8; 16]).into(),
             _ => {
-                return Err(ParsePacketError::UnknownAuthFlag(auth_flag));
+                return Err(PacketError::UnknownAuthFlag(auth_flag));
             }
         };
 
@@ -358,7 +354,7 @@ impl SsoPacket {
                 BinaryPacket(body),
             ))
         } else {
-            Err(ParsePacketError::PacketRetFailed {
+            Err(PacketError::SsoPacketRetFailed {
                 command,
                 sequence,
                 ret_code,
@@ -369,11 +365,11 @@ impl SsoPacket {
 }
 
 #[derive(Debug, Error)]
-pub enum ParsePacketError {
-    #[error("unknown packet type: {0}")]
-    UnknownPacketType(u32),
+pub enum PacketError {
+    #[error("unknown raw SsoPacket type: {0}")]
+    UnknownSsoPacketType(u32),
 
-    #[error("unknown auth flag: {0}")]
+    #[error("unknown raw SsoPacket auth flag: {0}")]
     UnknownAuthFlag(u8),
 
     #[error("invalid uin: {0}")]
@@ -382,19 +378,31 @@ pub enum ParsePacketError {
     #[error("uin mismatch, expected {0}, got {1}")]
     UinMismatch(u32, u32),
 
-    #[error("failed to inflate packet")]
+    #[error("failed to inflate SsoPacket")]
     InflateFailed(#[from] std::io::Error),
 
-    #[error("packet {command}#{sequence} ret failed with code {ret_code}, extra: {extra}")]
-    PacketRetFailed {
+    #[error("failed to parse SsoPacket from raw proto: {0}")]
+    SsoPacketParseFailed(#[from] prost::DecodeError),
+
+    #[error("SsoPacket {command} #{sequence} ret failed with code {ret_code}, extra: {extra}")]
+    SsoPacketRetFailed {
         command: String,
         sequence: u32,
         ret_code: i32,
         extra: String,
     },
 
-    #[error("failed to parse packet from raw proto: {0}")]
-    PacketParseFailed(#[from] prost::DecodeError),
+    #[error(
+        "OidbPacket {command} ret failed with code {ret_code}, client_wording: {client_wording}"
+    )]
+    OidbPacketRetFailed {
+        command: String,
+        ret_code: u32,
+        client_wording: String,
+    },
+
+    #[error("An error occurred when parsing packet: {0}")]
+    OtherError(String),
 }
 
 fn random_trace() -> String {

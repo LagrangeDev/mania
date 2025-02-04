@@ -44,15 +44,15 @@ impl ClientEvent for ImageGroupDownloadEvent {
         OidbPacket::new(0x11c4, 200, body, false, true).to_binary()
     }
 
-    fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
+    fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
         let packet = OidbPacket::parse_into::<Ntv2RichMediaResp>(packet)
             .expect("Failed to parse OidbPacket");
         let body = packet
             .download
-            .ok_or(ParseEventError::OtherError("Missing download".to_string()))?;
+            .ok_or(EventError::OtherError("Missing DownloadResp".to_string()))?;
         let info = body
             .info
-            .ok_or(ParseEventError::OtherError("Missing info".to_string()))?;
+            .ok_or(EventError::OtherError("Missing DownloadInfo".to_string()))?;
         let url = format!(
             "https://{}{}{}",
             info.domain, info.url_path, body.r_key_param

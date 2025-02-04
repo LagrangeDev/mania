@@ -11,7 +11,7 @@ impl ClientEvent for NtSsoAliveEvent {
         BinaryPacket(request.encode_to_vec().into())
     }
 
-    fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, ParseEventError> {
-        Ok(Box::new(Self {}))
+    fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+        Ok(Box::new(Self {})) // TODO: parse
     }
 }

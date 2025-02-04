@@ -107,7 +107,7 @@ static TLV_SER_MAP: Map<u16, TlvConstructor> = phf_map! {
     0x124_u16 => t124::T124::from_context,
 };
 
-type TlvDeserializer = fn(&mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError>;
+type TlvDeserializer = fn(&mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError>;
 static TLV_QR_DE_MAP: Map<u16, TlvDeserializer> = phf_map! {
     0x017_u16 => t017q::T017q::deserialize,
     0x018_u16 => t018q::T018q::deserialize,
@@ -175,7 +175,7 @@ pub trait TlvDe: Send {
     /// Deserialize a TLV object from a packet reader
     ///
     /// Tag is **not** included in the packet
-    fn deserialize(reader: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError>
+    fn deserialize(reader: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError>
     where
         Self: Sized;
 
@@ -188,22 +188,22 @@ pub trait TlvDe: Send {
 }
 
 /// Deserialize a TLV object from a packet reader
-pub fn deserialize_qrcode_tlv(reader: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+pub fn deserialize_qrcode_tlv(reader: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
     let tag = reader.u16();
     let de = TLV_QR_DE_MAP.get(&tag).ok_or_else(|| {
         let len = reader.u16();
         reader.read_packet(len as usize);
-        ParseTlvError::UnsupportedTag(tag)
+        TlvError::UnsupportedTag(tag)
     })?;
     de(reader)
 }
 
-pub fn deserialize_tlv(reader: &mut PacketReader) -> Result<Box<dyn TlvDe>, ParseTlvError> {
+pub fn deserialize_tlv(reader: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
     let tag = reader.u16();
     let de = TLV_DE_MAP.get(&tag).ok_or_else(|| {
         let len = reader.u16();
         reader.read_packet(len as usize);
-        ParseTlvError::UnsupportedTag(tag)
+        TlvError::UnsupportedTag(tag)
     })?;
     de(reader)
 }
@@ -254,12 +254,15 @@ impl TlvSet {
 }
 
 #[derive(Debug, Error)]
-pub enum ParseTlvError {
+pub enum TlvError {
     #[error("unsupported TLV tag: 0x{0:04x}")]
     UnsupportedTag(u16),
 
     #[error("protobuf decode error: {0}")]
     ProtobufDecodeError(#[from] prost::DecodeError),
+
+    #[error("missing or corrupted TLV: {0}")]
+    MissingTlv(u16),
 }
 
 mod prelude {
@@ -267,7 +270,7 @@ mod prelude {
     pub use crate::core::context::ExtendUuid;
     pub use crate::core::crypto::tea::tea_encrypt;
     pub use crate::core::packet::{PacketBuilder, PacketReader};
-    pub use crate::core::tlv::{serialize_tlv_set, ParseTlvError, TlvDe, TlvSer};
+    pub use crate::core::tlv::{serialize_tlv_set, TlvDe, TlvError, TlvSer};
     pub use bytes::Bytes;
     pub use prost::Message;
     pub use uuid::Uuid;
@@ -305,8 +308,8 @@ mod prelude {
 
         pub(in crate::core::tlv) fn proto<T: prost::Message + Default>(
             &mut self,
-        ) -> Result<T, ParseTlvError> {
-            T::decode(&mut self.bytes()).map_err(ParseTlvError::ProtobufDecodeError)
+        ) -> Result<T, TlvError> {
+            T::decode(&mut self.bytes()).map_err(TlvError::ProtobufDecodeError)
         }
 
         pub(in crate::core::tlv) fn bytes_with_length(&mut self) -> Bytes {
