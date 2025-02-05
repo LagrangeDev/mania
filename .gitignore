@@ -4,3 +4,6 @@ target/
 *.png
 *.json
 .run/
+
+# direnv
+/.direnv
