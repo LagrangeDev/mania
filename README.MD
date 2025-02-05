@@ -35,7 +35,7 @@
 |          |         |                           |         | Markdown      |   🔴    | Cookies           |   🔴    | FriendRequest       |   🔴    |
 |          |         |                           |         | MarketFace    | 🟡[^1]  | Send Message      |   🔴    | ~~FriendTyping~~    |   🔴    |
 |          |         |                           |         | Mention       |   🔴    |                   |         | ~~FriendVoiceCall~~ |   🔴    |
-|          |         |                           |         | MultiMsg      |   🔴    |                   |         |                     |         |
+|          |         |                           |         | MultiMsg      | 🟡[^1]  |                   |         |                     |         |
 |          |         |                           |         | Poke          |   🔴    |                   |         |                     |         |
 |          |         |                           |         | Record        |   🔴    |                   |         |                     |         |
 |          |         |                           |         | SpecialPoke   |   🔴    |                   |         |                     |         |

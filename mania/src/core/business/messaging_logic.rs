@@ -63,6 +63,25 @@ async fn messaging_logic_incoming(
                             }
                         }
                     }
+                    Entity::MultiMsg(ref mut multi) => match multi.chains.is_empty() {
+                        true => {
+                            let msg = handle
+                                .multi_msg_download(chain.uid.clone(), multi.res_id.clone())
+                                .await;
+                            match msg {
+                                Ok(Some(chains)) => {
+                                    multi.chains = chains;
+                                }
+                                Ok(None) => {
+                                    tracing::warn!("No chains found in MultiMsgDownloadEvent");
+                                }
+                                Err(e) => {
+                                    tracing::error!("Failed to download MultiMsg: {:?}", e);
+                                }
+                            }
+                        }
+                        false => {}
+                    },
                     _ => {}
                 }
             }

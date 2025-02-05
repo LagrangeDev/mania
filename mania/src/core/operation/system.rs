@@ -1,10 +1,12 @@
 use crate::core::business::BusinessHandle;
-use crate::core::event::downcast_event;
 use crate::core::event::message::image_c2c_download::ImageC2CDownloadEvent;
 use crate::core::event::message::image_group_download::ImageGroupDownloadEvent;
+use crate::core::event::message::multi_msg_download::MultiMsgDownloadEvent;
 use crate::core::event::system::fetch_rkey::FetchRKeyEvent;
+use crate::core::event::{downcast_event, downcast_mut_event};
 use crate::core::protos::service::oidb::IndexNode;
 use crate::dda;
+use crate::message::chain::MessageChain;
 use std::sync::Arc;
 
 impl BusinessHandle {
@@ -48,5 +50,19 @@ impl BusinessHandle {
         let res = self.send_event(&mut fetch_event).await?;
         let event: &ImageC2CDownloadEvent = downcast_event(&res).unwrap();
         Ok(event.image_url.clone())
+    }
+
+    pub async fn multi_msg_download(
+        self: &Arc<Self>,
+        uid: String,
+        res_id: String,
+    ) -> crate::Result<Option<Vec<MessageChain>>> {
+        let mut fetch_event = dda!(MultiMsgDownloadEvent {
+            uid: Some(uid),
+            res_id: Some(res_id),
+        });
+        let mut res = self.send_event(&mut fetch_event).await?;
+        let event: &mut MultiMsgDownloadEvent = downcast_mut_event(&mut *res).unwrap();
+        Ok(event.chains.take())
     }
 }

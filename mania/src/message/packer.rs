@@ -1,6 +1,7 @@
-use crate::core::event::EventError;
 use crate::core::protos::message::PushMsgBody;
 use crate::dda;
+use crate::entity::bot_friend::BotFriend;
+use crate::entity::bot_group_member::BotGroupMember;
 use crate::message::chain::{
     ClientSequence, FriendMessageUniqueElem, GroupMessageUniqueElem, MessageChain, MessageId,
     MessageType,
@@ -71,7 +72,63 @@ impl MessagePacker {
         }))
     }
 
-    fn parse_fake_chain(_: PushMsgBody) -> Result<MessageChain, EventError> {
-        todo!()
+    pub(crate) fn parse_fake_chain(body: PushMsgBody) -> Result<MessageChain, String> {
+        let make_group_extra = |body: &PushMsgBody| -> Option<GroupMessageUniqueElem> {
+            Some(GroupMessageUniqueElem {
+                group_uin: body.response_head.as_ref()?.grp.as_ref()?.group_uin,
+                group_member_info: Some(dda!(BotGroupMember {
+                    member_card: Some(
+                        body.response_head
+                            .as_ref()?
+                            .grp
+                            .as_ref()?
+                            .member_name
+                            .clone()
+                    ),
+                    member_name: body
+                        .response_head
+                        .as_ref()?
+                        .grp
+                        .as_ref()?
+                        .member_name
+                        .clone(),
+                    uid: body
+                        .response_head
+                        .as_ref()?
+                        .from_uid
+                        .clone()
+                        .unwrap_or_default(),
+                })),
+            })
+        };
+        let make_friend_extra = |body: &PushMsgBody| -> Option<FriendMessageUniqueElem> {
+            Some(FriendMessageUniqueElem {
+                client_sequence: ClientSequence(
+                    body.content_head.as_ref()?.sequence.unwrap_or_default(),
+                ),
+                friend_info: Some(dda!(BotFriend {
+                    nickname: body
+                        .response_head
+                        .as_ref()?
+                        .from_uid
+                        .clone()
+                        .unwrap_or_default(),
+                })),
+            })
+        };
+        let is_group = body
+            .response_head
+            .as_ref()
+            .expect("missing response_head")
+            .grp
+            .is_some();
+        let typ = if is_group {
+            MessageType::Group(make_group_extra(&body).unwrap())
+        } else {
+            MessageType::Friend(make_friend_extra(&body).unwrap())
+        };
+        let mut chain = MessagePacker::parse_chain(body)?;
+        chain.typ = typ;
+        Ok(chain)
     }
 }

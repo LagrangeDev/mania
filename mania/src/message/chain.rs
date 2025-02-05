@@ -105,6 +105,10 @@ impl Display for MessageChain {
 }
 
 impl MessageChain {
+    pub fn is_group(&self) -> bool {
+        matches!(self.typ, MessageType::Group(_))
+    }
+
     pub(crate) fn friend(friend_uin: u32, friend_uid: String, self_uid: String) -> Self {
         dda!(Self {
             typ: MessageType::Friend(FriendMessageUniqueElem::default()),

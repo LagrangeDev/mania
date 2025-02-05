@@ -74,6 +74,10 @@ pub fn downcast_event<T: ServerEvent + 'static>(event: &impl AsRef<dyn ServerEve
     event.as_ref().as_any().downcast_ref::<T>()
 }
 
+pub fn downcast_mut_event<T: ServerEvent + 'static>(event: &mut dyn ServerEvent) -> Option<&mut T> {
+    event.as_any_mut().downcast_mut::<T>()
+}
+
 #[derive(Debug, Error)]
 pub enum EventError {
     #[error("unsupported event, commend: {0}")]
