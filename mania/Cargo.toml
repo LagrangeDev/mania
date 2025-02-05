@@ -20,18 +20,10 @@ rand = "0.8.5"
 serde = { version = "1.0.217", features = ["derive"] }
 surge-ping = "0.8.1"
 thiserror = "2.0.11"
-tokio = { version = "1.43.0", features = [
-  "net",
-  "io-util",
-  "time",
-  "macros",
-  "rt-multi-thread",
-  "signal",
-  "tracing",
-] }
-tracing = "0.1.41"
+tokio.workspace = true
+tracing.workspace = true
 uuid = { version = "1.12.0", features = ["serde", "v4"] }
-hex = { workspace = true }
+hex.workspace = true
 reqwest = { version = "0.12.12", default-features = false, features = [
   "rustls-tls",
   "charset",
@@ -43,7 +35,7 @@ futures = "0.3.31"
 inventory = "0.3.17"
 once_cell = "1.20.2"
 p256 = { version = "0.13.2", features = ["ecdh"] }
-md-5 = { workspace = true }
+md-5.workspace = true
 elliptic-curve = "0.13.8"
 log = "0.4.25"
 rand_chacha = "0.3.1"
