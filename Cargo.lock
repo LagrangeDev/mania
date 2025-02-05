@@ -493,6 +493,7 @@ dependencies = [
 name = "examples"
 version = "0.0.1"
 dependencies = [
+ "cfg-if",
  "console-subscriber",
  "mania",
  "tokio",

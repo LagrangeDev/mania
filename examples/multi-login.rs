@@ -3,8 +3,8 @@ use std::io::Write;
 
 #[tokio::main]
 async fn main() {
-    #[cfg(feature = "tokio-tracing")]
-    {
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "tokio-tracing")] {
         use tracing_subscriber::prelude::*;
         let console_layer = console_subscriber::spawn();
         tracing_subscriber::registry()
@@ -15,12 +15,11 @@ async fn main() {
             )
             .init();
         tracing::info!("tokio-tracing initialized.");
-    }
-    #[cfg(not(feature = "tokio-tracing"))]
-    {
-        tracing_subscriber::fmt()
+        } else {
+            tracing_subscriber::fmt()
             .with_env_filter(tracing_subscriber::EnvFilter::new("info"))
             .init();
+        }
     }
     let config = ClientConfig::default();
     let device = DeviceInfo::load("device.json").unwrap_or_else(|_| {
