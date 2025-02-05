@@ -1,5 +1,5 @@
-use std::io::Write;
 use mania::{Client, ClientConfig, DeviceInfo, KeyStore};
+use std::io::Write;
 
 #[tokio::main]
 async fn main() {
