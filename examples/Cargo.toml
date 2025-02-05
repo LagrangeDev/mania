@@ -1,12 +1,21 @@
-[workspace]
-resolver = "2"
-members = ["*"]
-exclude = ["target"]
+[package]
+name = "examples"
+description = "examples for mania"
+version.workspace = true
+edition.workspace = true
+license-file.workspace = true
 
-[profile.release]
-opt-level = 2
-debug = false
-lto = true
-incremental = false
-codegen-units = 1
-strip = true
+[dependencies]
+mania = { path = "../mania" }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+console-subscriber = { version = "0.4.1", optional = true }
+tokio = { version = "1.43.0", features = ["full"] }
+
+[features]
+default = []
+tokio-tracing = ["console-subscriber"]
+
+[[example]]
+name = "multi-login"
+path = "./multi-login.rs"
