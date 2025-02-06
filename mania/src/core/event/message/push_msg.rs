@@ -76,16 +76,24 @@ impl ClientEvent for PushMessageEvent {
             PkgType::try_from(typ).map_err(|_| EventError::UnknownOlpushMessageTypeError(typ))?;
         let mut chain = MessageChain::default(); // FIXME: maybe exist better way to handle this
         match packet_type {
-            PkgType::PrivateMessage | PkgType::GroupMessage | PkgType::TempMessage => {
-                chain = MessagePacker::parse_chain(packet.message.expect("PushMsgBody is None"))
+            PkgType::PrivateMessage
+            | PkgType::GroupMessage
+            | PkgType::TempMessage
+            | PkgType::PrivateRecordMessage => {
+                chain =
+                    MessagePacker::parse_chain(packet.message.ok_or_else(|| {
+                        EventError::OtherError("PushMsgBody is None".to_string())
+                    })?)
                     .map_err(|e| EventError::OtherError(format!("parse_chain failed: {}", e)))?;
             }
             PkgType::PrivateFileMessage => {
                 chain =
-                    MessagePacker::parse_private_file(packet.message.expect("PushMsgBody is None"))
-                        .map_err(|e| {
-                            EventError::OtherError(format!("parse_private_file failed: {}", e))
-                        })?;
+                    MessagePacker::parse_private_file(packet.message.ok_or_else(|| {
+                        EventError::OtherError("PushMsgBody is None".to_string())
+                    })?)
+                    .map_err(|e| {
+                        EventError::OtherError(format!("parse_file_chain failed: {}", e))
+                    })?;
             }
             // TODO: handle other message types
             _ => {

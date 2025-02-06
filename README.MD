@@ -23,7 +23,7 @@
 |----------|:-------:|----------------------------|:-------:|:--------------|:-------:|:------------------|:-------:|:--------------------|:-------:|
 | Windows  |   🔴    | QrCode                     |   🟢    | BounceFace    |   🔴    | Poke              |   🔴    | Captcha             |   🔴    |
 | macOS    |   🔴    | ~~Password~~               |   🔴    | Face          | 🟡 [^1] | Recall            |   🔴    | BotOnline           |   🔴    |
-| Linux    |   🟢    | EasyLogin                  |   🟢    | File          | 🟡[^1]  | Leave Group       |   🔴    | BotOffline          |   🔴    |
+| Linux    |   🟢    | EasyLogin                  |   🟡    | File          | 🟡[^1]  | Leave Group       |   🔴    | BotOffline          |   🔴    |
 |          |         | UnusualDevice<br/>Password |   🔴    | Forward       | 🟡[^1]  | Set Special Title |   🔴    | Message             |   🔴    |
 |          |         | UnusualDevice<br/>Easy     |   🔴    | ~~GreyTip~~   |   🔴    | Kick Member       |   🔴    | Poke                |   🔴    |
 |          |         | ~~NewDeviceVerify~~        |   🔴    | GroupReaction |   🔴    | Mute Member       |   🔴    | MessageRecall       |   🔴    |

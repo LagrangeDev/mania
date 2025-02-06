@@ -7,6 +7,7 @@ pub mod light_app;
 pub mod market_face;
 pub mod mention;
 pub mod multi_msg;
+pub mod record;
 pub mod text;
 
 pub use face::FaceEntity as Face;
@@ -18,6 +19,7 @@ pub use light_app::LightAppEntity as LightApp;
 pub use market_face::MarketFaceEntity as MarketFace;
 pub use mention::MentionEntity as Mention;
 pub use multi_msg::MultiMsgEntity as MultiMsg;
+pub use record::RecordEntity as Record;
 pub use text::TextEntity as Text;
 
 use crate::core::protos::message::Elem;
@@ -45,6 +47,7 @@ pub enum Entity {
     MultiMsg(multi_msg::MultiMsgEntity),
     Mention(mention::MentionEntity),
     File(file::FileEntity),
+    Record(record::RecordEntity),
 }
 
 macro_rules! impl_entity_show {
@@ -106,10 +109,14 @@ macro_rules! impl_entity_unpack {
     }
 }
 
-impl_entity_show!(Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File);
-impl_entity_pack!(Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File);
+impl_entity_show!(
+    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record
+);
+impl_entity_pack!(
+    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record
+);
 impl_entity_unpack!(
-    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File
+    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record
 );
 
 impl Entity {

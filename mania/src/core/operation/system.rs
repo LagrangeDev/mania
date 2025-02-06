@@ -4,6 +4,8 @@ use crate::core::event::message::file_group_download::FileGroupDownloadEvent;
 use crate::core::event::message::image_c2c_download::ImageC2CDownloadEvent;
 use crate::core::event::message::image_group_download::ImageGroupDownloadEvent;
 use crate::core::event::message::multi_msg_download::MultiMsgDownloadEvent;
+use crate::core::event::message::record_c2c_download::RecordC2CDownloadEvent;
+use crate::core::event::message::record_group_download::RecordGroupDownloadEvent;
 use crate::core::event::system::fetch_rkey::FetchRKeyEvent;
 use crate::core::event::{downcast_event, downcast_mut_event};
 use crate::core::protos::service::oidb::IndexNode;
@@ -101,5 +103,77 @@ impl BusinessHandle {
         let mut res = self.send_event(&mut event).await?;
         let event: &mut FileC2CDownloadEvent = downcast_mut_event(&mut *res).unwrap();
         Ok(event.file_url.to_owned())
+    }
+
+    // TODO: Should parameter requests use an enum?
+    pub(crate) async fn download_group_record_by_node(
+        self: &Arc<Self>,
+        group_uin: u32,
+        node: Option<IndexNode>,
+    ) -> crate::Result<String> {
+        self.download_group_record_inner(group_uin, node, None)
+            .await
+    }
+
+    pub(crate) async fn download_group_record_by_uuid(
+        self: &Arc<Self>,
+        group_uin: u32,
+        audio_uuid: Option<String>,
+    ) -> crate::Result<String> {
+        self.download_group_record_inner(group_uin, None, audio_uuid)
+            .await
+    }
+
+    async fn download_group_record_inner(
+        self: &Arc<Self>,
+        group_uin: u32,
+        node: Option<IndexNode>,
+        audio_uuid: Option<String>,
+    ) -> crate::Result<String> {
+        let mut event = dda!(RecordGroupDownloadEvent {
+            group_uin,
+            node,
+            file_uuid: audio_uuid.unwrap_or_default(),
+        });
+        let mut res = self.send_event(&mut event).await?;
+        let event: &mut RecordGroupDownloadEvent = downcast_mut_event(&mut *res).unwrap();
+        Ok(event.audio_url.to_owned())
+    }
+
+    // TODO: Should parameter requests use an enum?
+    pub(crate) async fn download_c2c_record_by_node(
+        self: &Arc<Self>,
+        node: Option<IndexNode>,
+    ) -> crate::Result<String> {
+        self.download_c2c_record_inner(node, None).await
+    }
+
+    pub(crate) async fn download_c2c_record_by_uuid(
+        self: &Arc<Self>,
+        audio_uuid: Option<String>,
+    ) -> crate::Result<String> {
+        self.download_c2c_record_inner(None, audio_uuid).await
+    }
+
+    async fn download_c2c_record_inner(
+        self: &Arc<Self>,
+        node: Option<IndexNode>,
+        audio_uuid: Option<String>,
+    ) -> crate::Result<String> {
+        let self_uid = self
+            .context
+            .key_store
+            .uid
+            .load()
+            .as_ref()
+            .map(|arc| arc.as_ref().clone());
+        let mut event = dda!(RecordC2CDownloadEvent {
+            self_uid: self_uid.expect("Missing self_uid"),
+            node,
+            file_uuid: audio_uuid.unwrap_or_default(),
+        });
+        let mut res = self.send_event(&mut event).await?;
+        let event: &mut RecordC2CDownloadEvent = downcast_mut_event(&mut *res).unwrap();
+        Ok(event.audio_url.to_owned())
     }
 }

@@ -121,6 +121,61 @@ async fn messaging_logic_incoming(
                                     _ => None,
                                 }
                             }
+                            Entity::Record(ref mut record) => {
+                                let node = || -> Option<_> {
+                                    record
+                                        .msg_info
+                                        .as_ref()
+                                        .and_then(|info| info.msg_info_body.first())
+                                        .and_then(|node| node.index.clone())
+                                };
+                                let url_result = match (&record.msg_info, &record.audio_uuid) {
+                                    (Some(_), _) => match &chain.typ {
+                                        MessageType::Group(grp) => {
+                                            handle
+                                                .download_group_record_by_node(
+                                                    grp.group_uin,
+                                                    node(),
+                                                )
+                                                .await
+                                        }
+                                        MessageType::Friend(_) | MessageType::Temp => {
+                                            handle.download_c2c_record_by_node(node()).await
+                                        }
+                                        _ => continue,
+                                    },
+                                    (None, Some(uuid)) => match &chain.typ {
+                                        MessageType::Group(grp) => {
+                                            handle
+                                                .download_group_record_by_uuid(
+                                                    grp.group_uin,
+                                                    Some(uuid.clone()),
+                                                )
+                                                .await
+                                        }
+                                        MessageType::Friend(_) | MessageType::Temp => {
+                                            handle
+                                                .download_c2c_record_by_uuid(Some(uuid.clone()))
+                                                .await
+                                        }
+                                        _ => continue,
+                                    },
+                                    _ => {
+                                        tracing::error!(
+                                            "{:?} Missing msg_info or audio_uuid!",
+                                            record
+                                        );
+                                        continue;
+                                    }
+                                };
+                                record.audio_url = match url_result {
+                                    Ok(url) => url,
+                                    Err(e) => {
+                                        tracing::error!("Failed to download record: {:?}", e);
+                                        continue;
+                                    }
+                                }
+                            }
                             _ => {}
                         }
                     }
