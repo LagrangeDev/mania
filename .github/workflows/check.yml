@@ -57,7 +57,7 @@ jobs:
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
 
-      - name: check clippy
+      - name: Check clippy
         run: |
           nix build .#checks.x86_64-linux.clippy 2>&1
 
@@ -76,7 +76,7 @@ jobs:
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
 
-      - name: check fmt
+      - name: Check fmt
         run: |
           nix build .#checks.x86_64-linux.fmt 2>&1
 
@@ -95,7 +95,7 @@ jobs:
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
 
-      - name: check doc
+      - name: Check doc
         run: |
           nix build .#checks.x86_64-linux.doc 2>&1
 
@@ -114,6 +114,6 @@ jobs:
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
 
-      - name: check clippy
+      - name: Check test
         run: |
           nix build .#checks.x86_64-linux.test 2>&1
