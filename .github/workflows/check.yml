@@ -151,6 +151,6 @@ jobs:
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
 
-      - name: Check test
+      - name: Check typo
         run: |
           nix build .#checks.x86_64-linux.typo 2>&1
