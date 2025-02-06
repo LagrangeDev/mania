@@ -1,4 +1,4 @@
-name: flake-update
+name: Automatically Update Flake
 on:
   workflow_dispatch:
   schedule:
