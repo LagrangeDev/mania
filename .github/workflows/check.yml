@@ -1,17 +1,83 @@
-name: Check
+name: Run Checks
+
 on:
-  push:
-  pull_request:
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["build-nix-package"]
+    types:
+      - completed
+
+env:
+  RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  checks:
+  check-clippy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-      - name: run check
-        run: |-
-          nix flake check 2>&1
+        uses: nixbuild/nix-quick-install-action@v27
+
+      - name: Restore Nix Cache
+        uses: nix-community/cache-nix-action@v5
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
+
+      - name: check clippy
+        run: |
+          nix build .#checks.x86_64-linux.clippy 2>&1
+
+  check-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v27
+
+      - name: Restore Nix Cache
+        uses: nix-community/cache-nix-action@v5
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
+
+      - name: check fmt
+        run: |
+          nix build .#checks.x86_64-linux.fmt 2>&1
+
+  check-doc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v27
+
+      - name: Restore Nix Cache
+        uses: nix-community/cache-nix-action@v5
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
+
+      - name: check doc
+        run: |
+          nix build .#checks.x86_64-linux.doc 2>&1
+
+  check-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v27
+
+      - name: Restore Nix Cache
+        uses: nix-community/cache-nix-action@v5
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
+
+      - name: check clippy
+        run: |
+          nix build .#checks.x86_64-linux.test 2>&1
