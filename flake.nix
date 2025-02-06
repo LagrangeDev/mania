@@ -16,6 +16,9 @@
       url = "github:rustsec/advisory-db";
       flake = false;
     };
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+    };
   };
 
   outputs =
@@ -148,11 +151,14 @@
           );
         };
         devShells.default = pkgs.mkShell {
+          inputsFrom = builtins.attrValues self.checks."${system}";
           packages = with pkgs; [
-            (rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
             rust-analyzer
+            cargo-flamegraph
+            cargo-tarpaulin
+            lldb
           ];
-          nativeBuildInputs = with pkgs; [ protobuf ];
+          shellHook = '''';
         };
       }
     )
@@ -161,5 +167,4 @@
         inherit (self.packages."${final.system}") mania;
       };
     };
-
 }
