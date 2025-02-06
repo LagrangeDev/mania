@@ -136,3 +136,21 @@ jobs:
       - name: Check test
         run: |
           nix build .#checks.x86_64-linux.audit 2>&1
+  check-typo:
+    runs-on: ubuntu-latest
+    needs: build-nixpkg
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v27
+
+      - name: Restore Nix Cache
+        uses: nix-community/cache-nix-action@v5
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
+
+      - name: Check test
+        run: |
+          nix build .#checks.x86_64-linux.typo 2>&1

@@ -1,0 +1,5 @@
+[files]
+ignore-hidden = false
+[default]
+check-filename = true
+check-file = true
