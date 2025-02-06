@@ -1,27 +1,17 @@
 name: Check
-on: [push, pull_request]
-env:
-  RUSTFLAGS: "-Dwarnings"
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
-  clippy-check:
+  checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Run clippy
-        run: |
-          sudo apt-get update && sudo apt-get install protobuf-compiler
-          rustup toolchain install nightly
-          rustup component add --toolchain nightly clippy
-          cargo +nightly clippy --all-targets --all-features
-
-  fmt-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run fmt
-        run: |
-          sudo apt-get update && sudo apt-get install protobuf-compiler
-          rustup toolchain install nightly
-          rustup component add --toolchain nightly rustfmt
-          cargo +nightly fmt --all -- --check
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+      - name: run check
+        run: |-
+          nix flake check 2>&1
