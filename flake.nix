@@ -102,6 +102,17 @@
           };
         };
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+        checkTypo =
+          pkgs.runCommandNoCCLocal "check-typo"
+            {
+              src = ./.;
+              nativeBuildInputs = with pkgs; [ typos ];
+            }
+            ''
+              mkdir -p $out
+
+              cd $src && typos -c $src/typos.toml
+            '';
       in
       {
         packages = {
@@ -123,6 +134,7 @@
         };
         checks = {
           inherit (self.packages."${system}") mania;
+          typo = checkTypo;
           audit = craneLib.cargoAudit (
             commonArgs
             // {
