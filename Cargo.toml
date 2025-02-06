@@ -20,6 +20,7 @@ tokio = { version = "1.43.0", features = [
   "signal",
   "tracing",
 ] }
+uuid = { version = "1.12.1", features = ["serde", "v4"] }
 
 [profile.release]
 opt-level = 2

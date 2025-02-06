@@ -1,5 +1,8 @@
 use mania::{Client, ClientConfig, DeviceInfo, KeyStore};
+use std::fs;
 use std::io::Write;
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
@@ -41,28 +44,34 @@ async fn main() {
         client.spawn().await;
     });
     if need_login {
-        tracing::info!("Session is invalid, need to login again!");
-        match operator.fetch_qrcode().await {
-            Ok((url, bytes)) => {
-                tracing::info!(
-                    "QR code fetched successfully! url: {}, also saved to qr.png",
-                    url
-                );
-                let mut file = std::fs::File::create("qrcode.png").unwrap();
-                file.write_all(&bytes).expect(
-                    "Failed to write QR code image to file, please check the current directory.",
-                )
+        tracing::warn!("Session is invalid, need to login again!");
+        let login_res: Result<(), String> = async {
+            let (url, bytes) = operator.fetch_qrcode().await.map_err(|e| e.to_string())?;
+            let qr_code_name = format!("qrcode_{}.png", Uuid::new_v4());
+            fs::write(&qr_code_name, &bytes).map_err(|e| e.to_string())?;
+            tracing::info!(
+                "QR code fetched successfully! url: {}, saved to {}",
+                url,
+                qr_code_name
+            );
+            let login_res = operator.login_by_qrcode().await.map_err(|e| e.to_string());
+            match fs::remove_file(&qr_code_name).map_err(|e| e.to_string()) {
+                Ok(_) => tracing::info!("QR code file {} deleted successfully", qr_code_name),
+                Err(e) => tracing::error!("Failed to delete QR code file {}: {}", qr_code_name, e),
             }
-            Err(e) => tracing::error!("Failed to fetch QR code: {:?}", e),
+            login_res
         }
-        operator
-            .login_by_qrcode()
-            .await
-            .expect("Failed to login by QR code");
+        .await;
+        if let Err(e) = login_res {
+            panic!("Failed to login: {:?}", e);
+        }
     } else {
-        tracing::info!("Session is still valid, no need to login again.");
+        tracing::info!("Session is still valid, trying to online...");
     }
-    let _tx = operator.online().await.unwrap();
+    if let Err(e) = operator.online().await {
+        panic!("Failed to set online status: {:?}", e);
+    }
+    tracing::info!("Login successfully!");
     operator
         .update_key_store()
         .save("keystore.json")

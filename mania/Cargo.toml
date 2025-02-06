@@ -22,7 +22,7 @@ surge-ping = "0.8.1"
 thiserror = "2.0.11"
 tokio.workspace = true
 tracing.workspace = true
-uuid = { version = "1.12.1", features = ["serde", "v4"] }
+uuid.workspace = true
 hex.workspace = true
 reqwest = { version = "0.12.12", default-features = false, features = [
   "rustls-tls",
