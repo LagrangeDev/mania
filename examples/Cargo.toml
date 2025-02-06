@@ -1,5 +1,5 @@
 [package]
-name = "examples"
+name = "mania-examples"
 description = "examples for mania"
 version.workspace = true
 edition.workspace = true

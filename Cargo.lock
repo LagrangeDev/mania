@@ -527,18 +527,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "examples"
-version = "0.0.1"
-dependencies = [
- "cfg-if",
- "console-subscriber",
- "mania",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1252,6 +1240,18 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "mania-examples"
+version = "0.0.1"
+dependencies = [
+ "cfg-if",
+ "console-subscriber",
+ "mania",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
