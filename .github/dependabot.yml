@@ -1,0 +1,12 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: monthly
+    # TODO: wait for refactor the related code
+    ignore:
+      - dependency-name: rand
+      - dependency-name: rand_chacha
+      - dependency-name: elliptic-curve
+      - dependency-name: p256
