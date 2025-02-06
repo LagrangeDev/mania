@@ -1,7 +1,6 @@
 use mania::{Client, ClientConfig, DeviceInfo, KeyStore};
 use std::fs;
 use std::io::Write;
-use std::sync::Arc;
 use uuid::Uuid;
 
 #[tokio::main]
