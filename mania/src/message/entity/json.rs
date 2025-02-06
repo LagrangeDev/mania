@@ -5,6 +5,7 @@ pub struct JsonEntity {
     pub json: String,
     pub res_id: String,
 }
+
 impl Debug for JsonEntity {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "[Json]: {}", self.json)

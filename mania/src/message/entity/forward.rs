@@ -36,13 +36,7 @@ impl MessageEntity for ForwardEntity {
     fn unpack_element(elem: &Elem) -> Option<Self> {
         match elem.src_msg.as_ref() {
             Some(src) => {
-                let pb_reserve = src
-                    .pb_reserve
-                    .as_ref()?
-                    .bytes()
-                    .filter_map(Result::ok)
-                    .collect::<Vec<_>>();
-                let reserve = Preserve::decode(Bytes::from(pb_reserve)).ok()?;
+                let reserve = Preserve::decode(&*src.pb_reserve.clone()?).ok()?;
                 Some(dda!(Self {
                     time: DateTime::from_timestamp(src.time.unwrap_or(0) as i64, 0)?,
                     sequence: reserve.client_sequence.unwrap_or(src.orig_seqs[0]),
