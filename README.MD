@@ -37,7 +37,7 @@
 |          |         |                            |         | Mention       | 🟡[^1]  |                   |         | ~~FriendVoiceCall~~ |   🔴    |
 |          |         |                            |         | MultiMsg      | 🟡[^1]  |                   |         |                     |         |
 |          |         |                            |         | Poke          |   🔴    |                   |         |                     |         |
-|          |         |                            |         | Record        |   🔴    |                   |         |                     |         |
+|          |         |                            |         | Record        | 🟡[^1]  |                   |         |                     |         |
 |          |         |                            |         | SpecialPoke   |   🔴    |                   |         |                     |         |
 |          |         |                            |         | Text          |   🟢    |                   |         |                     |         |
 |          |         |                            |         | Video         |   🔴    |                   |         |                     |         |
