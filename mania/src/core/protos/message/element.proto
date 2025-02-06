@@ -99,7 +99,7 @@ message ElemFlags2 {
   repeated Instance Insts = 7;
   uint32 MsgRptCnt = 8;
   Instance SrcInst = 9;
-  uint32 Longtitude = 10;
+  uint32 Longitude = 10;
   uint32 Latitude = 11;
   uint32 CustomFont = 12;
   PcSupportDef PcSupportDef = 13;

@@ -12,7 +12,7 @@ message OidbSvcTrpcTcp0xFE7_3 {
 }
 
 message OidbSvcTrpcScp0xFE7_3Body {
-  // all ture
+  // all true
   bool MemberName = 10;
   bool MemberCard = 11;
   bool Level = 12;

@@ -100,18 +100,18 @@ message RoutingHead {
   optional Trans0X211 Trans0X211 = 15;
 }
 
-message SsoReadedReport {
-  optional SsoReadedReportGroup Group = 1;
-  optional SsoReadedReportC2C C2C = 2;
+message SsoReaddedReport {
+  optional SsoReaddedReportGroup Group = 1;
+  optional SsoReaddedReportC2C C2C = 2;
 }
 
-message SsoReadedReportC2C {
+message SsoReaddedReportC2C {
   optional string TargetUid = 2;
   uint32 Time = 3;
   uint32 StartSequence = 4;
 }
 
-message SsoReadedReportGroup {
+message SsoReaddedReportGroup {
   uint32 GroupUin = 1;
   uint32 StartSequence = 2;
 }

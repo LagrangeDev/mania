@@ -14,5 +14,5 @@ message OidbSvcTrpcTcp0x89A_0State {
 
 message OidbSvcTrpcTcp0x89A_0Response {
   uint32 GroupUin = 1;
-  optional string ErorMsg = 2;
+  optional string ErrorMsg = 2;
 }

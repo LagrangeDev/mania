@@ -122,7 +122,7 @@ message Action {
   int32 Type = 1;
   Permission Permission = 2;
   // uint64 ClickLimit = 3;
-  string UnsupportTips = 4;
+  string UnsupportedTips = 4;
   string Data = 5;
   bool Reply = 7;
   bool Enter = 8;
