@@ -12,6 +12,10 @@
     flake-utils = {
       url = "github:numtide/flake-utils";
     };
+    advisory-db = {
+      url = "github:rustsec/advisory-db";
+      flake = false;
+    };
   };
 
   outputs =
@@ -21,6 +25,7 @@
       nixpkgs,
       rust-overlay,
       crane,
+      advisory-db,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
@@ -115,6 +120,12 @@
         };
         checks = {
           inherit (self.packages."${system}") mania;
+          audit = craneLib.cargoAudit (
+            commonArgs
+            // {
+              inherit advisory-db;
+            }
+          );
           clippy = craneLib.cargoClippy (
             commonArgs
             // {
