@@ -97,6 +97,9 @@ pub enum EventError {
 
     #[error("An mania internal event error occurred: {0}")]
     OtherError(String),
+
+    #[error("An internal oidb packet inner error occurred, ret_code: {0}, wording: {1}")]
+    OidbPacketInternalError(i32, String),
 }
 
 pub(crate) mod prelude {

@@ -1,4 +1,4 @@
-use crate::core::protos::message::PushMsgBody;
+use crate::core::protos::message::{FileExtra, PushMsgBody};
 use crate::dda;
 use crate::entity::bot_friend::BotFriend;
 use crate::entity::bot_group_member::BotGroupMember;
@@ -6,8 +6,11 @@ use crate::message::chain::{
     ClientSequence, FriendMessageUniqueElem, GroupMessageUniqueElem, MessageChain, MessageId,
     MessageType,
 };
+use crate::message::entity::file::{FileC2CUnique, FileEntity, FileUnique};
 use crate::message::entity::Entity;
+use bytes::Bytes;
 use chrono::{DateTime, Utc};
+use prost::Message;
 
 pub(crate) struct MessagePacker;
 
@@ -130,5 +133,46 @@ impl MessagePacker {
         let mut chain = MessagePacker::parse_chain(body)?;
         chain.typ = typ;
         Ok(chain)
+    }
+
+    pub(crate) fn parse_private_file(body: PushMsgBody) -> Result<MessageChain, String> {
+        let msg_content = body
+            .body
+            .as_ref()
+            .and_then(|b| b.msg_content.clone())
+            .ok_or_else(|| "missing msg_content".to_string())?;
+
+        let mut base_chain = MessagePacker::parse_chain(body)?;
+        let extra = FileExtra::decode(Bytes::from(msg_content))
+            .map_err(|e| format!("failed to decode FileExtra: {:?}", e))?;
+        let file = extra
+            .file
+            .as_ref()
+            .ok_or_else(|| "missing file".to_string())?;
+        match (
+            file.file_size.as_ref(),
+            file.file_name.as_ref(),
+            file.file_md5.as_ref(),
+            file.file_uuid.as_ref(),
+            file.file_hash.as_ref(),
+        ) {
+            (
+                Some(file_size),
+                Some(file_name),
+                Some(file_md5),
+                Some(file_uuid),
+                Some(file_hash),
+            ) => base_chain.entities.push(Entity::File(dda!(FileEntity {
+                file_size: *file_size as u64,
+                file_name: file_name.to_owned(),
+                file_md5: Bytes::from(file_md5.to_owned()),
+                extra: Some(FileUnique::C2C(FileC2CUnique {
+                    file_uuid: Some(file_uuid.to_owned()),
+                    file_hash: Some(file_hash.to_owned()),
+                })),
+            }))),
+            _ => return Err("missing file fields".to_string()),
+        }
+        Ok(base_chain)
     }
 }

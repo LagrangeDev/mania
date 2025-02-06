@@ -5,6 +5,7 @@ use crate::core::event::prelude::*;
 use crate::core::event::system::alive::AliveEvent;
 use crate::core::event::system::info_sync::InfoSyncEvent;
 use crate::message::chain::MessageType;
+use crate::message::entity::file::FileUnique;
 use crate::message::entity::Entity;
 use mania_macros::handle_event;
 use std::sync::Arc;
@@ -29,61 +30,102 @@ async fn messaging_logic_incoming(
 ) -> &dyn ServerEvent {
     match event {
         _ if let Some(msg) = event.as_any_mut().downcast_mut::<PushMessageEvent>() => {
-            let chain = &mut msg.chain;
-            for entity in &mut chain.entities {
-                match entity {
-                    Entity::Image(ref mut image) => {
-                        if !image.url.contains("&rkey=") {
-                            continue;
-                        }
-                        let index_node = match image
-                            .msg_info
-                            .as_ref()
-                            .and_then(|info| info.msg_info_body.first())
-                            .and_then(|node| node.index.clone())
-                        {
-                            Some(idx) => idx,
-                            None => continue,
-                        };
-                        let download = match &chain.typ {
-                            MessageType::Group(grp) => {
-                                handle.download_group_image(grp.group_uin, index_node).await
+            match &mut msg.chain {
+                Some(chain) => {
+                    for entity in &mut chain.entities {
+                        match entity {
+                            Entity::Image(ref mut image) => {
+                                if !image.url.contains("&rkey=") {
+                                    continue;
+                                }
+                                let index_node = match image
+                                    .msg_info
+                                    .as_ref()
+                                    .and_then(|info| info.msg_info_body.first())
+                                    .and_then(|node| node.index.clone())
+                                {
+                                    Some(idx) => idx,
+                                    None => continue,
+                                };
+                                let download = match &chain.typ {
+                                    MessageType::Group(grp) => {
+                                        handle.download_group_image(grp.group_uin, index_node).await
+                                    }
+                                    MessageType::Friend(_) | MessageType::Temp => {
+                                        handle.download_c2c_image(index_node).await
+                                    }
+                                    _ => continue,
+                                };
+                                match download {
+                                    Ok(url) => {
+                                        image.url = url;
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("Failed to download image: {:?}", e);
+                                    }
+                                }
                             }
-                            MessageType::Friend(_) | MessageType::Temp => {
-                                handle.download_c2c_image(index_node).await
+                            Entity::MultiMsg(ref mut multi) => match multi.chains.is_empty() {
+                                true => {
+                                    let msg = handle
+                                        .multi_msg_download(chain.uid.clone(), multi.res_id.clone())
+                                        .await;
+                                    match msg {
+                                        Ok(Some(chains)) => {
+                                            multi.chains = chains;
+                                        }
+                                        Ok(None) => {
+                                            tracing::warn!(
+                                                "No chains found in MultiMsgDownloadEvent"
+                                            );
+                                        }
+                                        Err(e) => {
+                                            tracing::error!("Failed to download MultiMsg: {:?}", e);
+                                        }
+                                    }
+                                }
+                                false => {}
+                            },
+                            Entity::File(ref mut file) => {
+                                file.file_url = match file.extra.as_ref() {
+                                    Some(extra) => match extra {
+                                        FileUnique::Group(grp) => {
+                                            let group_uin =
+                                                if let MessageType::Group(ref grp) = chain.typ {
+                                                    grp.group_uin
+                                                } else {
+                                                    tracing::error!(
+                                                        "expected group message, find {:?}",
+                                                        chain.typ
+                                                    );
+                                                    continue;
+                                                };
+                                            let file_id = match &grp.file_id {
+                                                Some(id) => id,
+                                                None => continue,
+                                            };
+                                            handle
+                                                .download_group_file(group_uin, file_id.clone())
+                                                .await
+                                                .ok()
+                                        }
+                                        FileUnique::C2C(c2c) => handle
+                                            .download_c2c_file(
+                                                c2c.file_uuid.clone(),
+                                                c2c.file_hash.clone(),
+                                                Some(chain.uid.clone()),
+                                            )
+                                            .await
+                                            .ok(),
+                                    },
+                                    _ => None,
+                                }
                             }
-                            _ => continue,
-                        };
-                        match download {
-                            Ok(url) => {
-                                image.url = url;
-                            }
-                            Err(e) => {
-                                tracing::error!("Failed to download image: {:?}", e);
-                            }
+                            _ => {}
                         }
                     }
-                    Entity::MultiMsg(ref mut multi) => match multi.chains.is_empty() {
-                        true => {
-                            let msg = handle
-                                .multi_msg_download(chain.uid.clone(), multi.res_id.clone())
-                                .await;
-                            match msg {
-                                Ok(Some(chains)) => {
-                                    multi.chains = chains;
-                                }
-                                Ok(None) => {
-                                    tracing::warn!("No chains found in MultiMsgDownloadEvent");
-                                }
-                                Err(e) => {
-                                    tracing::error!("Failed to download MultiMsg: {:?}", e);
-                                }
-                            }
-                        }
-                        false => {}
-                    },
-                    _ => {}
                 }
+                None => return event,
             }
         }
         _ if let Some(info_sync) = event.as_any_mut().downcast_mut::<InfoSyncEvent>() => {

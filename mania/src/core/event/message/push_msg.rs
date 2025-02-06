@@ -56,7 +56,7 @@ enum Event0x210SubType {
 #[commend("trpc.msg.olpush.OlPushService.MsgPush")]
 #[derive(Debug, ServerEvent)]
 pub struct PushMessageEvent {
-    pub chain: MessageChain,
+    pub chain: Option<MessageChain>,
 }
 
 impl ClientEvent for PushMessageEvent {
@@ -80,11 +80,18 @@ impl ClientEvent for PushMessageEvent {
                 chain = MessagePacker::parse_chain(packet.message.expect("PushMsgBody is None"))
                     .map_err(|e| EventError::OtherError(format!("parse_chain failed: {}", e)))?;
             }
+            PkgType::PrivateFileMessage => {
+                chain =
+                    MessagePacker::parse_private_file(packet.message.expect("PushMsgBody is None"))
+                        .map_err(|e| {
+                            EventError::OtherError(format!("parse_private_file failed: {}", e))
+                        })?;
+            }
             // TODO: handle other message types
             _ => {
                 tracing::warn!("receive unknown message type: {:?}", packet_type);
             }
         }
-        Ok(Box::new(PushMessageEvent { chain }))
+        Ok(Box::new(PushMessageEvent { chain: Some(chain) }))
     }
 }

@@ -19,29 +19,29 @@
 
 ## Features List
 
-| Protocol | Support | Login                     | Support | Messages      | Support | Operations        | Support | Events              | Support |
-|----------|:-------:|---------------------------|:-------:|:--------------|:-------:|:------------------|:-------:|:--------------------|:-------:|
-| Windows  |   🔴    | QrCode                    |   🟢    | BounceFace    |   🔴    | Poke              |   🔴    | Captcha             |   🔴    |
-| macOS    |   🔴    | ~~Password~~              |   🔴    | Face          | 🟡 [^1] | Recall            |   🔴    | BotOnline           |   🔴    |
-| Linux    |   🟢    | EasyLogin                 |   🟢    | File          |   🔴    | Leave Group       |   🔴    | BotOffline          |   🔴    |
-|          |         | UnusalDevice<br/>Password |   🔴    | Forward       | 🟡[^1]  | Set Special Title |   🔴    | Message             |   🔴    |
-|          |         | UnusalDevice<br/>Easy     |   🔴    | ~~GreyTip~~   |   🔴    | Kick Member       |   🔴    | Poke                |   🔴    |
-|          |         | ~~NewDeviceVerify~~       |   🔴    | GroupReaction |   🔴    | Mute Member       |   🔴    | MessageRecall       |   🔴    |
-|          |         |                           |         | Image         | 🟡[^1]  | Set Admin         |   🔴    | GroupMemberDecrease |   🔴    |
-|          |         |                           |         | Json          |   🟢    | Friend Request    |   🔴    | GroupMemberIncrease |   🔴    |
-|          |         |                           |         | KeyBoard      |   🔴    | Group Request     |   🔴    | GroupPromoteAdmin   |   🔴    |
-|          |         |                           |         | LightApp      | 🟡[^1]  | ~~Voice Call~~    |   🔴    | GroupInvite         |   🔴    |
-|          |         |                           |         | LongMsg       |   🔴    | Client Key        |   🔴    | GroupRequestJoin    |   🔴    |
-|          |         |                           |         | Markdown      |   🔴    | Cookies           |   🔴    | FriendRequest       |   🔴    |
-|          |         |                           |         | MarketFace    | 🟡[^1]  | Send Message      |   🔴    | ~~FriendTyping~~    |   🔴    |
-|          |         |                           |         | Mention       |   🔴    |                   |         | ~~FriendVoiceCall~~ |   🔴    |
-|          |         |                           |         | MultiMsg      | 🟡[^1]  |                   |         |                     |         |
-|          |         |                           |         | Poke          |   🔴    |                   |         |                     |         |
-|          |         |                           |         | Record        |   🔴    |                   |         |                     |         |
-|          |         |                           |         | SpecialPoke   |   🔴    |                   |         |                     |         |
-|          |         |                           |         | Text          |   🟢    |                   |         |                     |         |
-|          |         |                           |         | Video         |   🔴    |                   |         |                     |         |
-|          |         |                           |         | Xml           |   🔴    |                   |         |                     |         |
+| Protocol | Support | Login                      | Support | Messages      | Support | Operations        | Support | Events              | Support |
+|----------|:-------:|----------------------------|:-------:|:--------------|:-------:|:------------------|:-------:|:--------------------|:-------:|
+| Windows  |   🔴    | QrCode                     |   🟢    | BounceFace    |   🔴    | Poke              |   🔴    | Captcha             |   🔴    |
+| macOS    |   🔴    | ~~Password~~               |   🔴    | Face          | 🟡 [^1] | Recall            |   🔴    | BotOnline           |   🔴    |
+| Linux    |   🟢    | EasyLogin                  |   🟢    | File          | 🟡[^1]  | Leave Group       |   🔴    | BotOffline          |   🔴    |
+|          |         | UnusualDevice<br/>Password |   🔴    | Forward       | 🟡[^1]  | Set Special Title |   🔴    | Message             |   🔴    |
+|          |         | UnusualDevice<br/>Easy     |   🔴    | ~~GreyTip~~   |   🔴    | Kick Member       |   🔴    | Poke                |   🔴    |
+|          |         | ~~NewDeviceVerify~~        |   🔴    | GroupReaction |   🔴    | Mute Member       |   🔴    | MessageRecall       |   🔴    |
+|          |         |                            |         | Image         | 🟡[^1]  | Set Admin         |   🔴    | GroupMemberDecrease |   🔴    |
+|          |         |                            |         | Json          |   🟢    | Friend Request    |   🔴    | GroupMemberIncrease |   🔴    |
+|          |         |                            |         | KeyBoard      |   🔴    | Group Request     |   🔴    | GroupPromoteAdmin   |   🔴    |
+|          |         |                            |         | LightApp      | 🟡[^1]  | ~~Voice Call~~    |   🔴    | GroupInvite         |   🔴    |
+|          |         |                            |         | LongMsg       |   🔴    | Client Key        |   🔴    | GroupRequestJoin    |   🔴    |
+|          |         |                            |         | Markdown      |   🔴    | Cookies           |   🔴    | FriendRequest       |   🔴    |
+|          |         |                            |         | MarketFace    | 🟡[^1]  | Send Message      |   🔴    | ~~FriendTyping~~    |   🔴    |
+|          |         |                            |         | Mention       | 🟡[^1]  |                   |         | ~~FriendVoiceCall~~ |   🔴    |
+|          |         |                            |         | MultiMsg      | 🟡[^1]  |                   |         |                     |         |
+|          |         |                            |         | Poke          |   🔴    |                   |         |                     |         |
+|          |         |                            |         | Record        |   🔴    |                   |         |                     |         |
+|          |         |                            |         | SpecialPoke   |   🔴    |                   |         |                     |         |
+|          |         |                            |         | Text          |   🟢    |                   |         |                     |         |
+|          |         |                            |         | Video         |   🔴    |                   |         |                     |         |
+|          |         |                            |         | Xml           |   🔴    |                   |         |                     |         |
 
 [^1]: Only implemented event parsing
 

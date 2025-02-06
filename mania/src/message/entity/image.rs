@@ -61,7 +61,7 @@ impl MessageEntity for ImageEntity {
             if common.service_type == 48
                 && (common.business_type == 10 || common.business_type == 20)
             {
-                let extra: MsgInfo = MsgInfo::decode(&*common.pb_elem).unwrap();
+                let extra: MsgInfo = MsgInfo::decode(&*common.pb_elem).unwrap(); // FIXME: panic
                 let ext_biz_info = extra.ext_biz_info.as_ref().unwrap();
                 let msg_info_body = &extra.msg_info_body[0];
                 let index = msg_info_body.index.as_ref().unwrap();
