@@ -45,35 +45,36 @@ impl BusinessHandle {
     }
 
     async fn query_trans_tmp_status(self: &Arc<Self>) -> crate::Result<TransEmp12Res> {
-        match &*self.context.session.qr_sign.load() { Some(qr_sign) => {
-            let request_body = NTLoginHttpRequest {
-                appid: self.context.app_info.app_id as u64,
-                qrsig: qr_sign.string.clone(),
-                face_update_time: 0,
-            };
-            let payload = serde_json::to_vec(&request_body).unwrap();
-            let response = http::client()
-                .post_binary_async(
-                    "https://ntlogin.qq.com/qr/getFace",
-                    &payload,
-                    "application/json",
-                )
-                .await
-                .unwrap();
-            let info: NTLoginHttpResponse = serde_json::from_slice(&response).unwrap();
-            self.context.key_store.uin.store(info.uin.into());
-            let mut query_result = TransEmp::new_query_result();
-            let res = self.send_event(&mut query_result).await?;
-            let res: &TransEmp = downcast_event(&res).unwrap();
-            let result = res.result.as_ref().unwrap();
-            if let TransEmpResult::Emp12(emp12) = result {
-                Ok(emp12.to_owned())
-            } else {
-                panic!("Emp12 not found in response");
+        match &*self.context.session.qr_sign.load() {
+            Some(qr_sign) => {
+                let request_body = NTLoginHttpRequest {
+                    appid: self.context.app_info.app_id as u64,
+                    qrsig: qr_sign.string.clone(),
+                    face_update_time: 0,
+                };
+                let payload = serde_json::to_vec(&request_body).unwrap();
+                let response = http::client()
+                    .post_binary_async(
+                        "https://ntlogin.qq.com/qr/getFace",
+                        &payload,
+                        "application/json",
+                    )
+                    .await
+                    .unwrap();
+                let info: NTLoginHttpResponse = serde_json::from_slice(&response).unwrap();
+                self.context.key_store.uin.store(info.uin.into());
+                let mut query_result = TransEmp::new_query_result();
+                let res = self.send_event(&mut query_result).await?;
+                let res: &TransEmp = downcast_event(&res).unwrap();
+                let result = res.result.as_ref().unwrap();
+                if let TransEmpResult::Emp12(emp12) = result {
+                    Ok(emp12.to_owned())
+                } else {
+                    panic!("Emp12 not found in response");
+                }
             }
-        } _ => {
-            Err(Error::GenericError("QR code not fetched".into()))
-        }}
+            _ => Err(Error::GenericError("QR code not fetched".into())),
+        }
     }
 
     async fn do_wt_login(self: &Arc<Self>) -> crate::Result<()> {

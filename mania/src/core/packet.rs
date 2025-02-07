@@ -273,15 +273,21 @@ impl SsoPacket {
                         p.section(|p| p.string(&self.command)) // command
                             .section(|p| p) // unknown
                             .section(|p| {
-                                p.bytes(&match ctx.key_store.uid.load().as_ref().map(|arc| arc.to_string())
-                                { Some(ref uid) => {
-                                    let uid = NtPacketUid {
-                                        uid: Some(uid.clone()),
-                                    };
-                                    uid.encode_to_vec()
-                                } _ => {
-                                    Vec::new()
-                                }})
+                                p.bytes(&match ctx
+                                    .key_store
+                                    .uid
+                                    .load()
+                                    .as_ref()
+                                    .map(|arc| arc.to_string())
+                                {
+                                    Some(ref uid) => {
+                                        let uid = NtPacketUid {
+                                            uid: Some(uid.clone()),
+                                        };
+                                        uid.encode_to_vec()
+                                    }
+                                    _ => Vec::new(),
+                                })
                             }) // uid
                     })
                     .section(|p| p.bytes(&self.payload.0)) // payload

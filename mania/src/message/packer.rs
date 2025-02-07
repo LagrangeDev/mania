@@ -6,8 +6,8 @@ use crate::message::chain::{
     ClientSequence, FriendMessageUniqueElem, GroupMessageUniqueElem, MessageChain, MessageId,
     MessageType,
 };
-use crate::message::entity::file::{FileC2CUnique, FileEntity, FileUnique};
 use crate::message::entity::Entity;
+use crate::message::entity::file::{FileC2CUnique, FileEntity, FileUnique};
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use prost::Message;

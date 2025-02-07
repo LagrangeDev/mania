@@ -2,7 +2,7 @@ use md5::{Digest, Md5};
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parse_macro_input, punctuated::Punctuated, DeriveInput, ItemFn, ItemStruct, LitStr, Path,
+    DeriveInput, ItemFn, ItemStruct, LitStr, Path, parse_macro_input, punctuated::Punctuated,
 };
 
 #[proc_macro_attribute]

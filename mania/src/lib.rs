@@ -16,7 +16,7 @@ pub use crate::core::context::{AppInfo, Context, DeviceInfo};
 pub use crate::core::error::{Error, Result};
 pub use crate::core::key_store::KeyStore;
 use crate::core::session::Session;
-use crate::core::sign::{default_sign_provider, SignProvider};
+use crate::core::sign::{SignProvider, default_sign_provider};
 use std::env;
 use std::sync::Arc;
 

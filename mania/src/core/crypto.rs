@@ -1,5 +1,5 @@
 use md5::{Digest, Md5};
-use p256::{ecdh::EphemeralSecret, EncodedPoint, PublicKey};
+use p256::{EncodedPoint, PublicKey, ecdh::EphemeralSecret};
 
 pub mod consts;
 pub mod tea;

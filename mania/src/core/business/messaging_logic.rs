@@ -5,8 +5,8 @@ use crate::core::event::prelude::*;
 use crate::core::event::system::alive::AliveEvent;
 use crate::core::event::system::info_sync::InfoSyncEvent;
 use crate::message::chain::MessageType;
-use crate::message::entity::file::FileUnique;
 use crate::message::entity::Entity;
+use crate::message::entity::file::FileUnique;
 use mania_macros::handle_event;
 use std::sync::Arc;
 

@@ -1,5 +1,5 @@
 use crate::core::context::Protocol;
-use phf::{phf_set, Set};
+use phf::{Set, phf_set};
 use serde::Deserialize;
 
 mod linux;
