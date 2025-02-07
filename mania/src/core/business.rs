@@ -203,11 +203,11 @@ impl BusinessHandle {
         // PushMessageEvent, ... -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Incoming
         dispatch_logic(&mut *event, self.clone(), LogicFlow::InComing).await;
         // TODO: timeout auto remove
-        if let Some((_, tx)) = self.pending_requests.remove(&sequence) {
+        match self.pending_requests.remove(&sequence) { Some((_, tx)) => {
             tx.send(event).unwrap();
-        } else {
+        } _ => {
             tracing::warn!("unhandled packet: {:?}", event);
-        }
+        }}
         Ok(())
     }
 

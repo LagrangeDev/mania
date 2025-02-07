@@ -153,7 +153,7 @@ impl ExtendUuid for Uuid {
 impl Default for DeviceInfo {
     fn default() -> Self {
         let mut rng = rand::thread_rng();
-        let mac_address: Vec<u8> = (0..6).map(|_| rng.gen()).collect();
+        let mac_address: Vec<u8> = (0..6).map(|_| rng.r#gen()).collect();
         Self {
             uuid: Uuid::new_v4(),
             mac_address,
