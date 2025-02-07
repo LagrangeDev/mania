@@ -4,7 +4,7 @@ members = ["mania", "mania-macros", "examples"]
 
 [workspace.package]
 version = "0.0.1"
-edition = "2021"
+edition = "2024"
 license-file = "LICENCE"
 
 [workspace.dependencies]
