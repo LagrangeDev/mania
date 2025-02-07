@@ -273,16 +273,15 @@ impl SsoPacket {
                         p.section(|p| p.string(&self.command)) // command
                             .section(|p| p) // unknown
                             .section(|p| {
-                                p.bytes(&if let Some(ref uid) =
-                                    ctx.key_store.uid.load().as_ref().map(|arc| arc.to_string())
-                                {
+                                p.bytes(&match ctx.key_store.uid.load().as_ref().map(|arc| arc.to_string())
+                                { Some(ref uid) => {
                                     let uid = NtPacketUid {
                                         uid: Some(uid.clone()),
                                     };
                                     uid.encode_to_vec()
-                                } else {
+                                } _ => {
                                     Vec::new()
-                                })
+                                }})
                             }) // uid
                     })
                     .section(|p| p.bytes(&self.payload.0)) // payload
@@ -412,12 +411,12 @@ fn random_trace() -> String {
 
     // 32 digits
     for _ in 0..16 {
-        write!(result, "{:x}", rng.gen::<u8>()).unwrap();
+        write!(result, "{:x}", rng.r#gen::<u8>()).unwrap();
     }
     result.push('-');
     // 16 digits
     for _ in 0..8 {
-        write!(result, "{:x}", rng.gen::<u8>()).unwrap();
+        write!(result, "{:x}", rng.r#gen::<u8>()).unwrap();
     }
     result.push_str("-01");
 

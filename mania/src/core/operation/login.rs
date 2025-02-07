@@ -45,7 +45,7 @@ impl BusinessHandle {
     }
 
     async fn query_trans_tmp_status(self: &Arc<Self>) -> crate::Result<TransEmp12Res> {
-        if let Some(qr_sign) = &*self.context.session.qr_sign.load() {
+        match &*self.context.session.qr_sign.load() { Some(qr_sign) => {
             let request_body = NTLoginHttpRequest {
                 appid: self.context.app_info.app_id as u64,
                 qrsig: qr_sign.string.clone(),
@@ -71,9 +71,9 @@ impl BusinessHandle {
             } else {
                 panic!("Emp12 not found in response");
             }
-        } else {
+        } _ => {
             Err(Error::GenericError("QR code not fetched".into()))
-        }
+        }}
     }
 
     async fn do_wt_login(self: &Arc<Self>) -> crate::Result<()> {
