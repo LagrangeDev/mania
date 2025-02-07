@@ -7,11 +7,11 @@ message OidbSvcTrpcTcp0xFE7_3 {
   uint32 GroupUin = 1;
   uint32 Field2 = 2;
   uint32 Field3 = 3;
-  OidbSvcTrpcScp0xFE7_3Body Body = 4;
+  OidbSvcTrpcScp0xFE7Body Body = 4;
   optional string Token = 15;
 }
 
-message OidbSvcTrpcScp0xFE7_3Body {
+message OidbSvcTrpcScp0xFE7Body {
   // all true
   bool MemberName = 10;
   bool MemberCard = 11;
@@ -29,20 +29,20 @@ message OidbSvcTrpcScp0xFE7_3Body {
   bool Permission = 107;
 }
 
-message OidbSvcTrpcTcp0xFE7_2Response {
+message OidbSvcTrpcTcp0xFE7_3Response {
   uint32 GroupUin = 1;
-  repeated OidbSvcTrpcTcp0xFE7_2Member Members = 2;
+  repeated OidbSvcTrpcTcp0xFE7Member Members = 2;
   uint32 Field3 = 3;
   uint32 MemberChangeSeq = 5;
   uint32 MemberCardChangeSeq = 6;
   optional string Token = 15; // for the next page
 }
 
-message OidbSvcTrpcTcp0xFE7_2Member {
-  OidbSvcTrpcTcp0xFE7_2Uin Uin = 1;
+message OidbSvcTrpcTcp0xFE7Member {
+  OidbSvcTrpcTcp0xFE7Uin Uin = 1;
   string MemberName = 10;
-  OidbSvcTrpcTcp0xFE7_2Card MemberCard = 11;
-  optional OidbSvcTrpcTcp0xFE7_2Level Level = 12;
+  OidbSvcTrpcTcp0xFE7Card MemberCard = 11;
+  optional OidbSvcTrpcTcp0xFE7Level Level = 12;
   optional string SpecialTitle = 17;
   uint32 JoinTimestamp = 100;
   uint32 LastMsgTimestamp = 101;
@@ -50,16 +50,16 @@ message OidbSvcTrpcTcp0xFE7_2Member {
   uint32 Permission = 107;
 }
 
-message OidbSvcTrpcTcp0xFE7_2Uin {
+message OidbSvcTrpcTcp0xFE7Uin {
   string Uid = 2;
   uint32 Uin = 4;
 }
 
-message OidbSvcTrpcTcp0xFE7_2Card {
+message OidbSvcTrpcTcp0xFE7Card {
   optional string MemberCard = 2;
 }
 
-message OidbSvcTrpcTcp0xFE7_2Level {
+message OidbSvcTrpcTcp0xFE7Level {
   repeated uint32 Infos = 1;
   uint32 Level = 2;
 }
@@ -68,7 +68,7 @@ message OidbSvcTrpcTcp0xFE7_4 {
   uint32 GroupUin = 1;
   uint32 Field2 = 2;
   uint32 Field3 = 3;
-  OidbSvcTrpcScp0xFE7_3Body Body = 4;
+  OidbSvcTrpcScp0xFE7Body Body = 4;
   OidbSvcTrpcScp0xFE7_4Params Params = 5;
 }
 
@@ -78,6 +78,6 @@ message OidbSvcTrpcScp0xFE7_4Params {
 
 message OidbSvcTrpcTcp0xFE7_4Response {
   uint32 GroupUin = 1;
-  OidbSvcTrpcTcp0xFE7_2Member Member = 2;
+  OidbSvcTrpcTcp0xFE7Member Member = 2;
   uint32 Field3 = 3;
 }

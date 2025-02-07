@@ -171,12 +171,12 @@ impl BusinessHandle {
             loop {
                 tokio::select! {
                     _ = hb_interval.tick() => {
-                        if let Err(e) = handle.send_event(&mut AliveEvent { test: 1 }).await {
+                        if let Err(e) = handle.push_event(&AliveEvent { test: 1 }).await {
                             tracing::error!("Failed to send Alive event: {:?}", e);
                         }
                     }
                     _ = nt_hb_interval.tick() => {
-                        if let Err(e) = handle.send_event(&mut NtSsoAliveEvent).await {
+                        if let Err(e) = handle.push_event(&NtSsoAliveEvent).await {
                             tracing::error!("Failed to send NtSsoAlive event: {:?}", e);
                         }
                     }

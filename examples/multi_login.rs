@@ -66,9 +66,12 @@ async fn main() {
     } else {
         tracing::info!("Session is still valid, trying to online...");
     }
-    if let Err(e) = operator.online().await {
-        panic!("Failed to set online status: {:?}", e);
-    }
+    let _tx = match operator.online().await {
+        Ok(tx) => tx,
+        Err(e) => {
+            panic!("Failed to set online status: {:?}", e);
+        }
+    };
     tracing::info!("Login successfully!");
     operator
         .update_key_store()

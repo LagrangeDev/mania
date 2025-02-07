@@ -12,6 +12,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::core::cache::Cache;
 use crate::core::context::Context;
 use crate::core::event::prelude::*;
 use crate::core::event::resolve_event;
@@ -98,6 +99,7 @@ impl Business {
             reconnecting: Mutex::new(()),
             pending_requests: DashMap::new(),
             context,
+            cache: Arc::new(Cache::new()),
         });
 
         Ok(Self {
@@ -120,7 +122,7 @@ impl Business {
                 let handle = self.handle.clone();
                 tokio::spawn(async move {
                     if let Err(e) = handle.dispatch_sso_packet(packet).await {
-                        tracing::error!("Error handling packet: {}", e);
+                        tracing::error!("Unhandled error occurred when handling packet: {}", e);
                         // FIXME: Non-required reconnections, except for serious errors
                         // self.reconnect().await;
                     }
@@ -168,8 +170,9 @@ impl Business {
 pub struct BusinessHandle {
     sender: ArcSwap<PacketSender>,
     reconnecting: Mutex<()>,
-    pending_requests: DashMap<u32, oneshot::Sender<Box<dyn ServerEvent>>>,
+    pending_requests: DashMap<u32, oneshot::Sender<Result<Box<dyn ServerEvent>>>>,
     pub(crate) context: Arc<Context>,
+    pub(crate) cache: Arc<Cache>,
     // TODO: (outer) event dispatcher, highway
 }
 
@@ -197,18 +200,21 @@ impl BusinessHandle {
         packet: SsoPacket,
     ) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let sequence = packet.sequence();
-        let mut event = resolve_event(packet, &self.context).await?;
+        let result: Result<Box<dyn ServerEvent>> = async {
+            // TODO: refactor error type?
+            let mut event = resolve_event(packet, &self.context)
+                .await
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            dispatch_logic(&mut *event, self.clone(), LogicFlow::InComing).await;
+            Ok(event)
+        }
+        .await;
         // Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent
-        // 在 send_event 中的 handle incoming event 合并到这里来 (aka dispatch_logic)
-        // GroupSysDecreaseEvent, ... -> Lagrange.Core.Internal.Context.Logic.Implementation.CachingLogic.Incoming
-        // KickNTEvent -> Lagrange.Core.Internal.Context.Logic.Implementation.WtExchangeLogic.Incoming
-        // PushMessageEvent, ... -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Incoming
-        dispatch_logic(&mut *event, self.clone(), LogicFlow::InComing).await;
         // TODO: timeout auto remove
         if let Some((_, tx)) = self.pending_requests.remove(&sequence) {
-            tx.send(event).unwrap();
+            tx.send(result).unwrap();
         } else {
-            tracing::warn!("unhandled packet: {:?}", event);
+            tracing::warn!("unhandled packet: {:?}", result);
         }
         Ok(())
     }
@@ -245,10 +251,9 @@ impl BusinessHandle {
     async fn send_packet(&self, packet: SsoPacket) -> Result<Box<dyn ServerEvent>> {
         tracing::debug!("sending packet: {:?}", packet);
         let sequence = packet.sequence();
-        let (tx, rx) = oneshot::channel();
+        let (tx, rx) = oneshot::channel::<Result<Box<dyn ServerEvent>>>();
         self.pending_requests.insert(sequence, tx);
         self.post_packet(packet).await?;
-        let events = rx.await.expect("response not received");
-        Ok(events)
+        rx.await.expect("response not received")
     }
 }

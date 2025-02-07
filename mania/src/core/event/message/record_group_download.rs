@@ -48,12 +48,12 @@ impl ClientEvent for RecordGroupDownloadEvent {
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
         let packet = OidbPacket::parse_into::<Ntv2RichMediaResp>(packet)?;
-        let download = packet.download.ok_or(EventError::OtherError(
-            "Missing Ntv2RichMediaResp download response".to_string(),
-        ))?;
-        let info = download.info.as_ref().ok_or(EventError::OtherError(
-            "Missing Ntv2RichMediaResp download info".to_string(),
-        ))?;
+        let download = packet.download.ok_or_else(|| {
+            EventError::OtherError("Missing Ntv2RichMediaResp download response".to_string())
+        })?;
+        let info = download.info.as_ref().ok_or_else(|| {
+            EventError::OtherError("Missing Ntv2RichMediaResp download info".to_string())
+        })?;
         let url = format!(
             "https://{}{}{}",
             info.domain, info.url_path, download.r_key_param

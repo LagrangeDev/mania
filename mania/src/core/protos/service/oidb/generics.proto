@@ -4,6 +4,7 @@ package service.oidb;
 
 message OidbFriend {
   string Uid = 1;
+  uint32 CustomGroup = 2;
   uint32 Uin = 3;
   repeated OidbFriendAdditional Additional = 10001;
 }

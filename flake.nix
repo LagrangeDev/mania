@@ -121,12 +121,12 @@
             // {
               inherit cargoArtifacts;
               cargoExtraArgs = ''
-                --example multi-login
+                --example multi_login
               '';
               postInstall = ''
                 mkdir -p $out/bin
 
-                cp ./target/release/examples/multi-login $out/bin/mania
+                cp ./target/release/examples/multi_login $out/bin/mania
               '';
             }
           );

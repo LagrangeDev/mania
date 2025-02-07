@@ -35,7 +35,7 @@ async fn messaging_logic_incoming(
                     for entity in &mut chain.entities {
                         match *entity {
                             Entity::Image(ref mut image) => {
-                                if !image.url.contains("&rkey=") {
+                                if image.url.contains("&rkey=") {
                                     continue;
                                 }
                                 let index_node = match image
@@ -173,6 +173,70 @@ async fn messaging_logic_incoming(
                                     Err(e) => {
                                         tracing::error!("Failed to download record: {:?}", e);
                                         continue;
+                                    }
+                                }
+                            }
+                            Entity::Video(ref mut video) => {
+                                let file_name = video.file_name.as_ref();
+                                let empty_option = Some(String::new());
+                                let node = video.node.clone();
+                                let download_result = match &chain.typ {
+                                    MessageType::Group(grp) => {
+                                        // TODO: old impl (0x11e9_200?)
+                                        let uid = handle
+                                            .resolve_uid(Some(grp.group_uin), chain.friend_uin)
+                                            .await;
+                                        let uid = uid.unwrap_or_default();
+                                        match handle
+                                            .download_video(
+                                                &uid,
+                                                file_name,
+                                                "",
+                                                empty_option.clone(),
+                                                node.clone(),
+                                                true,
+                                            )
+                                            .await
+                                        {
+                                            Ok(url) => Ok(url),
+                                            Err(e) => {
+                                                tracing::warn!(
+                                                    "Failed to download group video: {:?}, using download_group_video fallback!",
+                                                    e
+                                                );
+                                                handle
+                                                    .download_group_video(
+                                                        grp.group_uin,
+                                                        file_name,
+                                                        "",
+                                                        empty_option,
+                                                        node.clone(),
+                                                    )
+                                                    .await
+                                            }
+                                        }
+                                    }
+                                    MessageType::Friend(_) | MessageType::Temp => {
+                                        let self_uid = chain.uid.clone();
+                                        handle
+                                            .download_video(
+                                                &self_uid,
+                                                file_name,
+                                                "",
+                                                empty_option,
+                                                node.clone(),
+                                                false,
+                                            )
+                                            .await
+                                    }
+                                    _ => continue,
+                                };
+                                match download_result {
+                                    Ok(url) => {
+                                        video.video_url = url;
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("Failed to download video: {:?}", e);
                                     }
                                 }
                             }

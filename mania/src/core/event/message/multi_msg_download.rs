@@ -38,22 +38,18 @@ impl ClientEvent for MultiMsgDownloadEvent {
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
         let packet = RecvLongMsgResp::decode(packet)?;
         let inflate = gzip::decompress(&packet.result.expect("missing RecvLongMsgInfo").payload)
-            .ok_or(EventError::OtherError(
-                "Failed to decompress long message".to_string(),
-            ))?;
+            .ok_or_else(|| {
+                EventError::OtherError("Failed to decompress long message".to_string())
+            })?;
         let result = LongMsgResult::decode(Bytes::from(inflate))?;
         let main = result
             .action
             .into_iter()
             .find(|a| a.action_command == "MultiMsg")
-            .ok_or(EventError::OtherError(
-                "Failed to find MultiMsg command".to_string(),
-            ))?;
+            .ok_or_else(|| EventError::OtherError("Failed to find MultiMsg command".to_string()))?;
         let chains = main
             .action_data
-            .ok_or(EventError::OtherError(
-                "Failed to find action_data".to_string(),
-            ))?
+            .ok_or_else(|| EventError::OtherError("Failed to find action_data".to_string()))?
             .msg_body
             .into_iter()
             .map(MessagePacker::parse_fake_chain)

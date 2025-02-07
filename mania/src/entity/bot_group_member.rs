@@ -10,6 +10,19 @@ pub enum GroupMemberPermission {
     Admin = 2,
 }
 
+impl TryFrom<u32> for GroupMemberPermission {
+    type Error = ();
+
+    fn try_from(v: u32) -> Result<Self, Self::Error> {
+        match v {
+            0 => Ok(GroupMemberPermission::Member),
+            1 => Ok(GroupMemberPermission::Owner),
+            2 => Ok(GroupMemberPermission::Admin),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct BotGroupMember {
     pub uin: u32,

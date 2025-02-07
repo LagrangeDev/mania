@@ -26,9 +26,9 @@ impl ClientEvent for FileGroupDownloadEvent {
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
         let packet = OidbPacket::parse_into::<OidbSvcTrpcTcp0x6D6Response>(packet)?;
-        let download = packet.download.ok_or(EventError::OtherError(
-            "Missing OidbSvcTrpcTcp0x6D62response".to_string(),
-        ))?;
+        let download = packet.download.ok_or_else(|| {
+            EventError::OtherError("Missing OidbSvcTrpcTcp0x6D62response".to_string())
+        })?;
         match download.ret_code {
             0 => {
                 let url = format!(

@@ -9,6 +9,7 @@ pub mod mention;
 pub mod multi_msg;
 pub mod record;
 pub mod text;
+pub mod video;
 
 pub use face::FaceEntity as Face;
 pub use file::FileEntity as File;
@@ -21,6 +22,7 @@ pub use mention::MentionEntity as Mention;
 pub use multi_msg::MultiMsgEntity as MultiMsg;
 pub use record::RecordEntity as Record;
 pub use text::TextEntity as Text;
+pub use video::VideoEntity as Video;
 
 use crate::core::protos::message::Elem;
 use bytes::Bytes;
@@ -36,6 +38,7 @@ pub trait MessageEntity: Debug + Display {
         Self: Sized;
 }
 
+#[allow(clippy::large_enum_variant)] // TODO: do we need refactoring?
 pub enum Entity {
     Text(text::TextEntity),
     Json(json::JsonEntity),
@@ -48,6 +51,7 @@ pub enum Entity {
     Mention(mention::MentionEntity),
     File(file::FileEntity),
     Record(record::RecordEntity),
+    Video(video::VideoEntity),
 }
 
 macro_rules! impl_entity_show {
@@ -110,13 +114,13 @@ macro_rules! impl_entity_unpack {
 }
 
 impl_entity_show!(
-    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record
+    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record, Video
 );
 impl_entity_pack!(
-    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record
+    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record, Video
 );
 impl_entity_unpack!(
-    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record
+    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record, Video
 );
 
 impl Entity {

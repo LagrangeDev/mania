@@ -19,5 +19,5 @@ default = []
 tokio-tracing = ["console-subscriber"]
 
 [[example]]
-name = "multi-login"
-path = "./multi-login.rs"
+name = "multi_login"
+path = "multi_login.rs"

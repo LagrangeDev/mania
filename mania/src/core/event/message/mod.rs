@@ -6,3 +6,5 @@ pub mod multi_msg_download;
 pub mod push_msg;
 pub mod record_c2c_download;
 pub mod record_group_download;
+pub mod video_c2c_download;
+pub mod video_group_download;

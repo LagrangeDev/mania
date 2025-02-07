@@ -38,12 +38,12 @@ impl ClientEvent for FileC2CDownloadEvent {
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
         let packet = OidbPacket::parse_into::<OidbSvcTrpcTcp0xE371200response>(packet)?;
-        let body = packet.body.ok_or(EventError::OtherError(
-            "Missing OidbSvcTrpcTcp0xE371200responseBody".to_string(),
-        ))?;
-        let result = body.result.ok_or(EventError::OtherError(
-            "Missing OidbSvcTrpcTcp0xE371200result".to_string(),
-        ))?;
+        let body = packet.body.ok_or_else(|| {
+            EventError::OtherError("Missing OidbSvcTrpcTcp0xE371200responseBody".to_string())
+        })?;
+        let result = body.result.ok_or_else(|| {
+            EventError::OtherError("Missing OidbSvcTrpcTcp0xE371200result".to_string())
+        })?;
         let file_url = format!(
             "https://{}:{}{}&isthumb=0",
             result.sso_url, result.sso_port, result.url

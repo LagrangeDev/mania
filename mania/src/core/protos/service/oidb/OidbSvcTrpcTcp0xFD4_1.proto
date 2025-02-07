@@ -30,4 +30,5 @@ message OidbSvcTrpcTcp0xFD4_1Response {
   uint32 Timestamp = 6;
   uint32 SelfUin = 7;
   repeated OidbFriend Friends = 101;
+  repeated OidbFriendProperty Groups = 102;
 }

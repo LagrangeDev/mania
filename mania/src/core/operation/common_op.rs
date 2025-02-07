@@ -6,6 +6,8 @@ use crate::core::event::message::image_group_download::ImageGroupDownloadEvent;
 use crate::core::event::message::multi_msg_download::MultiMsgDownloadEvent;
 use crate::core::event::message::record_c2c_download::RecordC2CDownloadEvent;
 use crate::core::event::message::record_group_download::RecordGroupDownloadEvent;
+use crate::core::event::message::video_c2c_download::VideoC2CDownloadEvent;
+use crate::core::event::message::video_group_download::VideoGroupDownloadEvent;
 use crate::core::event::system::fetch_rkey::FetchRKeyEvent;
 use crate::core::event::{downcast_event, downcast_mut_event};
 use crate::core::protos::service::oidb::IndexNode;
@@ -175,5 +177,56 @@ impl BusinessHandle {
         let mut res = self.send_event(&mut event).await?;
         let event: &mut RecordC2CDownloadEvent = downcast_mut_event(&mut *res).unwrap();
         Ok(event.audio_url.to_owned())
+    }
+
+    pub async fn download_video(
+        self: &Arc<Self>,
+        self_uid: &str,
+        file_name: &str,
+        file_md5: &str,
+        file_sha1: Option<String>,
+        node: Option<IndexNode>,
+        is_group: bool,
+    ) -> crate::Result<String> {
+        let mut event = dda!(VideoC2CDownloadEvent {
+            self_uid: self_uid.to_string(),
+            file_name: file_name.to_string(),
+            file_md5: file_md5.to_string(),
+            file_sha1,
+            node,
+            is_group,
+        });
+        let res = self.send_event(&mut event).await?;
+        let event: &VideoC2CDownloadEvent = downcast_event(&res).unwrap();
+        Ok(event.video_url.clone())
+    }
+
+    pub async fn download_group_video(
+        self: &Arc<Self>,
+        group_uin: u32,
+        file_name: &str,
+        file_md5: &str,
+        file_sha1: Option<String>,
+        node: Option<IndexNode>,
+    ) -> crate::Result<String> {
+        let mut event = dda!(VideoGroupDownloadEvent {
+            group_uin,
+            self_uid: self
+                .context
+                .key_store
+                .uid
+                .load()
+                .as_ref()
+                .unwrap()
+                .as_ref()
+                .clone(),
+            file_name: file_name.to_string(),
+            file_md5: file_md5.to_string(),
+            file_sha1,
+            node,
+        });
+        let res = self.send_event(&mut event).await?;
+        let event: &VideoGroupDownloadEvent = downcast_event(&res).unwrap();
+        Ok(event.video_url.clone())
     }
 }

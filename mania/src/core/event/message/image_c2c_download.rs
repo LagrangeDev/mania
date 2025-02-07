@@ -49,10 +49,10 @@ impl ClientEvent for ImageC2CDownloadEvent {
         let packet = OidbPacket::parse_into::<Ntv2RichMediaResp>(packet)?;
         let body = packet
             .download
-            .ok_or(EventError::OtherError("Missing DownloadResp".to_string()))?;
+            .ok_or_else(|| EventError::OtherError("Missing DownloadResp".to_string()))?;
         let info = body
             .info
-            .ok_or(EventError::OtherError("Missing DownloadInfo".to_string()))?;
+            .ok_or_else(|| EventError::OtherError("Missing DownloadInfo".to_string()))?;
         let url = format!(
             "https://{}{}{}",
             info.domain, info.url_path, body.r_key_param
