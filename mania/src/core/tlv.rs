@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use bytes::Bytes;
-use phf::{phf_map, Map};
+use phf::{Map, phf_map};
 use thiserror::Error;
 
 use crate::core::context::Context;
@@ -270,7 +270,7 @@ mod prelude {
     pub use crate::core::context::ExtendUuid;
     pub use crate::core::crypto::tea::tea_encrypt;
     pub use crate::core::packet::{PacketBuilder, PacketReader};
-    pub use crate::core::tlv::{serialize_tlv_set, TlvDe, TlvError, TlvSer};
+    pub use crate::core::tlv::{TlvDe, TlvError, TlvSer, serialize_tlv_set};
     pub use bytes::Bytes;
     pub use prost::Message;
     pub use uuid::Uuid;

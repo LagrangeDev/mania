@@ -1,5 +1,5 @@
 use super::prelude::*;
-use crate::core::packet::{PacketReader, PREFIX_LENGTH_ONLY, PREFIX_U16};
+use crate::core::packet::{PREFIX_LENGTH_ONLY, PREFIX_U16, PacketReader};
 use std::fmt::Debug;
 
 #[derive(Default)]

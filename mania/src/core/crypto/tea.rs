@@ -1,8 +1,8 @@
 // copy from https://github.com/zkonge/rtea
 use byteorder::{BigEndian, ByteOrder};
-pub use generic_array::typenum::U16;
 pub use generic_array::GenericArray;
-use rand::{thread_rng, RngCore};
+pub use generic_array::typenum::U16;
+use rand::{RngCore, thread_rng};
 
 pub fn tea_encrypt(text: &[u8], key: &[u8]) -> Vec<u8> {
     let fill_count = 9 - (text.len() + 1) % 8;

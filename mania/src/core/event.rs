@@ -108,13 +108,13 @@ pub(crate) mod prelude {
         CECommandMarker, ClientEvent, ClientEventRegistry, EventError, ServerEvent,
     };
     pub use crate::core::packet::{
-        BinaryPacket, OidbPacket, PacketBuilder, PacketError, PacketReader, PacketType,
-        PREFIX_LENGTH_ONLY, PREFIX_U16, PREFIX_U8, PREFIX_WITH,
+        BinaryPacket, OidbPacket, PREFIX_LENGTH_ONLY, PREFIX_U8, PREFIX_U16, PREFIX_WITH,
+        PacketBuilder, PacketError, PacketReader, PacketType,
     };
     pub use crate::dda;
     pub use bytes::Bytes;
     pub use inventory;
-    pub use mania_macros::{commend, ServerEvent};
+    pub use mania_macros::{ServerEvent, commend};
     pub use num_enum::TryFromPrimitive;
     pub use prost::Message;
     pub use std::convert::TryFrom;

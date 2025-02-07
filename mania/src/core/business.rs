@@ -20,7 +20,7 @@ use crate::core::socket::{self, PacketReceiver, PacketSender};
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
-use tokio::sync::{oneshot, Mutex, MutexGuard};
+use tokio::sync::{Mutex, MutexGuard, oneshot};
 
 #[derive(Copy, Clone, Debug)]
 pub enum LogicFlow {
@@ -139,7 +139,9 @@ impl Business {
         self.handle.sender.store(Arc::new(sender));
         self.receiver = receiver;
 
-        todo!("await Collection.Business.WtExchangeLogic.BotOnline(BotOnlineEvent.OnlineReason.Reconnect);")
+        todo!(
+            "await Collection.Business.WtExchangeLogic.BotOnline(BotOnlineEvent.OnlineReason.Reconnect);"
+        )
     }
 
     async fn reconnect(&mut self) {
@@ -203,11 +205,14 @@ impl BusinessHandle {
         // PushMessageEvent, ... -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Incoming
         dispatch_logic(&mut *event, self.clone(), LogicFlow::InComing).await;
         // TODO: timeout auto remove
-        match self.pending_requests.remove(&sequence) { Some((_, tx)) => {
-            tx.send(event).unwrap();
-        } _ => {
-            tracing::warn!("unhandled packet: {:?}", event);
-        }}
+        match self.pending_requests.remove(&sequence) {
+            Some((_, tx)) => {
+                tx.send(event).unwrap();
+            }
+            _ => {
+                tracing::warn!("unhandled packet: {:?}", event);
+            }
+        }
         Ok(())
     }
 

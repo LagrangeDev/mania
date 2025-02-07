@@ -66,7 +66,7 @@ pub(crate) struct WtLoginSession {
 }
 
 mod serde_rwlock {
-    use serde::{de, ser, Deserialize, Serialize};
+    use serde::{Deserialize, Serialize, de, ser};
     use tokio::sync::RwLock;
 
     pub fn serialize<T, S>(value: &RwLock<T>, serializer: S) -> Result<S::Ok, S::Error>
