@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! dda {
-    ($struct:ident { $($field:ident $( : $value:expr_2021 )? ),* $(,)? }) => {
+    ($struct:ident { $($field:ident $( : $value:expr )? ),* $(,)? }) => {
         $struct {
             $(
                 $field: dda!(@value $field $( : $value )? )
@@ -9,7 +9,7 @@ macro_rules! dda {
         }
     };
 
-    (@value $field:ident : $value:expr_2021) => {
+    (@value $field:ident : $value:expr) => {
         $value
     };
 
