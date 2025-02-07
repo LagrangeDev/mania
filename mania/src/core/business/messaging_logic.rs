@@ -33,8 +33,8 @@ async fn messaging_logic_incoming(
             match &mut msg.chain {
                 Some(chain) => {
                     for entity in &mut chain.entities {
-                        match entity {
-                            &mut Entity::Image(ref mut image) => {
+                        match *entity {
+                            Entity::Image(ref mut image) => {
                                 if !image.url.contains("&rkey=") {
                                     continue;
                                 }
@@ -65,7 +65,7 @@ async fn messaging_logic_incoming(
                                     }
                                 }
                             }
-                            &mut Entity::MultiMsg(ref mut multi) => match multi.chains.is_empty() {
+                            Entity::MultiMsg(ref mut multi) => match multi.chains.is_empty() {
                                 true => {
                                     let msg = handle
                                         .multi_msg_download(chain.uid.clone(), multi.res_id.clone())
@@ -86,7 +86,7 @@ async fn messaging_logic_incoming(
                                 }
                                 false => {}
                             },
-                            &mut Entity::File(ref mut file) => {
+                            Entity::File(ref mut file) => {
                                 file.file_url = match file.extra.as_ref() {
                                     Some(extra) => match extra {
                                         FileUnique::Group(grp) => {
@@ -121,7 +121,7 @@ async fn messaging_logic_incoming(
                                     _ => None,
                                 }
                             }
-                            &mut Entity::Record(ref mut record) => {
+                            Entity::Record(ref mut record) => {
                                 let node = || -> Option<_> {
                                     record
                                         .msg_info
