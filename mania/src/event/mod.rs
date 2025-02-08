@@ -45,8 +45,3 @@ impl EventListener {
         }
     }
 }
-
-mod prelude {
-    pub use mania_macros::ManiaEvent;
-    pub use std::fmt::{Debug, Formatter, Result as FmtResult};
-}

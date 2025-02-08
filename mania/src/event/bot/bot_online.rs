@@ -1,12 +1,6 @@
-use crate::event::prelude::*;
+pub use mania_macros::ManiaEvent;
 
 #[derive(ManiaEvent)]
 pub struct BotOnlineEvent {
     pub reason: String,
-}
-
-impl Debug for BotOnlineEvent {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "[BotOnlineEvent]: reason: {:?}", self.reason)
-    }
 }

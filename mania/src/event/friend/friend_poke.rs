@@ -1,4 +1,4 @@
-use crate::event::prelude::*;
+pub use mania_macros::ManiaEvent;
 
 #[derive(ManiaEvent)]
 pub struct FriendPokeEvent {
@@ -7,14 +7,4 @@ pub struct FriendPokeEvent {
     pub action: String,
     pub suffix: String,
     pub action_url: String,
-}
-
-impl Debug for FriendPokeEvent {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(
-            f,
-            "[FriendPokeEvent]: operator_uin: {} | target_uin: {} | action: {} | suffix: {} | action_url: {}",
-            self.operator_uin, self.target_uin, self.action, self.suffix, self.action_url
-        )
-    }
 }

@@ -1,13 +1,8 @@
-use crate::event::prelude::*;
 use crate::message::chain::MessageChain;
+pub use mania_macros::ManiaEvent;
 
 #[derive(ManiaEvent)]
 pub struct GroupMessageEvent {
+    #[prefer(debug)]
     pub chain: MessageChain,
-}
-
-impl Debug for GroupMessageEvent {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "[GroupMessageEvent]: {:?}", self.chain)
-    }
 }

@@ -1,10 +1,12 @@
+#![feature(let_chains)]
 use md5::{Digest, Md5};
 use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::parse::Parse;
 use syn::{
-    DeriveInput, ItemFn, ItemStruct, LitInt, LitStr, Path, Token, parse_macro_input,
+    Data, DeriveInput, Fields, ItemFn, ItemStruct, LitInt, LitStr, Path, Token,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
     punctuated::Punctuated,
 };
 
@@ -162,13 +164,67 @@ pub fn handle_event(attr: TokenStream, item: TokenStream) -> TokenStream {
     expanded.into()
 }
 
-// TODO: auto parse & auto impl debug
-#[proc_macro_derive(ManiaEvent)]
-pub fn mania_event_derive(input: TokenStream) -> TokenStream {
-    let ast = parse_macro_input!(input as DeriveInput);
-    let struct_name = &ast.ident;
-    let stream = quote! {
+#[derive(Debug)]
+struct ManiaEventPreferOptions {
+    debug: bool,
+}
+
+impl Parse for ManiaEventPreferOptions {
+    fn parse(input: ParseStream) -> Result<Self, syn::Error> {
+        let ident: Ident = input.parse()?;
+        Ok(ManiaEventPreferOptions {
+            debug: ident == "debug",
+        })
+    }
+}
+
+#[proc_macro_derive(ManiaEvent, attributes(prefer))]
+pub fn derive_mania_event(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+    let struct_name = &input.ident;
+
+    let mania_event_impl = quote! {
         impl crate::event::ManiaEvent for #struct_name {}
     };
-    stream.into()
+
+    let debug_impl = match &input.data {
+        Data::Struct(data_struct) => match &data_struct.fields {
+            Fields::Named(fields_named) => {
+                let field_entries: Vec<String> = fields_named
+                    .named
+                    .iter()
+                    .map(|field| {
+                        let field_name = field.ident.as_ref().unwrap().to_string();
+                        let placeholder = field
+                            .attrs
+                            .iter()
+                            .find(|attr| attr.path().is_ident("prefer"))
+                            .and_then(|attr| attr.parse_args::<ManiaEventPreferOptions>().ok())
+                            .map_or("{}", |opts| if opts.debug { "{:?}" } else { "{}" });
+                        format!("{}: {}", field_name, placeholder)
+                    })
+                    .collect();
+                let fmt_string = format!("[{}] {}", struct_name, field_entries.join(" | "));
+                let field_accesses = fields_named.named.iter().map(|field| {
+                    let field_ident = field.ident.as_ref().unwrap();
+                    quote! { self.#field_ident }
+                });
+                quote! {
+                    impl std::fmt::Debug for #struct_name {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            write!(f, #fmt_string, #( #field_accesses ),* )
+                        }
+                    }
+                }
+            }
+            _ => quote! {},
+        },
+        _ => quote! {},
+    };
+
+    let expanded = quote! {
+        #mania_event_impl
+        #debug_impl
+    };
+    expanded.into()
 }

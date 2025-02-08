@@ -2,6 +2,7 @@
 #![allow(dead_code)] // TODO: remove this after stable
 #![feature(if_let_guard)]
 #![feature(let_chains)]
+extern crate alloc;
 
 mod core;
 pub mod entity;
