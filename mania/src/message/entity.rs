@@ -4,7 +4,7 @@ pub mod forward;
 pub mod image;
 pub mod json;
 pub mod light_app;
-mod long_msg;
+pub mod long_msg;
 pub mod market_face;
 pub mod mention;
 pub mod multi_msg;
