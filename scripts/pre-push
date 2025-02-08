@@ -1,39 +1,37 @@
-#!/bin/sh
+#!/usr/bin/env sh
+set -o errexit
+set -o nounset
 
-echo "Running typos..."
-if ! typos -c typos.toml; then
-    echo "Typos check failed!"
+BLUE="\033[0;34m"
+RED="\033[0;31m"
+NC="\033[0m"
+log() {
+    printf "%b==>%b %s\n" "$1" "$2" "$3"
+}
+raise_error() {
+    log "$RED" "$NC" "$1" 1>&2
     exit 1
-fi
+}
+info() {
+    log "$BLUE" "$NC" "$1"
+}
 
-echo "Checking code formatting..."
-if ! cargo fmt -- --check; then
-    echo "Code formatting issues found. Please run 'cargo fmt' to format your code."
-    exit 1
-fi
+info "Running typos..."
+typos -c typos.toml || raise_error "Typos check failed!"
 
-echo "Building project..."
-if ! cargo build; then
-    echo "Build failed!"
-    exit 1
-fi
+info "Checking code formatting..."
+cargo fmt --check || raise_error "Code formatting issues found. Please run 'cargo fmt' to format your code."
 
-echo "Running cargo clippy..."
-if ! cargo clippy -- -D warnings; then
-    echo "Clippy check failed!"
-    exit 1
-fi
+info "Building project..."
+cargo build --locked || raise_error "Build failed!"
 
-echo "Building documentation..."
-if ! cargo doc; then
-    echo "Documentation build failed!"
-    exit 1
-fi
+info "Running cargo clippy..."
+cargo clippy --locked --all-targets -- --deny warnings || raise_error "Clippy check failed!"
 
-echo "Running tests..."
-if ! cargo test; then
-    echo "Tests failed!"
-    exit 1
-fi
+info "Building documentation..."
+cargo doc --no-deps --locked || raise_error "Documentation build failed!"
 
-echo "Pre-push checks passed!"
+info "Running tests..."
+cargo test --locked || raise_error "Tests failed!"
+
+info "Pre-push checks passed!"

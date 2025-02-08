@@ -1,15 +1,25 @@
-#!/bin/sh
+#!/usr/bin/env sh
+set -o errexit
+set -o nounset
 
-echo "Running typos..."
-if ! typos -c typos.toml; then
-    echo "Typos check failed!"
+BLUE="\033[0;34m"
+RED="\033[0;31m"
+NC="\033[0m"
+log() {
+    printf "%b==>%b %s\n" "$1" "$2" "$3"
+}
+raise_error() {
+    log "$RED" "$NC" "$1" 1>&2
     exit 1
-fi
+}
+info() {
+    log "$BLUE" "$NC" "$1"
+}
 
-echo "Checking code formatting..."
-if ! cargo fmt -- --check; then
-    echo "Code formatting issues found. Please run 'cargo fmt' to format your code."
-    exit 1
-fi
+info "Running typos..."
+typos -c typos.toml || raise_error "Typos check failed!"
 
-echo "Pre-commit checks passed!"
+info "Checking code formatting..."
+cargo fmt --check || raise_error "Code formatting issues found. Please run 'cargo fmt' to format your code."
+
+info "Pre-commit checks passed!"
