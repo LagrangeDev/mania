@@ -1,6 +1,7 @@
 use crate::core::context::Protocol;
+use bytes::Bytes;
 use phf::{Set, phf_set};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 mod linux;
 
@@ -47,9 +48,21 @@ static WHITELIST: Set<&'static str> = phf_set! {
 
 #[derive(Deserialize)]
 pub struct SignResult {
-    pub sign: String,
-    pub extra: String,
+    #[serde(deserialize_with = "de_hex")]
+    pub sign: Bytes,
+    #[serde(deserialize_with = "de_hex")]
+    pub extra: Bytes,
     pub token: String,
+}
+
+fn de_hex<'de, D>(deserializer: D) -> Result<Bytes, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let str = String::deserialize(deserializer)?;
+    Ok(Bytes::from(
+        hex::decode(str).map_err(serde::de::Error::custom)?,
+    ))
 }
 
 pub trait SignProvider: Send + Sync {

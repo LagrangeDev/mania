@@ -1,5 +1,6 @@
 use crate::core::http;
 use crate::core::sign::{SignProvider, SignResult};
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
@@ -24,9 +25,9 @@ impl SignProvider for LinuxSignProvider {
     fn sign_impl(&self, cmd: &str, seq: u32, body: &[u8]) -> Option<SignResult> {
         let dummy_sign = || -> SignResult {
             SignResult {
-                sign: "0000000000000000000000000000000000000000".to_string(),
-                extra: "".to_string(),
-                token: "".to_string(),
+                sign: Bytes::from(&[0u8; 20][..]),
+                extra: Bytes::new(),
+                token: String::new(),
             }
         };
         match self.url.as_ref() {

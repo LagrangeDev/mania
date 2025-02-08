@@ -14,7 +14,7 @@ pub struct FileC2CDownloadEvent {
 }
 
 impl ClientEvent for FileC2CDownloadEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         // TODO:
         // if (input.FileUuid == null || input.FileHash == null) throw new ArgumentNullException();
         // if (input.SenderUid == null || input.ReceiverUid == null) throw new ArgumentNullException();
@@ -22,10 +22,19 @@ impl ClientEvent for FileC2CDownloadEvent {
             sub_command: 1200,
             field2: 1,
             body: Some(OidbSvcTrpcTcp0xE371200body {
-                receiver_uid: self.receiver_uid.to_owned().unwrap(),
-                file_uuid: self.file_uuid.to_owned().unwrap(),
+                receiver_uid: self
+                    .receiver_uid
+                    .to_owned()
+                    .ok_or_else(|| EventError::OtherError("Missing receiver_uid".to_string()))?,
+                file_uuid: self
+                    .file_uuid
+                    .to_owned()
+                    .ok_or_else(|| EventError::OtherError("Missing file_uuid".to_string()))?,
                 r#type: 2,
-                file_hash: self.file_hash.to_owned().unwrap(),
+                file_hash: self
+                    .file_hash
+                    .to_owned()
+                    .ok_or_else(|| EventError::OtherError("Missing file_hash".to_string()))?,
                 t2: 0,
             }),
             field101: 3,
@@ -33,7 +42,7 @@ impl ClientEvent for FileC2CDownloadEvent {
             field200: 1,
             field99999: vec![0xC0, 0x85, 0x2C, 0x01],
         };
-        OidbPacket::new(0xe37, 1200, packet.encode_to_vec(), false, false).to_binary()
+        Ok(OidbPacket::new(0xe37, 1200, packet.encode_to_vec(), false, false).to_binary())
     }
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

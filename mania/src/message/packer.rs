@@ -47,7 +47,7 @@ impl MessagePacker {
                     content_head.time_stamp.unwrap_or_default() as i64,
                     0
                 )
-                .unwrap(),
+                .ok_or_else(|| "failed to parse timestamp".to_string())?,
                 sequence: content_head.sequence.unwrap_or_default(),
                 entities: entities,
             }));
@@ -69,7 +69,7 @@ impl MessagePacker {
                 content_head.time_stamp.unwrap_or_default() as i64,
                 0
             )
-            .unwrap(),
+            .ok_or_else(|| "failed to parse timestamp".to_string())?,
             sequence: content_head.nt_msg_seq.unwrap_or_default(),
             entities: entities,
         }))
@@ -126,9 +126,14 @@ impl MessagePacker {
             .grp
             .is_some();
         let typ = if is_group {
-            MessageType::Group(make_group_extra(&body).unwrap())
+            MessageType::Group(
+                make_group_extra(&body).ok_or_else(|| "failed to make_group_extra".to_string())?,
+            )
         } else {
-            MessageType::Friend(make_friend_extra(&body).unwrap())
+            MessageType::Friend(
+                make_friend_extra(&body)
+                    .ok_or_else(|| "failed to make_friend_extra".to_string())?,
+            )
         };
         let mut chain = MessagePacker::parse_chain(body)?;
         chain.typ = typ;

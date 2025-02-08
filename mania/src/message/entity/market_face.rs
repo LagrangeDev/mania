@@ -31,11 +31,12 @@ impl MessageEntity for MarketFaceEntity {
     }
 
     fn unpack_element(elem: &Elem) -> Option<Self> {
-        elem.market_face.as_ref().map(|market_face| Self {
-            emoji_id: hex::encode(market_face.face_id.as_ref().unwrap()),
-            emoji_package_id: market_face.tab_id.unwrap(),
-            key: market_face.key.clone().unwrap(),
-            summary: market_face.face_name.clone().unwrap(),
+        let market_face = elem.market_face.as_ref()?;
+        Some(Self {
+            emoji_id: hex::encode(market_face.face_id.as_ref()?),
+            emoji_package_id: market_face.tab_id?,
+            key: market_face.key.clone()?,
+            summary: market_face.face_name.clone()?,
         })
     }
 }

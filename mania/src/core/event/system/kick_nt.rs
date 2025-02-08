@@ -9,7 +9,7 @@ pub struct KickNTEvent {
 }
 
 impl ClientEvent for KickNTEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         unreachable!("KickNTEvent should not be sent by client")
     }
 

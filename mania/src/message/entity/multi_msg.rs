@@ -168,7 +168,7 @@ impl MessageEntity for MultiMsgEntity {
             (Some(35), Some(template)) => {
                 let xml = zlib::decompress(&template[1..])
                     .and_then(|decompressed| String::from_utf8(decompressed).ok())?;
-                let xml: MultiMessage = quick_xml::de::from_str(&xml).unwrap();
+                let xml: MultiMessage = quick_xml::de::from_str(&xml).ok()?;
                 xml.res_id.map(|res_id| dda!(Self { res_id }))
             }
             _ => None,

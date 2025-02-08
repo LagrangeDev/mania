@@ -60,7 +60,7 @@ pub struct PushMessageEvent {
 }
 
 impl ClientEvent for PushMessageEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         todo!()
     }
 
@@ -71,7 +71,7 @@ impl ClientEvent for PushMessageEvent {
             .as_ref()
             .and_then(|msg| msg.content_head.as_ref())
             .map(|content_head| content_head.r#type)
-            .unwrap();
+            .ok_or_else(|| EventError::OtherError("Cannot get typ in PushMsg".to_string()))?;
         let packet_type =
             PkgType::try_from(typ).map_err(|_| EventError::UnknownOlpushMessageTypeError(typ))?;
         let mut chain = MessageChain::default(); // FIXME: maybe exist better way to handle this

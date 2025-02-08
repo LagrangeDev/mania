@@ -50,8 +50,12 @@ pub fn oidb_command(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as OidbCommandArgs);
     let command = format!(
         "OidbSvcTrpcTcp.0x{:x}_{}",
-        args.command.base10_parse::<u32>().unwrap(),
-        args.sub_command.base10_parse::<u32>().unwrap()
+        args.command
+            .base10_parse::<u32>()
+            .expect("parse command failed"),
+        args.sub_command
+            .base10_parse::<u32>()
+            .expect("parse sub command failed"),
     );
     let command_value = LitStr::new(&command, Span::call_site());
     let input_struct = parse_macro_input!(item as ItemStruct);

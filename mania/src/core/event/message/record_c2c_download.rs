@@ -14,7 +14,7 @@ pub struct RecordC2CDownloadEvent {
 }
 
 impl ClientEvent for RecordC2CDownloadEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         let packet = dda!(Ntv2RichMediaReq {
             req_head: Some(MultiMediaReqHead {
                 common: Some(CommonHead {
@@ -44,7 +44,7 @@ impl ClientEvent for RecordC2CDownloadEvent {
                 })),
             }),
         });
-        OidbPacket::new(0x126D, 200, packet.encode_to_vec(), false, true).to_binary()
+        Ok(OidbPacket::new(0x126D, 200, packet.encode_to_vec(), false, true).to_binary())
     }
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

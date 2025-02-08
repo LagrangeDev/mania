@@ -11,8 +11,8 @@ impl ClientEvent for AliveEvent {
         PacketType::T13
     }
 
-    fn build(&self, _: &Context) -> BinaryPacket {
-        BinaryPacket(4u32.to_be_bytes().to_vec().into())
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+        Ok(BinaryPacket(4u32.to_be_bytes().to_vec().into()))
     }
 
     fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

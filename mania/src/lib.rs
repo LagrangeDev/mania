@@ -13,7 +13,7 @@ use crate::core::business::{Business, BusinessHandle};
 use crate::core::connect::optimum_server;
 use crate::core::context::Protocol;
 pub use crate::core::context::{AppInfo, Context, DeviceInfo};
-pub use crate::core::error::{Error, Result};
+pub use crate::core::error::{ManiaError, ManiaResult};
 pub use crate::core::key_store::KeyStore;
 use crate::core::session::Session;
 use crate::core::sign::{SignProvider, default_sign_provider};
@@ -62,7 +62,7 @@ impl Client {
         config: ClientConfig,
         device: DeviceInfo,
         key_store: KeyStore,
-    ) -> Result<Self> {
+    ) -> ManiaResult<Self> {
         let app_info = AppInfo::get(config.protocol);
         let context = Context {
             app_info,

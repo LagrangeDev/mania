@@ -23,13 +23,13 @@ impl WtLogin {
 }
 
 impl ClientEvent for WtLogin {
-    fn build(&self, context: &Context) -> BinaryPacket {
+    fn build(&self, context: &Context) -> Result<BinaryPacket, EventError> {
         let body = PacketBuilder::new()
             .u16(0x09)
             .packet(|p| serialize_tlv_set(context, Self::BUILD_TLVS.as_slice(), p))
             .build();
         let body = build_wtlogin_packet(context, 2064, &body);
-        BinaryPacket(body.into())
+        Ok(BinaryPacket(body.into()))
     }
 
     fn parse(packet: Bytes, ctx: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
@@ -43,24 +43,24 @@ impl ClientEvent for WtLogin {
                 .get::<t119::T119>()
                 .map_err(TlvError::MissingTlv)?
                 .encrypted_tlv
-                .clone();
+                .to_owned();
             let dec_tlvs_data = tea_decrypt(&enc_tlvs_data, &ctx.session.stub.tgtgt_key.load());
             let tlvs = TlvSet::deserialize(Bytes::from(dec_tlvs_data));
             let tgt = tlvs
                 .get::<t10a::T10A>()
                 .map_err(TlvError::MissingTlv)?
                 .tgt
-                .clone();
+                .to_owned();
             let d2 = tlvs
                 .get::<t143::T143>()
                 .map_err(TlvError::MissingTlv)?
                 .d2
-                .clone();
+                .to_owned();
             let d2_key = tlvs
                 .get::<t305::T305>()
                 .map_err(TlvError::MissingTlv)?
                 .d2key
-                .clone();
+                .to_owned();
             let trans_d2_key: &[u8; 16] = (&d2_key[..])
                 .try_into()
                 .expect("d2_key is not 16 bytes long");
@@ -69,12 +69,12 @@ impl ClientEvent for WtLogin {
                 .get::<t106::T106>()
                 .map_err(TlvError::MissingTlv)?
                 .temp
-                .clone();
+                .to_owned();
             let uid = tlvs
                 .get::<t543::T543>()
                 .map_err(TlvError::MissingTlv)?
                 .uid
-                .clone();
+                .to_owned();
             let self_info = tlvs.get::<t11a::T11A>().map_err(TlvError::MissingTlv)?;
             ctx.session.stub.tgtgt_key.store(Arc::from(tgtgt));
             ctx.key_store.session.tgt.store(Arc::from(tgt));
@@ -95,7 +95,7 @@ impl ClientEvent for WtLogin {
             ctx.key_store.info.store(Arc::from(AccountInfo {
                 age: self_info.age,
                 gender: self_info.gender,
-                name: self_info.nick_name.clone(),
+                name: self_info.nick_name.to_owned(),
             }));
             Ok(Box::new(Self { code: 0, msg: None }))
         } else {
@@ -104,7 +104,7 @@ impl ClientEvent for WtLogin {
                 .map_err(TlvError::MissingTlv)?;
             Ok(Box::new(Self {
                 code: typ as i32,
-                msg: Some(tlv146.message.clone()),
+                msg: Some(tlv146.message.to_owned()),
             }))
         }
     }

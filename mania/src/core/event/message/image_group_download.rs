@@ -13,7 +13,7 @@ pub struct ImageGroupDownloadEvent {
 }
 
 impl ClientEvent for ImageGroupDownloadEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         let request = dda!(Ntv2RichMediaReq {
             req_head: Some(MultiMediaReqHead {
                 common: Some(CommonHead {
@@ -41,7 +41,7 @@ impl ClientEvent for ImageGroupDownloadEvent {
             })
         });
         let body = request.encode_to_vec();
-        OidbPacket::new(0x11c4, 200, body, false, true).to_binary()
+        Ok(OidbPacket::new(0x11c4, 200, body, false, true).to_binary())
     }
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

@@ -61,24 +61,24 @@ impl MessageEntity for ImageEntity {
             if common.service_type == 48
                 && (common.business_type == 10 || common.business_type == 20)
             {
-                let extra: MsgInfo = MsgInfo::decode(&*common.pb_elem).unwrap(); // FIXME: panic
-                let ext_biz_info = extra.ext_biz_info.as_ref().unwrap();
+                let extra: MsgInfo = MsgInfo::decode(&*common.pb_elem).ok()?;
+                let ext_biz_info = extra.ext_biz_info.as_ref()?;
                 let msg_info_body = &extra.msg_info_body[0];
-                let index = msg_info_body.index.as_ref().unwrap();
+                let index = msg_info_body.index.as_ref()?;
 
                 return Some(dda!(ImageEntity {
-                    height: index.info.as_ref().unwrap().height,
-                    width: index.info.as_ref().unwrap().width,
-                    file_path: index.info.as_ref().unwrap().file_name.clone(),
-                    md5: Bytes::from(hex::decode(&index.info.as_ref().unwrap().file_hash).unwrap()),
-                    size: index.info.as_ref().unwrap().file_size,
+                    height: index.info.as_ref()?.height,
+                    width: index.info.as_ref()?.width,
+                    file_path: index.info.as_ref()?.file_name.clone(),
+                    md5: Bytes::from(hex::decode(&index.info.as_ref()?.file_hash).ok()?),
+                    size: index.info.as_ref()?.file_size,
                     msg_info: Some(extra.clone()),
-                    sub_type: ext_biz_info.pic.as_ref().unwrap().biz_type,
-                    is_group: ext_biz_info.pic.as_ref().unwrap().ext_data.is_some(),
-                    summary: if ext_biz_info.pic.as_ref().unwrap().text_summary.is_empty() {
+                    sub_type: ext_biz_info.pic.as_ref()?.biz_type,
+                    is_group: ext_biz_info.pic.as_ref()?.ext_data.is_some(),
+                    summary: if ext_biz_info.pic.as_ref()?.text_summary.is_empty() {
                         Some("[图片]".to_string())
                     } else {
-                        Some(ext_biz_info.pic.as_ref().unwrap().text_summary.clone())
+                        Some(ext_biz_info.pic.as_ref()?.text_summary.clone())
                     },
                 }));
             }

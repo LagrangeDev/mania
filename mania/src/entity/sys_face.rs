@@ -63,7 +63,7 @@ impl SysFacePackEntry {
     pub fn get_unique_super_qsids(
         &self,
         exclude_ani_sticker_types_and_pack_ids: &[(i32, i32)],
-    ) -> Vec<u32> {
+    ) -> Result<Vec<u32>, String> {
         self.emojis
             .iter()
             .filter(|e| {
@@ -72,7 +72,11 @@ impl SysFacePackEntry {
                     && !exclude_ani_sticker_types_and_pack_ids
                         .contains(&(e.ani_sticker_type.unwrap(), e.ani_sticker_pack_id.unwrap()))
             })
-            .map(|e| e.q_sid.parse::<u32>().unwrap())
+            .map(|e| {
+                e.q_sid
+                    .parse::<u32>()
+                    .map_err(|e| format!("Failed to parse q_sid to u32: {}", e))
+            })
             .collect()
     }
 }

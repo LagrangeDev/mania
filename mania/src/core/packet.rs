@@ -225,8 +225,8 @@ impl SsoPacket {
                                 .map(|arc| arc.as_ref().clone()),
                             sign: match sign {
                                 Some(sign) => Some(Sign {
-                                    sec_sign: Some(hex::decode(sign.sign).unwrap()),
-                                    sec_extra: Some(hex::decode(sign.extra).unwrap()),
+                                    sec_sign: Some(sign.sign.to_vec()),
+                                    sec_extra: Some(sign.extra.to_vec()),
                                     sec_token: Some(sign.token),
                                 }),
                                 None => None,

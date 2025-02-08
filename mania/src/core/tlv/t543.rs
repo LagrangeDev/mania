@@ -8,7 +8,7 @@ pub struct T543 {
 impl TlvDe for T543 {
     fn deserialize(p: &mut PacketReader) -> Result<Box<dyn TlvDe>, TlvError> {
         Ok(Box::new(p.length_value(|p| {
-            let proto = Tlv543::decode(&mut p.bytes()).unwrap();
+            let proto = Tlv543::decode(&mut p.bytes()).expect("decode Tlv543 failed");
             Self {
                 uid: proto.layer1.unwrap().layer2.unwrap().uid.clone(),
             }

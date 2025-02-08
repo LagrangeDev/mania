@@ -14,16 +14,18 @@ pub trait Ecdh {
     fn key_exchange<C>(
         c_pri_key: elliptic_curve::ecdh::EphemeralSecret<C>,
         s_pub_key: elliptic_curve::PublicKey<C>,
-    ) -> [u8; 16]
+    ) -> Result<[u8; 16], String>
     where
         C: elliptic_curve::CurveArithmetic,
     {
         let share = c_pri_key.diffie_hellman(&s_pub_key);
-        let share_slice: [u8; 16] = share.raw_secret_bytes()[0..16].try_into().unwrap();
+        let share_slice: [u8; 16] = share.raw_secret_bytes()[0..16]
+            .try_into()
+            .map_err(|_| "Failed to convert shared secret to a fixed-size array".to_string())?;
         let result = Md5::digest(share_slice);
         let mut shared_key = [0; 16];
         shared_key.copy_from_slice(&result);
-        shared_key
+        Ok(shared_key)
     }
     fn tea_encrypt(&self, data: &[u8]) -> Vec<u8> {
         tea::tea_encrypt(data, self.shared_key())
@@ -44,7 +46,8 @@ impl Ecdh for P256 {
             PublicKey::from_sec1_bytes(&server_public_key).expect("Failed to parse public key");
         let c_pri_key = EphemeralSecret::random(&mut rand::thread_rng());
         let c_pub_key = c_pri_key.public_key();
-        let share_key = Self::key_exchange(c_pri_key, s_pub_key);
+        let share_key = Self::key_exchange(c_pri_key, s_pub_key)
+            .expect("Failed to generate shared key from key exchange");
         Self {
             public: EncodedPoint::from(c_pub_key).as_bytes().to_vec(),
             shared: share_key,
@@ -80,12 +83,16 @@ mod test {
         assert_eq!(server_shared, client_shared);
 
         let client_message = b"https://music.163.com/song?id=1496089150";
-        let ciphertext_from_client = tea::tea_encrypt(client_message, &client_shared);
-        let decrypted_by_server = tea::tea_decrypt(&ciphertext_from_client, &server_shared);
+        let ciphertext_from_client =
+            tea::tea_encrypt(client_message, &client_shared.clone().unwrap());
+        let decrypted_by_server =
+            tea::tea_decrypt(&ciphertext_from_client, &server_shared.clone().unwrap());
         assert_eq!(client_message.to_vec(), decrypted_by_server);
         let server_message = b"https://music.163.com/song?id=1921741824";
-        let ciphertext_from_server = tea::tea_encrypt(server_message, &server_shared);
-        let decrypted_by_client = tea::tea_decrypt(&ciphertext_from_server, &client_shared);
+        let ciphertext_from_server =
+            tea::tea_encrypt(server_message, &server_shared.clone().unwrap());
+        let decrypted_by_client =
+            tea::tea_decrypt(&ciphertext_from_server, &client_shared.unwrap());
         assert_eq!(server_message.to_vec(), decrypted_by_client);
 
         println!(

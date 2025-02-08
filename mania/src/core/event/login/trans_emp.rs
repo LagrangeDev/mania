@@ -94,7 +94,7 @@ impl TransEmp {
 }
 
 impl ClientEvent for TransEmp {
-    fn build(&self, ctx: &Context) -> BinaryPacket {
+    fn build(&self, ctx: &Context) -> Result<BinaryPacket, EventError> {
         let body = match self.status {
             TransEmpStatus::QueryResult => {
                 let qrsign = ctx.session.qr_sign.load();
@@ -135,7 +135,7 @@ impl ClientEvent for TransEmp {
             }
         };
         let packet = build_wtlogin_packet(ctx, 2066, &body);
-        BinaryPacket(packet.into())
+        Ok(BinaryPacket(packet.into()))
     }
 
     fn parse(packet: Bytes, context: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
@@ -164,7 +164,7 @@ impl ClientEvent for TransEmp {
                     .get::<t017q::T017q>()
                     .map_err(TlvError::MissingTlv)?
                     .qr_code
-                    .clone();
+                    .to_owned();
                 let expiration = tlvs
                     .get::<t01cq::T01cq>()
                     .map_err(TlvError::MissingTlv)?
@@ -172,8 +172,8 @@ impl ClientEvent for TransEmp {
                 let t0d1 = tlvs
                     .get::<t0d1q::T0d1Resp>()
                     .map_err(TlvError::MissingTlv)?;
-                let url = t0d1.proto.url.clone();
-                let qr_sig = t0d1.proto.qr_sig.clone();
+                let url = t0d1.proto.url.to_owned();
+                let qr_sig = t0d1.proto.qr_sig.to_owned();
 
                 Ok(Box::new(Self {
                     status: TransEmpStatus::FetchQrCode,
@@ -199,17 +199,17 @@ impl ClientEvent for TransEmp {
                             .get::<t01eq::T01eq>()
                             .map_err(TlvError::MissingTlv)?
                             .tgtgt_key
-                            .clone();
+                            .to_owned();
                         let temp_password = tlvs
                             .get::<t018q::T018q>()
                             .map_err(TlvError::MissingTlv)?
                             .temp_password
-                            .clone();
+                            .to_owned();
                         let no_pic_sig = tlvs
                             .get::<t019q::T019q>()
                             .map_err(TlvError::MissingTlv)?
                             .no_pic_sig
-                            .clone();
+                            .to_owned();
 
                         TransEmp12Res::Confirmed(TransEmp12ConfirmedData {
                             tgtgt_key,

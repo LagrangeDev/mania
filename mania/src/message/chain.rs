@@ -112,7 +112,7 @@ impl MessageChain {
     pub(crate) fn friend(friend_uin: u32, friend_uid: String, self_uid: String) -> Self {
         dda!(Self {
             typ: MessageType::Friend(FriendMessageUniqueElem::default()),
-            self_uid: self_uid.parse().unwrap(),
+            self_uid: self_uid,
             uid: friend_uid,
             friend_uin,
         })

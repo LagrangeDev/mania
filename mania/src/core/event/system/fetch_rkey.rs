@@ -8,7 +8,7 @@ use crate::core::protos::service::oidb::{
 pub struct FetchRKeyEvent;
 
 impl ClientEvent for FetchRKeyEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         let request = dda!(Ntv2RichMediaReq {
             req_head: Some(MultiMediaReqHead {
                 common: Some(CommonHead {
@@ -27,7 +27,7 @@ impl ClientEvent for FetchRKeyEvent {
             }),
         });
         let body = request.encode_to_vec();
-        OidbPacket::new(0x9067, 202, body, false, true).to_binary()
+        Ok(OidbPacket::new(0x9067, 202, body, false, true).to_binary())
     }
 
     fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

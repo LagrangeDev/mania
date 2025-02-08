@@ -12,7 +12,7 @@ pub struct FileGroupDownloadEvent {
 }
 
 impl ClientEvent for FileGroupDownloadEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         let packet = dda!(OidbSvcTrpcTcp0x6D6 {
             download: Some(OidbSvcTrpcTcp0x6D6Download {
                 group_uin: self.group_uin,
@@ -21,7 +21,7 @@ impl ClientEvent for FileGroupDownloadEvent {
                 file_id: self.file_id.to_owned(),
             }),
         });
-        OidbPacket::new(0x6D6, 2, packet.encode_to_vec(), false, true).to_binary()
+        Ok(OidbPacket::new(0x6D6, 2, packet.encode_to_vec(), false, true).to_binary())
     }
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

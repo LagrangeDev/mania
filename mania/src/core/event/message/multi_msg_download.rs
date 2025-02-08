@@ -16,7 +16,7 @@ pub struct MultiMsgDownloadEvent {
 }
 
 impl ClientEvent for MultiMsgDownloadEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         let packet = RecvLongMsgReq {
             info: Some(RecvLongMsgInfo {
                 uid: Some(LongMsgUid {
@@ -32,7 +32,7 @@ impl ClientEvent for MultiMsgDownloadEvent {
                 field4: 0,
             }),
         };
-        BinaryPacket(packet.encode_to_vec().into())
+        Ok(BinaryPacket(packet.encode_to_vec().into()))
     }
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

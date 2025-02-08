@@ -15,7 +15,7 @@ pub struct FetchMembersEvent {
 }
 
 impl ClientEvent for FetchMembersEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         let request = OidbSvcTrpcTcp0xFe73 {
             group_uin: self.group_uin,
             field2: 5,
@@ -32,7 +32,7 @@ impl ClientEvent for FetchMembersEvent {
             })),
             token: self.token.clone(),
         };
-        OidbPacket::new(0xfe7, 3, request.encode_to_vec(), false, true).to_binary()
+        Ok(OidbPacket::new(0xfe7, 3, request.encode_to_vec(), false, true).to_binary())
     }
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

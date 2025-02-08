@@ -30,7 +30,7 @@ pub trait ClientEvent: CECommandMarker {
     fn packet_type(&self) -> PacketType {
         PacketType::T12 // most common packet type
     }
-    fn build(&self, _: &Context) -> BinaryPacket;
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError>;
     fn parse(packet: Bytes, context: &Context) -> Result<Box<dyn ServerEvent>, EventError>;
 }
 

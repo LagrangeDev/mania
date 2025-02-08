@@ -31,7 +31,7 @@ impl TlvSer for T106 {
                 .load_full()
                 .as_ref()
                 .map(|arc| (**arc).clone())
-                .unwrap(),
+                .expect("Missing temp password"),
         })
     }
 

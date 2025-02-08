@@ -6,7 +6,6 @@ use std::any::TypeId;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
-use std::io::Result;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -21,7 +20,25 @@ use crate::core::socket::{self, PacketReceiver, PacketSender};
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
+use thiserror::Error;
 use tokio::sync::{Mutex, MutexGuard, oneshot};
+
+#[derive(Debug, Error)]
+pub enum BusinessError {
+    #[error("Network error: {0}")]
+    NetworkError(#[from] std::io::Error),
+
+    #[error("Invalid server response: {0}")]
+    InvalidServerResponse(String),
+
+    #[error("An mania error occurred: {0}")]
+    GenericError(String),
+
+    #[error("An mania internal event error occurred: {0}")]
+    InternalEventError(#[from] EventError),
+}
+
+type BusinessResult<T> = Result<T, BusinessError>;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LogicFlow {
@@ -92,7 +109,7 @@ pub struct Business {
 }
 
 impl Business {
-    pub async fn new(addr: SocketAddr, context: Arc<Context>) -> Result<Self> {
+    pub async fn new(addr: SocketAddr, context: Arc<Context>) -> BusinessResult<Self> {
         let (sender, receiver) = socket::connect(addr).await?;
         let handle = Arc::new(BusinessHandle {
             sender: ArcSwap::new(Arc::new(sender)),
@@ -117,8 +134,20 @@ impl Business {
     pub async fn spawn(&mut self) {
         let handle_packets = async {
             loop {
-                let raw_packet = self.receiver.recv().await.unwrap();
-                let packet = SsoPacket::parse(raw_packet, &self.handle.context).unwrap();
+                let raw_packet = match self.receiver.recv().await {
+                    Ok(packet) => packet,
+                    Err(e) => {
+                        tracing::error!("Failed to receive raw_packet: {}", e);
+                        continue;
+                    }
+                };
+                let packet = match SsoPacket::parse(raw_packet, &self.handle.context) {
+                    Ok(packet) => packet,
+                    Err(e) => {
+                        tracing::error!("Failed to parse SsoPacket: {}", e);
+                        continue;
+                    }
+                };
                 let handle = self.handle.clone();
                 tokio::spawn(async move {
                     if let Err(e) = handle.dispatch_sso_packet(packet).await {
@@ -134,7 +163,7 @@ impl Business {
         }
     }
 
-    async fn try_reconnect(&mut self) -> Result<()> {
+    async fn try_reconnect(&mut self) -> BusinessResult<()> {
         tracing::info!("Reconnecting to server: {}", self.addr);
 
         let (sender, receiver) = socket::connect(self.addr).await?;
@@ -170,7 +199,7 @@ impl Business {
 pub struct BusinessHandle {
     sender: ArcSwap<PacketSender>,
     reconnecting: Mutex<()>,
-    pending_requests: DashMap<u32, oneshot::Sender<Result<Box<dyn ServerEvent>>>>,
+    pending_requests: DashMap<u32, oneshot::Sender<BusinessResult<Box<dyn ServerEvent>>>>,
     pub(crate) context: Arc<Context>,
     pub(crate) cache: Arc<Cache>,
     // TODO: (outer) event dispatcher, highway
@@ -187,24 +216,18 @@ impl BusinessHandle {
         self.reconnecting.lock().await
     }
 
-    fn build_sso_packet<T: ClientEvent>(&self, event: &T) -> SsoPacket {
-        SsoPacket::new(
+    fn build_sso_packet<T: ClientEvent>(&self, event: &T) -> BusinessResult<SsoPacket> {
+        Ok(SsoPacket::new(
             event.packet_type(),
             event.command(),
-            event.build(&self.context),
-        )
+            event.build(&self.context)?,
+        ))
     }
 
-    async fn dispatch_sso_packet(
-        self: &Arc<Self>,
-        packet: SsoPacket,
-    ) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn dispatch_sso_packet(self: &Arc<Self>, packet: SsoPacket) -> BusinessResult<()> {
         let sequence = packet.sequence();
-        let result: Result<Box<dyn ServerEvent>> = async {
-            // TODO: refactor error type?
-            let mut event = resolve_event(packet, &self.context)
-                .await
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+        let result: BusinessResult<Box<dyn ServerEvent>> = async {
+            let mut event = resolve_event(packet, &self.context).await?;
             dispatch_logic(&mut *event, self.clone(), LogicFlow::InComing).await;
             Ok(event)
         }
@@ -212,7 +235,7 @@ impl BusinessHandle {
         // Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent
         // TODO: timeout auto remove
         if let Some((_, tx)) = self.pending_requests.remove(&sequence) {
-            tx.send(result).unwrap();
+            tx.send(result).expect("receiver dropped");
         } else {
             tracing::warn!("unhandled packet: {:?}", result);
         }
@@ -220,16 +243,16 @@ impl BusinessHandle {
     }
 
     /// Push a client event to the server, without waiting for a response.
-    pub async fn push_event(&self, event: &(impl ClientEvent + ServerEvent)) -> Result<()> {
+    pub async fn push_event(&self, event: &(impl ClientEvent + ServerEvent)) -> BusinessResult<()> {
         let packet = self.build_sso_packet(event);
-        self.post_packet(packet).await
+        self.post_packet(packet?).await
     }
 
     /// Send a client event to the server and wait for the response.
     pub async fn send_event(
         self: &Arc<Self>,
         event: &mut (impl ClientEvent + ServerEvent),
-    ) -> Result<Box<dyn ServerEvent>> {
+    ) -> BusinessResult<Box<dyn ServerEvent>> {
         // Lagrange.Core.Internal.Context.BusinessContext.HandleOutgoingEvent
         dispatch_logic(
             event as &mut dyn ServerEvent,
@@ -239,19 +262,19 @@ impl BusinessHandle {
         .await;
         // MultiMsgUploadEvent -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Outgoing
         let packet = self.build_sso_packet(event);
-        let events = self.send_packet(packet).await?;
+        let events = self.send_packet(packet?).await?;
         Ok(events)
     }
 
-    async fn post_packet(&self, packet: SsoPacket) -> Result<()> {
+    async fn post_packet(&self, packet: SsoPacket) -> BusinessResult<()> {
         let packet = packet.build(&self.context);
-        self.sender.load().send(packet).await
+        Ok(self.sender.load().send(packet).await?)
     }
 
-    async fn send_packet(&self, packet: SsoPacket) -> Result<Box<dyn ServerEvent>> {
+    async fn send_packet(&self, packet: SsoPacket) -> BusinessResult<Box<dyn ServerEvent>> {
         tracing::debug!("sending packet: {:?}", packet);
         let sequence = packet.sequence();
-        let (tx, rx) = oneshot::channel::<Result<Box<dyn ServerEvent>>>();
+        let (tx, rx) = oneshot::channel::<BusinessResult<Box<dyn ServerEvent>>>();
         self.pending_requests.insert(sequence, tx);
         self.post_packet(packet).await?;
         rx.await.expect("response not received")

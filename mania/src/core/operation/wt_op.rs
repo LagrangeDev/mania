@@ -9,8 +9,9 @@ use crate::core::event::system::info_sync::InfoSyncEvent;
 use crate::core::event::system::nt_sso_alive::NtSsoAliveEvent;
 use crate::core::http;
 use crate::core::session::QrSign;
-use crate::{Error, KeyStore};
+use crate::{KeyStore, ManiaError, ManiaResult};
 use bytes::Bytes;
+use std::borrow::Cow;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::watch;
@@ -21,18 +22,22 @@ impl BusinessHandle {
         &self.context.key_store
     }
 
-    pub async fn fetch_qrcode(self: &Arc<Self>) -> crate::Result<(String, Bytes)> {
+    pub async fn fetch_qrcode(self: &Arc<Self>) -> ManiaResult<(String, Bytes)> {
         let mut trans_emp = TransEmp::new_fetch_qr_code();
         let response = self.send_event(&mut trans_emp).await?;
-        let event: &TransEmp = downcast_event(&response).unwrap();
-        let result = event.result.as_ref().unwrap();
+        let event: &TransEmp =
+            downcast_event(&response).ok_or(ManiaError::InternalEventDowncastError)?;
+        let result = event
+            .result
+            .as_ref()
+            .ok_or_else(|| ManiaError::GenericError("Emp result not found".into()))?;
         if let TransEmpResult::Emp31(emp31) = result {
             let qr_sign = QrSign {
                 sign: emp31
                     .signature
                     .as_ref()
                     .try_into()
-                    .map_err(|_| Error::InvalidServerResponse("invalid QR signature".into()))?,
+                    .map_err(|_| ManiaError::GenericError("invalid QR signature".into()))?,
                 string: emp31.qr_sig.clone(),
                 url: emp31.url.clone(),
             };
@@ -44,14 +49,19 @@ impl BusinessHandle {
         }
     }
 
-    async fn query_trans_tmp_status(self: &Arc<Self>) -> crate::Result<TransEmp12Res> {
+    async fn query_trans_tmp_status(self: &Arc<Self>) -> ManiaResult<TransEmp12Res> {
         if let Some(qr_sign) = (*self.context.session.qr_sign.load()).clone() {
             let request_body = NTLoginHttpRequest {
                 appid: self.context.app_info.app_id as u64,
                 qrsig: qr_sign.string.clone(),
                 face_update_time: 0,
             };
-            let payload = serde_json::to_vec(&request_body).unwrap();
+            let payload = serde_json::to_vec(&request_body).map_err(|e| {
+                ManiaError::GenericError(Cow::from(format!(
+                    "Failed to serialize request body: {:?}",
+                    e
+                )))
+            })?;
             let response = http::client()
                 .post_binary_async(
                     "https://ntlogin.qq.com/qr/getFace",
@@ -59,26 +69,40 @@ impl BusinessHandle {
                     "application/json",
                 )
                 .await
-                .unwrap();
-            let info: NTLoginHttpResponse = serde_json::from_slice(&response).unwrap();
+                .map_err(|e| {
+                    ManiaError::GenericError(Cow::from(format!(
+                        "Failed to query QR code status via ntlogin.qq.com: {:?}",
+                        e
+                    )))
+                })?;
+            let info: NTLoginHttpResponse = serde_json::from_slice(&response).map_err(|e| {
+                ManiaError::GenericError(Cow::from(format!(
+                    "Failed to deserialize response: {:?}",
+                    e
+                )))
+            })?;
             self.context.key_store.uin.store(info.uin.into());
             let mut query_result = TransEmp::new_query_result();
             let res = self.send_event(&mut query_result).await?;
-            let res: &TransEmp = downcast_event(&res).unwrap();
-            let result = res.result.as_ref().unwrap();
+            let res: &TransEmp =
+                downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+            let result = res
+                .result
+                .as_ref()
+                .ok_or_else(|| ManiaError::GenericError("Emp result not found".into()))?;
             if let TransEmpResult::Emp12(emp12) = result {
                 Ok(emp12.to_owned())
             } else {
                 panic!("Emp12 not found in response");
             }
         } else {
-            Err(Error::GenericError("QR code not fetched".into()))
+            Err(ManiaError::GenericError("QR code not fetched".into()))
         }
     }
 
-    async fn do_wt_login(self: &Arc<Self>) -> crate::Result<()> {
+    async fn do_wt_login(self: &Arc<Self>) -> ManiaResult<()> {
         let res = self.send_event(&mut WtLogin::default()).await?;
-        let event: &WtLogin = downcast_event(&res).unwrap();
+        let event: &WtLogin = downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         match event.code {
             0 => {
                 tracing::info!(
@@ -87,7 +111,7 @@ impl BusinessHandle {
                 );
                 Ok(())
             }
-            _ => Err(Error::GenericError(
+            _ => Err(ManiaError::GenericError(
                 format!(
                     "WTLogin failed with code: {}, msg: {:?} w(ﾟДﾟ)w",
                     event.code, event.msg
@@ -97,7 +121,7 @@ impl BusinessHandle {
         }
     }
 
-    pub async fn login_by_qrcode(self: &Arc<Self>) -> crate::Result<()> {
+    pub async fn login_by_qrcode(self: &Arc<Self>) -> ManiaResult<()> {
         let interval = Duration::from_secs(2);
         let timeout_duration = Duration::from_secs(120);
         let result = timeout(timeout_duration, async {
@@ -136,10 +160,12 @@ impl BusinessHandle {
                         return self.do_wt_login().await;
                     }
                     TransEmp12Res::CodeExpired => {
-                        return Err(Error::GenericError("QR code expired".into()));
+                        return Err(ManiaError::GenericError("QR code expired".into()));
                     }
                     TransEmp12Res::Canceled => {
-                        return Err(Error::GenericError("QR code login canceled by user".into()));
+                        return Err(ManiaError::GenericError(
+                            "QR code login canceled by user".into(),
+                        ));
                     }
                 }
                 sleep(interval).await;
@@ -149,16 +175,17 @@ impl BusinessHandle {
         match result {
             Ok(Ok(())) => Ok(()),
             Ok(Err(e)) => Err(e),
-            Err(_) => Err(Error::GenericError(
+            Err(_) => Err(ManiaError::GenericError(
                 "QR code scan timed out after 120s!".into(),
             )),
         }
     }
 
-    pub async fn online(self: &Arc<Self>) -> crate::Result<watch::Sender<()>> {
+    pub async fn online(self: &Arc<Self>) -> ManiaResult<watch::Sender<()>> {
         let (tx, mut rx) = watch::channel::<()>(());
         let res = self.send_event(&mut InfoSyncEvent).await?;
-        let _: &InfoSyncEvent = downcast_event(&res).unwrap();
+        let _: &InfoSyncEvent =
+            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         tracing::info!("Online success");
         tracing::debug!(
             "d2key: {:?}",

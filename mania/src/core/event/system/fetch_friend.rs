@@ -15,7 +15,7 @@ pub struct FetchFriendsEvent {
 }
 
 impl ClientEvent for FetchFriendsEvent {
-    fn build(&self, _: &Context) -> BinaryPacket {
+    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
         let request = OidbSvcTrpcTcp0xFd41 {
             field2: 300,
             field4: 0,
@@ -38,7 +38,7 @@ impl ClientEvent for FetchFriendsEvent {
             field10002: vec![13578, 13579, 13573, 13572, 13568],
             field10003: 4051,
         };
-        OidbPacket::new(0xfd4, 1, request.encode_to_vec(), false, false).to_binary()
+        Ok(OidbPacket::new(0xfd4, 1, request.encode_to_vec(), false, false).to_binary())
     }
 
     fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

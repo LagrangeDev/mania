@@ -11,12 +11,12 @@ use crate::core::event::message::video_group_download::VideoGroupDownloadEvent;
 use crate::core::event::system::fetch_rkey::FetchRKeyEvent;
 use crate::core::event::{downcast_event, downcast_mut_event};
 use crate::core::protos::service::oidb::IndexNode;
-use crate::dda;
 use crate::message::chain::MessageChain;
+use crate::{ManiaError, ManiaResult, dda};
 use std::sync::Arc;
 
 impl BusinessHandle {
-    pub async fn fetch_rkey(self: &Arc<Self>) -> crate::Result<()> {
+    pub async fn fetch_rkey(self: &Arc<Self>) -> ManiaResult<()> {
         let mut fetch_event = FetchRKeyEvent {};
         let res = self.send_event(&mut fetch_event).await?;
         tracing::info!("FetchRKeyEvent: {:?}", res);
@@ -27,20 +27,21 @@ impl BusinessHandle {
         self: &Arc<Self>,
         group_uin: u32,
         index_node: IndexNode,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         let mut fetch_event = dda!(ImageGroupDownloadEvent {
             group_uin,
             index_node,
         });
         let res = self.send_event(&mut fetch_event).await?;
-        let event: &ImageGroupDownloadEvent = downcast_event(&res).unwrap();
+        let event: &ImageGroupDownloadEvent =
+            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.image_url.clone())
     }
 
     pub async fn download_c2c_image(
         self: &Arc<Self>,
         index_node: IndexNode,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         let uid = self
             .context
             .key_store
@@ -48,13 +49,14 @@ impl BusinessHandle {
             .load()
             .as_ref()
             .map(|arc| arc.as_ref().clone())
-            .unwrap();
+            .expect("Missing self_uid");
         let mut fetch_event = dda!(ImageC2CDownloadEvent {
             self_uid: uid,
             index_node,
         });
         let res = self.send_event(&mut fetch_event).await?;
-        let event: &ImageC2CDownloadEvent = downcast_event(&res).unwrap();
+        let event: &ImageC2CDownloadEvent =
+            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.image_url.clone())
     }
 
@@ -62,13 +64,14 @@ impl BusinessHandle {
         self: &Arc<Self>,
         uid: String,
         res_id: String,
-    ) -> crate::Result<Option<Vec<MessageChain>>> {
+    ) -> ManiaResult<Option<Vec<MessageChain>>> {
         let mut fetch_event = dda!(MultiMsgDownloadEvent {
             uid: Some(uid),
             res_id: Some(res_id),
         });
         let mut res = self.send_event(&mut fetch_event).await?;
-        let event: &mut MultiMsgDownloadEvent = downcast_mut_event(&mut *res).unwrap();
+        let event: &mut MultiMsgDownloadEvent =
+            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.chains.take())
     }
 
@@ -76,10 +79,11 @@ impl BusinessHandle {
         self: &Arc<Self>,
         group_uin: u32,
         file_id: String,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         let mut event = dda!(FileGroupDownloadEvent { group_uin, file_id });
         let mut res = self.send_event(&mut event).await?;
-        let event: &mut FileGroupDownloadEvent = downcast_mut_event(&mut *res).unwrap();
+        let event: &mut FileGroupDownloadEvent =
+            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.file_url.to_owned())
     }
 
@@ -88,7 +92,7 @@ impl BusinessHandle {
         file_uuid: Option<String>,
         file_hash: Option<String>,
         sender_uid: Option<String>,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         let self_uid = self
             .context
             .key_store
@@ -103,7 +107,8 @@ impl BusinessHandle {
             receiver_uid: self_uid,
         });
         let mut res = self.send_event(&mut event).await?;
-        let event: &mut FileC2CDownloadEvent = downcast_mut_event(&mut *res).unwrap();
+        let event: &mut FileC2CDownloadEvent =
+            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.file_url.to_owned())
     }
 
@@ -112,7 +117,7 @@ impl BusinessHandle {
         self: &Arc<Self>,
         group_uin: u32,
         node: Option<IndexNode>,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         self.download_group_record_inner(group_uin, node, None)
             .await
     }
@@ -121,7 +126,7 @@ impl BusinessHandle {
         self: &Arc<Self>,
         group_uin: u32,
         audio_uuid: Option<String>,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         self.download_group_record_inner(group_uin, None, audio_uuid)
             .await
     }
@@ -131,14 +136,15 @@ impl BusinessHandle {
         group_uin: u32,
         node: Option<IndexNode>,
         audio_uuid: Option<String>,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         let mut event = dda!(RecordGroupDownloadEvent {
             group_uin,
             node,
             file_uuid: audio_uuid.unwrap_or_default(),
         });
         let mut res = self.send_event(&mut event).await?;
-        let event: &mut RecordGroupDownloadEvent = downcast_mut_event(&mut *res).unwrap();
+        let event: &mut RecordGroupDownloadEvent =
+            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.audio_url.to_owned())
     }
 
@@ -146,14 +152,14 @@ impl BusinessHandle {
     pub(crate) async fn download_c2c_record_by_node(
         self: &Arc<Self>,
         node: Option<IndexNode>,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         self.download_c2c_record_inner(node, None).await
     }
 
     pub(crate) async fn download_c2c_record_by_uuid(
         self: &Arc<Self>,
         audio_uuid: Option<String>,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         self.download_c2c_record_inner(None, audio_uuid).await
     }
 
@@ -161,7 +167,7 @@ impl BusinessHandle {
         self: &Arc<Self>,
         node: Option<IndexNode>,
         audio_uuid: Option<String>,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         let self_uid = self
             .context
             .key_store
@@ -175,7 +181,8 @@ impl BusinessHandle {
             file_uuid: audio_uuid.unwrap_or_default(),
         });
         let mut res = self.send_event(&mut event).await?;
-        let event: &mut RecordC2CDownloadEvent = downcast_mut_event(&mut *res).unwrap();
+        let event: &mut RecordC2CDownloadEvent =
+            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.audio_url.to_owned())
     }
 
@@ -187,7 +194,7 @@ impl BusinessHandle {
         file_sha1: Option<String>,
         node: Option<IndexNode>,
         is_group: bool,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         let mut event = dda!(VideoC2CDownloadEvent {
             self_uid: self_uid.to_string(),
             file_name: file_name.to_string(),
@@ -197,7 +204,8 @@ impl BusinessHandle {
             is_group,
         });
         let res = self.send_event(&mut event).await?;
-        let event: &VideoC2CDownloadEvent = downcast_event(&res).unwrap();
+        let event: &VideoC2CDownloadEvent =
+            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.video_url.clone())
     }
 
@@ -208,7 +216,7 @@ impl BusinessHandle {
         file_md5: &str,
         file_sha1: Option<String>,
         node: Option<IndexNode>,
-    ) -> crate::Result<String> {
+    ) -> ManiaResult<String> {
         let mut event = dda!(VideoGroupDownloadEvent {
             group_uin,
             self_uid: self
@@ -217,7 +225,7 @@ impl BusinessHandle {
                 .uid
                 .load()
                 .as_ref()
-                .unwrap()
+                .expect("Missing self_uid")
                 .as_ref()
                 .clone(),
             file_name: file_name.to_string(),
@@ -226,7 +234,8 @@ impl BusinessHandle {
             node,
         });
         let res = self.send_event(&mut event).await?;
-        let event: &VideoGroupDownloadEvent = downcast_event(&res).unwrap();
+        let event: &VideoGroupDownloadEvent =
+            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.video_url.clone())
     }
 }

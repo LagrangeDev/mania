@@ -11,7 +11,7 @@ use prost::Message;
 pub struct InfoSyncEvent;
 
 impl ClientEvent for InfoSyncEvent {
-    fn build(&self, ctx: &Context) -> BinaryPacket {
+    fn build(&self, ctx: &Context) -> Result<BinaryPacket, EventError> {
         let request = SsoInfoSyncRequest {
             sync_flag: 735,
             req_random: RandomGenerator::rand_u32(),
@@ -53,7 +53,7 @@ impl ClientEvent for InfoSyncEvent {
             unknown_structure: Some(UnknownStructure::default()),
             app_state: Some(CurAppState::default()),
         };
-        BinaryPacket(request.encode_to_vec().into())
+        Ok(BinaryPacket(request.encode_to_vec().into()))
     }
 
     fn parse(_: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {

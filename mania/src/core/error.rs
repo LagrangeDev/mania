@@ -1,17 +1,19 @@
 use std::borrow::Cow;
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum Error {
-    #[error("network error: {0}")]
+pub enum ManiaError {
+    #[error("An mania network error occurred: {0}")]
     NetworkError(#[from] std::io::Error),
 
-    #[error("invalid server response: {0}")]
-    InvalidServerResponse(Cow<'static, str>),
-
-    #[error("an error occurred: {0}")]
+    #[error("An mania error occurred: {0}")]
     GenericError(Cow<'static, str>),
+
+    #[error("An mania internal event downcast error occurred")]
+    InternalEventDowncastError,
+
+    #[error("An mania internal business error occurred: {0}")]
+    InternalBusinessError(#[from] crate::core::business::BusinessError),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type ManiaResult<T> = Result<T, ManiaError>;
