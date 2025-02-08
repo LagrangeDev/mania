@@ -5,9 +5,9 @@ use crate::core::protos::message::{
 use crate::message::chain::MessageChain;
 use crate::message::packer::MessagePacker;
 use crate::utility::compress::gzip;
-use mania_macros::{ServerEvent, commend};
+use mania_macros::{ServerEvent, command};
 
-#[commend("trpc.group.long_msg_interface.MsgService.SsoRecvLongMsg")]
+#[command("trpc.group.long_msg_interface.MsgService.SsoRecvLongMsg")]
 #[derive(Debug, ServerEvent, Default)]
 pub struct MultiMsgDownloadEvent {
     pub uid: Option<String>,

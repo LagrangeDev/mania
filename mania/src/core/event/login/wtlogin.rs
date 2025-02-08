@@ -8,7 +8,7 @@ use chrono::Utc;
 use md5::{Digest, Md5};
 use std::sync::Arc;
 
-#[commend("wtlogin.login")]
+#[command("wtlogin.login")]
 #[derive(Debug, Default, ServerEvent)]
 pub struct WtLogin {
     pub code: i32,

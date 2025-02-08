@@ -1,7 +1,7 @@
 use crate::core::event::prelude::*;
 use crate::core::protos::system::ServiceKickNtResponse;
 
-#[commend("trpc.qq_new_tech.status_svc.StatusService.KickNT")]
+#[command("trpc.qq_new_tech.status_svc.StatusService.KickNT")]
 #[derive(Debug, ServerEvent)]
 pub struct KickNTEvent {
     tips: String,

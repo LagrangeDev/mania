@@ -3,7 +3,7 @@ use crate::core::protos::service::oidb::{
     ClientMeta, CommonHead, DownloadRKeyReq, MultiMediaReqHead, Ntv2RichMediaReq, SceneInfo,
 };
 
-#[commend("OidbSvcTrpcTcp.0x9067_202")]
+#[oidb_command(0x9067, 202)]
 #[derive(Debug, ServerEvent)]
 pub struct FetchRKeyEvent;
 

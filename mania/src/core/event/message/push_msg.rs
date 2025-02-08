@@ -53,7 +53,7 @@ enum Event0x210SubType {
     GroupKickNotice = 212,
 }
 
-#[commend("trpc.msg.olpush.OlPushService.MsgPush")]
+#[command("trpc.msg.olpush.OlPushService.MsgPush")]
 #[derive(Debug, ServerEvent)]
 pub struct PushMessageEvent {
     pub chain: Option<MessageChain>,

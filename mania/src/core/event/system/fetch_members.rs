@@ -6,7 +6,7 @@ use crate::core::protos::service::oidb::{
 use crate::entity::bot_group_member::{BotGroupMember, GroupMemberPermission};
 use chrono::DateTime;
 
-#[commend("OidbSvcTrpcTcp.0xfe7_3")]
+#[oidb_command(0xfe7, 3)]
 #[derive(Debug, ServerEvent, Default)]
 pub struct FetchMembersEvent {
     pub group_uin: u32,
