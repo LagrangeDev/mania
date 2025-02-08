@@ -38,6 +38,7 @@ async fn main() {
     let need_login = key_store.is_expired();
     let mut client = Client::new(config, device, key_store).await.unwrap();
     let operator = client.handle().operator();
+    let mut event_listener = operator.event_listener.clone();
     tokio::spawn(async move {
         client.spawn().await;
     });
@@ -72,10 +73,30 @@ async fn main() {
             panic!("Failed to set online status: {:?}", e);
         }
     };
-    tracing::info!("Login successfully!");
     operator
         .update_key_store()
         .save("keystore.json")
         .unwrap_or_else(|e| tracing::error!("Failed to save key store: {:?}", e));
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = event_listener.bot.changed() => {
+                    if let Some(ref be) = *event_listener.bot.borrow() {
+                        tracing::info!("[BotEvent] {:?}", be);
+                    }
+                }
+                _ = event_listener.friend.changed() => {
+                    if let Some(ref fe) = *event_listener.friend.borrow() {
+                        tracing::info!("[FriendEvent] {:?}", fe);
+                    }
+                }
+                _ = event_listener.group.changed() => {
+                    if let Some(ref ge) = *event_listener.group.borrow() {
+                        tracing::info!("[GroupEvent] {:?}", ge);
+                    }
+                }
+            }
+        }
+    });
     tokio::signal::ctrl_c().await.unwrap();
 }

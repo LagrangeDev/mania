@@ -161,3 +161,14 @@ pub fn handle_event(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
     expanded.into()
 }
+
+// TODO: auto parse & auto impl debug
+#[proc_macro_derive(ManiaEvent)]
+pub fn mania_event_derive(input: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+    let struct_name = &ast.ident;
+    let stream = quote! {
+        impl crate::event::ManiaEvent for #struct_name {}
+    };
+    stream.into()
+}

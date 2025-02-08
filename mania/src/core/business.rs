@@ -17,6 +17,7 @@ use crate::core::event::prelude::*;
 use crate::core::event::resolve_event;
 use crate::core::packet::SsoPacket;
 use crate::core::socket::{self, PacketReceiver, PacketSender};
+use crate::event::{EventDispatcher, EventListener};
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
@@ -111,12 +112,16 @@ pub struct Business {
 impl Business {
     pub async fn new(addr: SocketAddr, context: Arc<Context>) -> BusinessResult<Self> {
         let (sender, receiver) = socket::connect(addr).await?;
+        let event_dispatcher = EventDispatcher::new();
+        let event_listener = EventListener::new(&event_dispatcher);
         let handle = Arc::new(BusinessHandle {
             sender: ArcSwap::new(Arc::new(sender)),
             reconnecting: Mutex::new(()),
             pending_requests: DashMap::new(),
             context,
             cache: Arc::new(Cache::new()),
+            event_dispatcher,
+            event_listener,
         });
 
         Ok(Self {
@@ -202,6 +207,8 @@ pub struct BusinessHandle {
     pending_requests: DashMap<u32, oneshot::Sender<BusinessResult<Box<dyn ServerEvent>>>>,
     pub(crate) context: Arc<Context>,
     pub(crate) cache: Arc<Cache>,
+    pub(crate) event_dispatcher: EventDispatcher,
+    pub event_listener: EventListener,
     // TODO: (outer) event dispatcher, highway
 }
 
@@ -236,8 +243,15 @@ impl BusinessHandle {
         // TODO: timeout auto remove
         if let Some((_, tx)) = self.pending_requests.remove(&sequence) {
             tx.send(result).expect("receiver dropped");
-        } else {
-            tracing::warn!("unhandled packet: {:?}", result);
+        } else if let Err(e) = &result {
+            match e {
+                BusinessError::InternalEventError(inner_err @ EventError::UnsupportedEvent(_)) => {
+                    tracing::warn!("{}", inner_err);
+                }
+                _ => {
+                    tracing::error!("Unhandled error occurred: {}", e);
+                }
+            }
         }
         Ok(())
     }
