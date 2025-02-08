@@ -114,7 +114,7 @@ pub(crate) mod prelude {
     pub use crate::dda;
     pub use bytes::Bytes;
     pub use inventory;
-    pub use mania_macros::{ServerEvent, commend};
+    pub use mania_macros::{ServerEvent, command, oidb_command};
     pub use num_enum::TryFromPrimitive;
     pub use prost::Message;
     pub use std::convert::TryFrom;

@@ -4,7 +4,7 @@ use crate::core::protos::service::oidb::{
     Ntv2RichMediaReq, Ntv2RichMediaResp, SceneInfo, VideoDownloadExt,
 };
 
-#[commend("OidbSvcTrpcTcp.0x126e_200")]
+#[oidb_command(0x126e, 200)]
 #[derive(Debug, ServerEvent, Default)]
 pub struct RecordGroupDownloadEvent {
     pub group_uin: u32,

@@ -5,7 +5,7 @@ use crate::core::protos::service::oidb::{
 };
 
 /// legacy: VideoDownloadEvent
-#[commend("OidbSvcTrpcTcp.0x11e9_200")]
+#[oidb_command(0x11e9, 200)]
 #[derive(Debug, ServerEvent, Default)]
 pub struct VideoC2CDownloadEvent {
     pub video_url: String,

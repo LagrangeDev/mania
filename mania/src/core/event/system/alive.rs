@@ -1,6 +1,6 @@
 use crate::core::event::prelude::*;
 
-#[commend("Heartbeat.Alive")]
+#[command("Heartbeat.Alive")]
 #[derive(Debug, ServerEvent)]
 pub struct AliveEvent {
     pub test: u32, // TODO: remove it

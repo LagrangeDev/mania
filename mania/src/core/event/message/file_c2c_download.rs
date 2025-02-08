@@ -3,7 +3,7 @@ use crate::core::protos::service::oidb::{
     OidbSvcTrpcTcp0xE371200, OidbSvcTrpcTcp0xE371200body, OidbSvcTrpcTcp0xE371200response,
 };
 
-#[commend("OidbSvcTrpcTcp.0xe37_1200")]
+#[oidb_command(0xe37, 1200)]
 #[derive(Debug, ServerEvent, Default)]
 pub struct FileC2CDownloadEvent {
     pub sender_uid: Option<String>,

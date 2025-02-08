@@ -1,14 +1,59 @@
 use md5::{Digest, Md5};
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
+use syn::parse::Parse;
 use syn::{
-    DeriveInput, ItemFn, ItemStruct, LitStr, Path, parse_macro_input, punctuated::Punctuated,
+    DeriveInput, ItemFn, ItemStruct, LitInt, LitStr, Path, Token, parse_macro_input,
+    punctuated::Punctuated,
 };
 
 #[proc_macro_attribute]
-pub fn commend(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn command(attr: TokenStream, item: TokenStream) -> TokenStream {
     let command_str = parse_macro_input!(attr as LitStr);
     let command_value = command_str.value();
+    let input_struct = parse_macro_input!(item as ItemStruct);
+    let ident = &input_struct.ident;
+    let expanded = quote! {
+        #input_struct
+        impl CECommandMarker for #ident {
+            const COMMAND: &'static str = #command_value;
+        }
+        inventory::submit! {
+            ClientEventRegistry {
+                command: <#ident as CECommandMarker>::COMMAND,
+                parse_fn: <#ident as ClientEvent>::parse,
+            }
+        }
+    };
+    expanded.into()
+}
+
+struct OidbCommandArgs {
+    command: LitInt,
+    _comma: Token![,],
+    sub_command: LitInt,
+}
+
+impl Parse for OidbCommandArgs {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            command: input.parse()?,
+            _comma: input.parse()?,
+            sub_command: input.parse()?,
+        })
+    }
+}
+
+#[proc_macro_attribute]
+pub fn oidb_command(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as OidbCommandArgs);
+    let command = format!(
+        "OidbSvcTrpcTcp.0x{:x}_{}",
+        args.command.base10_parse::<u32>().unwrap(),
+        args.sub_command.base10_parse::<u32>().unwrap()
+    );
+    let command_value = LitStr::new(&command, Span::call_site());
     let input_struct = parse_macro_input!(item as ItemStruct);
     let ident = &input_struct.ident;
     let expanded = quote! {

@@ -3,7 +3,7 @@ use crate::core::protos::service::oidb::{
     OidbSvcTrpcTcp0x6D6, OidbSvcTrpcTcp0x6D6Download, OidbSvcTrpcTcp0x6D6Response,
 };
 
-#[commend("OidbSvcTrpcTcp.0x6d6_2")]
+#[oidb_command(0x6d6, 2)]
 #[derive(Debug, ServerEvent, Default)]
 pub struct FileGroupDownloadEvent {
     pub group_uin: u32,

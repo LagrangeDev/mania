@@ -6,7 +6,7 @@ use crate::core::protos::service::oidb::{
 use crate::entity::bot_friend::{BotFriend, BotFriendGroup};
 use std::collections::HashMap;
 
-#[commend("OidbSvcTrpcTcp.0xfd4_1")]
+#[oidb_command(0xfd4, 1)]
 #[derive(Debug, ServerEvent, Default)]
 pub struct FetchFriendsEvent {
     pub friends: Vec<BotFriend>,

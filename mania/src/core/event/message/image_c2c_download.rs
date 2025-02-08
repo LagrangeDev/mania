@@ -4,7 +4,7 @@ use crate::core::protos::service::oidb::{
     Ntv2RichMediaReq, Ntv2RichMediaResp, SceneInfo, VideoDownloadExt,
 };
 
-#[commend("OidbSvcTrpcTcp.0x11c5_200")]
+#[oidb_command(0x11c5, 200)]
 #[derive(Debug, ServerEvent, Default)]
 pub struct ImageC2CDownloadEvent {
     pub self_uid: String,

@@ -6,7 +6,7 @@ use crate::core::protos::system::{
 use crate::utility::random_gen::RandomGenerator;
 use prost::Message;
 
-#[commend("trpc.msg.register_proxy.RegisterProxy.SsoInfoSync")]
+#[command("trpc.msg.register_proxy.RegisterProxy.SsoInfoSync")]
 #[derive(Debug, ServerEvent)]
 pub struct InfoSyncEvent;
 
