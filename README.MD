@@ -40,7 +40,7 @@
 |          |         |                            |         | Record        | 🟡[^1]  |                   |         |                     |         |
 |          |         |                            |         | SpecialPoke   |   🔴    |                   |         |                     |         |
 |          |         |                            |         | Text          |   🟢    |                   |         |                     |         |
-|          |         |                            |         | Video         |   🔴    |                   |         |                     |         |
+|          |         |                            |         | Video         | 🟡[^1]  |                   |         |                     |         |
 |          |         |                            |         | Xml           |   🔴    |                   |         |                     |         |
 
 [^1]: Only implemented event parsing
