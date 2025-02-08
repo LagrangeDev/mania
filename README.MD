@@ -31,7 +31,7 @@
 |          |         |                            |         | Json          |   🟢    | Friend Request    |   🔴    | GroupMemberIncrease |   🔴    |
 |          |         |                            |         | KeyBoard      |   🔴    | Group Request     |   🔴    | GroupPromoteAdmin   |   🔴    |
 |          |         |                            |         | LightApp      | 🟡[^1]  | ~~Voice Call~~    |   🔴    | GroupInvite         |   🔴    |
-|          |         |                            |         | LongMsg       |   🔴    | Client Key        |   🔴    | GroupRequestJoin    |   🔴    |
+|          |         |                            |         | LongMsg       | 🟡[^1]  | Client Key        |   🔴    | GroupRequestJoin    |   🔴    |
 |          |         |                            |         | Markdown      |   🔴    | Cookies           |   🔴    | FriendRequest       |   🔴    |
 |          |         |                            |         | MarketFace    | 🟡[^1]  | Send Message      |   🔴    | ~~FriendTyping~~    |   🔴    |
 |          |         |                            |         | Mention       | 🟡[^1]  |                   |         | ~~FriendVoiceCall~~ |   🔴    |
@@ -41,7 +41,7 @@
 |          |         |                            |         | SpecialPoke   |   🔴    |                   |         |                     |         |
 |          |         |                            |         | Text          |   🟢    |                   |         |                     |         |
 |          |         |                            |         | Video         | 🟡[^1]  |                   |         |                     |         |
-|          |         |                            |         | Xml           |   🔴    |                   |         |                     |         |
+|          |         |                            |         | Xml           | 🟡[^1]  |                   |         |                     |         |
 
 [^1]: Only implemented event parsing
 

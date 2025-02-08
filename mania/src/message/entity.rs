@@ -4,12 +4,14 @@ pub mod forward;
 pub mod image;
 pub mod json;
 pub mod light_app;
+mod long_msg;
 pub mod market_face;
 pub mod mention;
 pub mod multi_msg;
 pub mod record;
 pub mod text;
 pub mod video;
+pub mod xml;
 
 pub use face::FaceEntity as Face;
 pub use file::FileEntity as File;
@@ -17,12 +19,14 @@ pub use forward::ForwardEntity as Forward;
 pub use image::ImageEntity as Image;
 pub use json::JsonEntity as Json;
 pub use light_app::LightAppEntity as LightApp;
+pub use long_msg::LongMsgEntity as LongMsg;
 pub use market_face::MarketFaceEntity as MarketFace;
 pub use mention::MentionEntity as Mention;
 pub use multi_msg::MultiMsgEntity as MultiMsg;
 pub use record::RecordEntity as Record;
 pub use text::TextEntity as Text;
 pub use video::VideoEntity as Video;
+pub use xml::XmlEntity as Xml;
 
 use crate::core::protos::message::Elem;
 use bytes::Bytes;
@@ -52,6 +56,8 @@ pub enum Entity {
     File(file::FileEntity),
     Record(record::RecordEntity),
     Video(video::VideoEntity),
+    Xml(xml::XmlEntity),
+    LongMsg(long_msg::LongMsgEntity),
 }
 
 macro_rules! impl_entity_show {
@@ -113,14 +119,17 @@ macro_rules! impl_entity_unpack {
     }
 }
 
-impl_entity_show!(
-    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record, Video
-);
-impl_entity_pack!(
-    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record, Video
-);
-impl_entity_unpack!(
-    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record, Video
+macro_rules! impl_entity_all {
+    ( $( $variant:ident ),* $(,)? ) => {
+        impl_entity_show!( $( $variant ),* );
+        impl_entity_pack!( $( $variant ),* );
+        impl_entity_unpack!( $( $variant ),* );
+    };
+}
+
+impl_entity_all!(
+    Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record, Video,
+    Xml, LongMsg
 );
 
 impl Entity {
