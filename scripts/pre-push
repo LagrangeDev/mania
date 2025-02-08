@@ -1,0 +1,39 @@
+#!/bin/sh
+
+echo "Running typos..."
+if ! typos -c typos.toml; then
+    echo "Typos check failed!"
+    exit 1
+fi
+
+echo "Checking code formatting..."
+if ! cargo fmt -- --check; then
+    echo "Code formatting issues found. Please run 'cargo fmt' to format your code."
+    exit 1
+fi
+
+echo "Building project..."
+if ! cargo build; then
+    echo "Build failed!"
+    exit 1
+fi
+
+echo "Running cargo clippy..."
+if ! cargo clippy -- -D warnings; then
+    echo "Clippy check failed!"
+    exit 1
+fi
+
+echo "Building documentation..."
+if ! cargo doc; then
+    echo "Documentation build failed!"
+    exit 1
+fi
+
+echo "Running tests..."
+if ! cargo test; then
+    echo "Tests failed!"
+    exit 1
+fi
+
+echo "Pre-push checks passed!"

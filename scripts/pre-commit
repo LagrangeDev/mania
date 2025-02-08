@@ -1,0 +1,15 @@
+#!/bin/sh
+
+echo "Running typos..."
+if ! typos -c typos.toml; then
+    echo "Typos check failed!"
+    exit 1
+fi
+
+echo "Checking code formatting..."
+if ! cargo fmt -- --check; then
+    echo "Code formatting issues found. Please run 'cargo fmt' to format your code."
+    exit 1
+fi
+
+echo "Pre-commit checks passed!"
