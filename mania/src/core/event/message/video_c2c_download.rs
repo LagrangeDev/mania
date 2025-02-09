@@ -19,7 +19,7 @@ pub struct VideoC2CDownloadEvent {
 }
 
 impl ClientEvent for VideoC2CDownloadEvent {
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+    fn build(&self, _: &Context) -> CEBuildResult {
         let packet = dda!(Ntv2RichMediaReq {
             req_head: Some(MultiMediaReqHead {
                 common: Some(CommonHead {
@@ -75,7 +75,7 @@ impl ClientEvent for VideoC2CDownloadEvent {
         Ok(OidbPacket::new(0x11E9, 200, packet.encode_to_vec(), false, true).to_binary())
     }
 
-    fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(packet: Bytes, _: &Context) -> CEParseResult {
         let packet = OidbPacket::parse_into::<Ntv2RichMediaResp>(packet)?;
         let download = packet.download.ok_or_else(|| {
             EventError::OtherError("Missing Ntv2RichMediaResp download response".to_string())
@@ -87,6 +87,8 @@ impl ClientEvent for VideoC2CDownloadEvent {
             "https://{}{}{}",
             info.domain, info.url_path, download.r_key_param
         );
-        Ok(Box::new(dda!(VideoC2CDownloadEvent { video_url: url })))
+        Ok(ClientResult::single(Box::new(dda!(
+            VideoC2CDownloadEvent { video_url: url }
+        ))))
     }
 }

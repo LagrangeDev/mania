@@ -1,5 +1,5 @@
 use crate::core::business::BusinessHandle;
-use crate::core::event::downcast_mut_event;
+use crate::core::event::downcast_mut_major_event;
 use crate::core::event::system::fetch_friend::FetchFriendsEvent;
 use crate::core::event::system::fetch_members::FetchMembersEvent;
 use crate::entity::bot_friend::{BotFriend, BotFriendGroup};
@@ -37,7 +37,7 @@ impl BusinessHandle {
         loop {
             let mut event = dda!(FetchFriendsEvent { next_uin });
             let mut result = self.send_event(&mut event).await?;
-            let event: &mut FetchFriendsEvent = downcast_mut_event(&mut *result)
+            let event: &mut FetchFriendsEvent = downcast_mut_major_event(&mut result)
                 .ok_or_else(|| crate::ManiaError::GenericError("Downcast error".into()))?;
             match event.next_uin {
                 Some(uin) => {
@@ -77,7 +77,7 @@ impl BusinessHandle {
         loop {
             let mut event = dda!(FetchMembersEvent { group_uin, token });
             let mut result = self.send_event(&mut event).await?;
-            let event: &mut FetchMembersEvent = downcast_mut_event(&mut *result)
+            let event: &mut FetchMembersEvent = downcast_mut_major_event(&mut result)
                 .ok_or_else(|| crate::ManiaError::GenericError("Downcast error".into()))?;
             match event.token.as_ref() {
                 Some(t) => {

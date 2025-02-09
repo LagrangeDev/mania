@@ -9,7 +9,7 @@ use crate::core::event::message::record_group_download::RecordGroupDownloadEvent
 use crate::core::event::message::video_c2c_download::VideoC2CDownloadEvent;
 use crate::core::event::message::video_group_download::VideoGroupDownloadEvent;
 use crate::core::event::system::fetch_rkey::FetchRKeyEvent;
-use crate::core::event::{downcast_event, downcast_mut_event};
+use crate::core::event::{downcast_major_event, downcast_mut_major_event};
 use crate::core::protos::service::oidb::IndexNode;
 use crate::message::chain::MessageChain;
 use crate::{ManiaError, ManiaResult, dda};
@@ -34,7 +34,7 @@ impl BusinessHandle {
         });
         let res = self.send_event(&mut fetch_event).await?;
         let event: &ImageGroupDownloadEvent =
-            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.image_url.clone())
     }
 
@@ -56,7 +56,7 @@ impl BusinessHandle {
         });
         let res = self.send_event(&mut fetch_event).await?;
         let event: &ImageC2CDownloadEvent =
-            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.image_url.clone())
     }
 
@@ -71,7 +71,7 @@ impl BusinessHandle {
         });
         let mut res = self.send_event(&mut fetch_event).await?;
         let event: &mut MultiMsgDownloadEvent =
-            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_mut_major_event(&mut res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.chains.take())
     }
 
@@ -83,7 +83,7 @@ impl BusinessHandle {
         let mut event = dda!(FileGroupDownloadEvent { group_uin, file_id });
         let mut res = self.send_event(&mut event).await?;
         let event: &mut FileGroupDownloadEvent =
-            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_mut_major_event(&mut res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.file_url.to_owned())
     }
 
@@ -108,7 +108,7 @@ impl BusinessHandle {
         });
         let mut res = self.send_event(&mut event).await?;
         let event: &mut FileC2CDownloadEvent =
-            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_mut_major_event(&mut res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.file_url.to_owned())
     }
 
@@ -144,7 +144,7 @@ impl BusinessHandle {
         });
         let mut res = self.send_event(&mut event).await?;
         let event: &mut RecordGroupDownloadEvent =
-            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_mut_major_event(&mut res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.audio_url.to_owned())
     }
 
@@ -182,7 +182,7 @@ impl BusinessHandle {
         });
         let mut res = self.send_event(&mut event).await?;
         let event: &mut RecordC2CDownloadEvent =
-            downcast_mut_event(&mut *res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_mut_major_event(&mut res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.audio_url.to_owned())
     }
 
@@ -205,7 +205,7 @@ impl BusinessHandle {
         });
         let res = self.send_event(&mut event).await?;
         let event: &VideoC2CDownloadEvent =
-            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.video_url.clone())
     }
 
@@ -235,7 +235,7 @@ impl BusinessHandle {
         });
         let res = self.send_event(&mut event).await?;
         let event: &VideoGroupDownloadEvent =
-            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.video_url.clone())
     }
 }

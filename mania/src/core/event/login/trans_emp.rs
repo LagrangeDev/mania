@@ -138,7 +138,7 @@ impl ClientEvent for TransEmp {
         Ok(BinaryPacket(packet.into()))
     }
 
-    fn parse(packet: Bytes, context: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(packet: Bytes, context: &Context) -> CEParseResult {
         // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp.DeserializeBody
         let packet = parse_wtlogin_packet(packet, context)?;
         let mut reader = PacketReader::new(packet);
@@ -175,7 +175,7 @@ impl ClientEvent for TransEmp {
                 let url = t0d1.proto.url.to_owned();
                 let qr_sig = t0d1.proto.qr_sig.to_owned();
 
-                Ok(Box::new(Self {
+                Ok(ClientResult::single(Box::new(Self {
                     status: TransEmpStatus::FetchQrCode,
                     result: Some(TransEmpResult::Emp31(TransEmp31Res {
                         qr_code,
@@ -184,7 +184,7 @@ impl ClientEvent for TransEmp {
                         qr_sig,
                         signature,
                     })),
-                }))
+                })))
             }
             0x12 => {
                 // Lagrange.Core.Internal.Packets.Login.WtLogin.Entity.TransEmp12.Deserialize
@@ -226,10 +226,10 @@ impl ClientEvent for TransEmp {
                         state
                     )))?,
                 };
-                Ok(Box::new(Self {
+                Ok(ClientResult::single(Box::new(Self {
                     status: TransEmpStatus::QueryResult,
                     result: Some(TransEmpResult::Emp12(result)),
-                }))
+                })))
             }
             _ => Err(EventError::OtherError(format!(
                 "unsupported trans_emp command: {:#x}",

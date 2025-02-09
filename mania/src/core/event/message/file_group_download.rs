@@ -12,7 +12,7 @@ pub struct FileGroupDownloadEvent {
 }
 
 impl ClientEvent for FileGroupDownloadEvent {
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+    fn build(&self, _: &Context) -> CEBuildResult {
         let packet = dda!(OidbSvcTrpcTcp0x6D6 {
             download: Some(OidbSvcTrpcTcp0x6D6Download {
                 group_uin: self.group_uin,
@@ -24,7 +24,7 @@ impl ClientEvent for FileGroupDownloadEvent {
         Ok(OidbPacket::new(0x6D6, 2, packet.encode_to_vec(), false, true).to_binary())
     }
 
-    fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(packet: Bytes, _: &Context) -> CEParseResult {
         let packet = OidbPacket::parse_into::<OidbSvcTrpcTcp0x6D6Response>(packet)?;
         let download = packet.download.ok_or_else(|| {
             EventError::OtherError("Missing OidbSvcTrpcTcp0x6D62response".to_string())
@@ -36,7 +36,7 @@ impl ClientEvent for FileGroupDownloadEvent {
                     download.download_dns,
                     hex::encode(download.download_url)
                 );
-                Ok(Box::new(dda!(Self { file_url: url })))
+                Ok(ClientResult::single(Box::new(dda!(Self { file_url: url }))))
             }
             _ => Err(EventError::OidbPacketInternalError(
                 download.ret_code,

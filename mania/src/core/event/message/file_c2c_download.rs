@@ -14,7 +14,7 @@ pub struct FileC2CDownloadEvent {
 }
 
 impl ClientEvent for FileC2CDownloadEvent {
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+    fn build(&self, _: &Context) -> CEBuildResult {
         // TODO:
         // if (input.FileUuid == null || input.FileHash == null) throw new ArgumentNullException();
         // if (input.SenderUid == null || input.ReceiverUid == null) throw new ArgumentNullException();
@@ -45,7 +45,7 @@ impl ClientEvent for FileC2CDownloadEvent {
         Ok(OidbPacket::new(0xe37, 1200, packet.encode_to_vec(), false, false).to_binary())
     }
 
-    fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(packet: Bytes, _: &Context) -> CEParseResult {
         let packet = OidbPacket::parse_into::<OidbSvcTrpcTcp0xE371200response>(packet)?;
         let body = packet.body.ok_or_else(|| {
             EventError::OtherError("Missing OidbSvcTrpcTcp0xE371200responseBody".to_string())
@@ -57,6 +57,6 @@ impl ClientEvent for FileC2CDownloadEvent {
             "https://{}:{}{}&isthumb=0",
             result.sso_url, result.sso_port, result.url
         );
-        Ok(Box::new(dda!(Self { file_url })))
+        Ok(ClientResult::single(Box::new(dda!(Self { file_url }))))
     }
 }

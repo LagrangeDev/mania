@@ -15,7 +15,7 @@ pub struct FetchFriendsEvent {
 }
 
 impl ClientEvent for FetchFriendsEvent {
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+    fn build(&self, _: &Context) -> CEBuildResult {
         let request = OidbSvcTrpcTcp0xFd41 {
             field2: 300,
             field4: 0,
@@ -41,7 +41,7 @@ impl ClientEvent for FetchFriendsEvent {
         Ok(OidbPacket::new(0xfd4, 1, request.encode_to_vec(), false, false).to_binary())
     }
 
-    fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(packet: Bytes, _: &Context) -> CEParseResult {
         let response = OidbPacket::parse_into::<OidbSvcTrpcTcp0xFd41response>(packet)?;
         let mut friends = Vec::with_capacity(response.friends.len());
         for friend in &response.friends {
@@ -81,7 +81,7 @@ impl ClientEvent for FetchFriendsEvent {
             );
             friends.push(bot_friend);
         }
-        Ok(Box::new(FetchFriendsEvent {
+        Ok(ClientResult::single(Box::new(FetchFriendsEvent {
             friends,
             friend_groups: response
                 .groups
@@ -89,6 +89,6 @@ impl ClientEvent for FetchFriendsEvent {
                 .map(|group| (group.code, group.value.to_owned()))
                 .collect(),
             next_uin: response.next.map(|n| n.uin),
-        }))
+        })))
     }
 }

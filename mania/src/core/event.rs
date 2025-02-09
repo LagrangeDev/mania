@@ -26,24 +26,42 @@ pub trait CECommandMarker: Send + Sync {
     }
 }
 
+pub type CEBuildResult = Result<BinaryPacket, EventError>;
+pub type CEParse = (Box<dyn ServerEvent>, Option<Vec<Box<dyn ServerEvent>>>);
+pub type CEParseResult = Result<CEParse, EventError>;
+pub type ParseEventFn = fn(Bytes, &Context) -> CEParseResult;
+
 pub trait ClientEvent: CECommandMarker {
     fn packet_type(&self) -> PacketType {
         PacketType::T12 // most common packet type
     }
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError>;
-    fn parse(packet: Bytes, context: &Context) -> Result<Box<dyn ServerEvent>, EventError>;
+    fn build(&self, _: &Context) -> CEBuildResult;
+    fn parse(packet: Bytes, context: &Context) -> CEParseResult;
 }
 
-type ParseEvent = fn(Bytes, &Context) -> Result<Box<dyn ServerEvent>, EventError>;
+pub struct ClientResult;
+
+impl ClientResult {
+    pub fn single(event: Box<dyn ServerEvent>) -> CEParse {
+        (event, None)
+    }
+
+    pub fn with_extra(
+        event: Box<dyn ServerEvent>,
+        extra: Option<Vec<Box<dyn ServerEvent>>>,
+    ) -> CEParse {
+        (event, extra)
+    }
+}
 
 pub struct ClientEventRegistry {
     pub command: &'static str,
-    pub parse_fn: ParseEvent,
+    pub parse_fn: ParseEventFn,
 }
 
 inventory::collect!(ClientEventRegistry);
 
-type EventMap = HashMap<&'static str, ParseEvent>;
+type EventMap = HashMap<&'static str, ParseEventFn>;
 static EVENT_MAP: Lazy<EventMap> = Lazy::new(|| {
     let mut map = HashMap::new();
     for item in inventory::iter::<ClientEventRegistry> {
@@ -52,10 +70,7 @@ static EVENT_MAP: Lazy<EventMap> = Lazy::new(|| {
     map
 });
 
-pub async fn resolve_event(
-    packet: SsoPacket,
-    context: &Arc<Context>,
-) -> Result<Box<dyn ServerEvent>, EventError> {
+pub async fn resolve_event(packet: SsoPacket, context: &Arc<Context>) -> CEParseResult {
     // Lagrange.Core.Internal.Context.ServiceContext.ResolveEventByPacket
     let payload = PacketReader::new(packet.payload()).section(|p| p.bytes());
     tracing::debug!(
@@ -74,8 +89,18 @@ pub fn downcast_event<T: ServerEvent + 'static>(event: &impl AsRef<dyn ServerEve
     event.as_ref().as_any().downcast_ref::<T>()
 }
 
+pub fn downcast_major_event<T: ServerEvent + 'static>(event: &CEParse) -> Option<&T> {
+    let (se, _) = event;
+    se.as_any().downcast_ref::<T>()
+}
+
 pub fn downcast_mut_event<T: ServerEvent + 'static>(event: &mut dyn ServerEvent) -> Option<&mut T> {
     event.as_any_mut().downcast_mut::<T>()
+}
+
+pub fn downcast_mut_major_event<T: ServerEvent + 'static>(event: &mut CEParse) -> Option<&mut T> {
+    let (se, _) = event;
+    se.as_any_mut().downcast_mut::<T>()
 }
 
 #[derive(Debug, Error)]
@@ -105,7 +130,8 @@ pub enum EventError {
 pub(crate) mod prelude {
     pub use crate::core::context::Context;
     pub use crate::core::event::{
-        CECommandMarker, ClientEvent, ClientEventRegistry, EventError, ServerEvent,
+        CEBuildResult, CECommandMarker, CEParseResult, ClientEvent, ClientResult, EventError,
+        ServerEvent,
     };
     pub use crate::core::packet::{
         BinaryPacket, OidbPacket, PREFIX_LENGTH_ONLY, PREFIX_U8, PREFIX_U16, PREFIX_WITH,
@@ -114,7 +140,7 @@ pub(crate) mod prelude {
     pub use crate::dda;
     pub use bytes::Bytes;
     pub use inventory;
-    pub use mania_macros::{ServerEvent, command, oidb_command};
+    pub use mania_macros::{DummyEvent, ServerEvent, command, oidb_command};
     pub use num_enum::TryFromPrimitive;
     pub use prost::Message;
     pub use std::convert::TryFrom;

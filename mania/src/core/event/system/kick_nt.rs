@@ -9,15 +9,15 @@ pub struct KickNTEvent {
 }
 
 impl ClientEvent for KickNTEvent {
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+    fn build(&self, _: &Context) -> CEBuildResult {
         unreachable!("KickNTEvent should not be sent by client")
     }
 
-    fn parse(mut bytes: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(mut bytes: Bytes, _: &Context) -> CEParseResult {
         let res = ServiceKickNtResponse::decode(&mut bytes)?;
-        Ok(Box::new(Self {
+        Ok(ClientResult::single(Box::new(Self {
             tips: res.tips,
             title: res.title,
-        }))
+        })))
     }
 }

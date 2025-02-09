@@ -14,7 +14,7 @@ use std::time::Duration;
 use crate::core::cache::Cache;
 use crate::core::context::Context;
 use crate::core::event::prelude::*;
-use crate::core::event::resolve_event;
+use crate::core::event::{CEParse, resolve_event};
 use crate::core::packet::SsoPacket;
 use crate::core::socket::{self, PacketReceiver, PacketSender};
 use crate::event::{EventDispatcher, EventListener};
@@ -157,8 +157,6 @@ impl Business {
                 tokio::spawn(async move {
                     if let Err(e) = handle.dispatch_sso_packet(packet).await {
                         tracing::error!("Unhandled error occurred when handling packet: {}", e);
-                        // FIXME: Non-required reconnections, except for serious errors
-                        // self.reconnect().await;
                     }
                 });
             }
@@ -204,12 +202,12 @@ impl Business {
 pub struct BusinessHandle {
     sender: ArcSwap<PacketSender>,
     reconnecting: Mutex<()>,
-    pending_requests: DashMap<u32, oneshot::Sender<BusinessResult<Box<dyn ServerEvent>>>>,
+    pending_requests: DashMap<u32, oneshot::Sender<BusinessResult<CEParse>>>,
     pub(crate) context: Arc<Context>,
     pub(crate) cache: Arc<Cache>,
     pub(crate) event_dispatcher: EventDispatcher,
     pub event_listener: EventListener,
-    // TODO: (outer) event dispatcher, highway
+    // TODO: highway
 }
 
 impl BusinessHandle {
@@ -233,10 +231,16 @@ impl BusinessHandle {
 
     async fn dispatch_sso_packet(self: &Arc<Self>, packet: SsoPacket) -> BusinessResult<()> {
         let sequence = packet.sequence();
-        let result: BusinessResult<Box<dyn ServerEvent>> = async {
-            let mut event = resolve_event(packet, &self.context).await?;
-            dispatch_logic(&mut *event, self.clone(), LogicFlow::InComing).await;
-            Ok(event)
+        let result: BusinessResult<CEParse> = async {
+            let (mut major_event, mut extra_events) = resolve_event(packet, &self.context).await?;
+            let svc = self.clone();
+            dispatch_logic(major_event.as_mut(), svc.clone(), LogicFlow::InComing).await;
+            if let Some(ref mut events) = extra_events {
+                for event in events.iter_mut() {
+                    dispatch_logic(event.as_mut(), svc.clone(), LogicFlow::InComing).await;
+                }
+            }
+            Ok((major_event, extra_events))
         }
         .await;
         // Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent
@@ -266,7 +270,7 @@ impl BusinessHandle {
     pub async fn send_event(
         self: &Arc<Self>,
         event: &mut (impl ClientEvent + ServerEvent),
-    ) -> BusinessResult<Box<dyn ServerEvent>> {
+    ) -> BusinessResult<CEParse> {
         // Lagrange.Core.Internal.Context.BusinessContext.HandleOutgoingEvent
         dispatch_logic(
             event as &mut dyn ServerEvent,
@@ -285,10 +289,10 @@ impl BusinessHandle {
         Ok(self.sender.load().send(packet).await?)
     }
 
-    async fn send_packet(&self, packet: SsoPacket) -> BusinessResult<Box<dyn ServerEvent>> {
+    async fn send_packet(&self, packet: SsoPacket) -> BusinessResult<CEParse> {
         tracing::debug!("sending packet: {:?}", packet);
         let sequence = packet.sequence();
-        let (tx, rx) = oneshot::channel::<BusinessResult<Box<dyn ServerEvent>>>();
+        let (tx, rx) = oneshot::channel::<BusinessResult<CEParse>>();
         self.pending_requests.insert(sequence, tx);
         self.post_packet(packet).await?;
         rx.await.expect("response not received")

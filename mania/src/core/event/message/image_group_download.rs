@@ -13,7 +13,7 @@ pub struct ImageGroupDownloadEvent {
 }
 
 impl ClientEvent for ImageGroupDownloadEvent {
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+    fn build(&self, _: &Context) -> CEBuildResult {
         let request = dda!(Ntv2RichMediaReq {
             req_head: Some(MultiMediaReqHead {
                 common: Some(CommonHead {
@@ -44,7 +44,7 @@ impl ClientEvent for ImageGroupDownloadEvent {
         Ok(OidbPacket::new(0x11c4, 200, body, false, true).to_binary())
     }
 
-    fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(packet: Bytes, _: &Context) -> CEParseResult {
         let packet = OidbPacket::parse_into::<Ntv2RichMediaResp>(packet)
             .expect("Failed to parse OidbPacket");
         let body = packet
@@ -57,6 +57,8 @@ impl ClientEvent for ImageGroupDownloadEvent {
             "https://{}{}{}",
             info.domain, info.url_path, body.r_key_param
         );
-        Ok(Box::new(dda!(Self { image_url: url })))
+        Ok(ClientResult::single(Box::new(dda!(Self {
+            image_url: url
+        }))))
     }
 }

@@ -101,7 +101,6 @@ impl Client {
     }
 
     pub async fn spawn(&mut self) {
-        // TODO: (non-internal) event stream
         self.business.spawn().await;
     }
 }

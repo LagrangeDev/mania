@@ -1,6 +1,7 @@
 use crate::core::business::LogicRegistry;
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::message::push_msg::PushMessageEvent;
+use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
 use crate::event::group::{GroupEvent, group_message};
 use crate::message::chain::{MessageChain, MessageType};
@@ -9,7 +10,7 @@ use crate::message::entity::file::FileUnique;
 use mania_macros::handle_event;
 use std::sync::Arc;
 
-#[handle_event(PushMessageEvent)]
+#[handle_event(PushMessageEvent, GroupSysRequestJoinEvent)]
 async fn messaging_logic(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
@@ -22,7 +23,6 @@ async fn messaging_logic(
     }
 }
 
-#[allow(clippy::single_match)] // TODO: remove when finally implemented
 async fn messaging_logic_incoming(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
@@ -39,7 +39,7 @@ async fn messaging_logic_incoming(
                         handle
                             .event_dispatcher
                             .group
-                            .send(Some(GroupEvent::GroupMessageEvent(
+                            .send(Some(GroupEvent::GroupMessage(
                                 group_message::GroupMessageEvent { chain },
                             )))
                             .expect("Failed to send group event");
@@ -50,6 +50,12 @@ async fn messaging_logic_incoming(
             } else {
                 tracing::warn!("Empty message chain in PushMessageEvent");
             }
+        }
+        _ if let Some(event) = event
+            .as_any_mut()
+            .downcast_mut::<GroupSysRequestJoinEvent>() =>
+        {
+            tracing::debug!("Handling GroupSysRequestJoinEvent: {:?}", event); // TODO: dispatch
         }
         _ => {}
     }
@@ -189,7 +195,6 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
                 let node = video.node.clone();
                 let download_result = match &chain.typ {
                     MessageType::Group(grp) => {
-                        // TODO: old impl (0x11e9_200?)
                         let uid = handle
                             .resolve_uid(Some(grp.group_uin), chain.friend_uin)
                             .await;

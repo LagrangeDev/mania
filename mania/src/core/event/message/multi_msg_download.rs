@@ -16,7 +16,7 @@ pub struct MultiMsgDownloadEvent {
 }
 
 impl ClientEvent for MultiMsgDownloadEvent {
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+    fn build(&self, _: &Context) -> CEBuildResult {
         let packet = RecvLongMsgReq {
             info: Some(RecvLongMsgInfo {
                 uid: Some(LongMsgUid {
@@ -35,7 +35,7 @@ impl ClientEvent for MultiMsgDownloadEvent {
         Ok(BinaryPacket(packet.encode_to_vec().into()))
     }
 
-    fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(packet: Bytes, _: &Context) -> CEParseResult {
         let packet = RecvLongMsgResp::decode(packet)?;
         let inflate = gzip::decompress(&packet.result.expect("missing RecvLongMsgInfo").payload)
             .ok_or_else(|| {
@@ -55,8 +55,10 @@ impl ClientEvent for MultiMsgDownloadEvent {
             .map(MessagePacker::parse_fake_chain)
             .collect::<Result<Vec<MessageChain>, String>>()
             .map_err(EventError::OtherError)?;
-        Ok(Box::new(dda!(MultiMsgDownloadEvent {
-            chains: Some(chains),
-        })))
+        Ok(ClientResult::single(Box::new(dda!(
+            MultiMsgDownloadEvent {
+                chains: Some(chains),
+            }
+        ))))
     }
 }

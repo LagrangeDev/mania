@@ -180,6 +180,7 @@ pub struct VideoEntity {
     pub video_length: i32,
     pub video_url: String = String::new(),
     // TODO: stream (video, thumb)
+    // TODO: maybe we can support video preview pic?
     pub(crate) node: Option<IndexNode>, // for download, 2025/02/08
     pub(crate) video_uuid: Option<String>,
     pub(crate) msg_info: Option<MsgInfo>,

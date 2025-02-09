@@ -1,5 +1,5 @@
 use crate::core::business::BusinessHandle;
-use crate::core::event::downcast_event;
+use crate::core::event::downcast_major_event;
 use crate::core::event::login::trans_emp::{
     NTLoginHttpRequest, NTLoginHttpResponse, TransEmp, TransEmp12Res, TransEmpResult,
 };
@@ -26,7 +26,7 @@ impl BusinessHandle {
         let mut trans_emp = TransEmp::new_fetch_qr_code();
         let response = self.send_event(&mut trans_emp).await?;
         let event: &TransEmp =
-            downcast_event(&response).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_major_event(&response).ok_or(ManiaError::InternalEventDowncastError)?;
         let result = event
             .result
             .as_ref()
@@ -85,7 +85,7 @@ impl BusinessHandle {
             let mut query_result = TransEmp::new_query_result();
             let res = self.send_event(&mut query_result).await?;
             let res: &TransEmp =
-                downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+                downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
             let result = res
                 .result
                 .as_ref()
@@ -102,7 +102,8 @@ impl BusinessHandle {
 
     async fn do_wt_login(self: &Arc<Self>) -> ManiaResult<()> {
         let res = self.send_event(&mut WtLogin::default()).await?;
-        let event: &WtLogin = downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+        let event: &WtLogin =
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         match event.code {
             0 => {
                 tracing::info!(
@@ -185,7 +186,7 @@ impl BusinessHandle {
         let (tx, mut rx) = watch::channel::<()>(());
         let res = self.send_event(&mut InfoSyncEvent).await?;
         let _: &InfoSyncEvent =
-            downcast_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         tracing::info!("Online success");
         tracing::debug!(
             "d2key: {:?}",

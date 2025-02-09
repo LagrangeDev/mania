@@ -18,13 +18,13 @@ pub fn command(attr: TokenStream, item: TokenStream) -> TokenStream {
     let ident = &input_struct.ident;
     let expanded = quote! {
         #input_struct
-        impl CECommandMarker for #ident {
+        impl crate::core::event::CECommandMarker for #ident {
             const COMMAND: &'static str = #command_value;
         }
         inventory::submit! {
-            ClientEventRegistry {
-                command: <#ident as CECommandMarker>::COMMAND,
-                parse_fn: <#ident as ClientEvent>::parse,
+            crate::core::event::ClientEventRegistry {
+                command: <#ident as crate::core::event::CECommandMarker>::COMMAND,
+                parse_fn: <#ident as crate::core::event::ClientEvent>::parse,
             }
         }
     };
@@ -64,13 +64,13 @@ pub fn oidb_command(attr: TokenStream, item: TokenStream) -> TokenStream {
     let ident = &input_struct.ident;
     let expanded = quote! {
         #input_struct
-        impl CECommandMarker for #ident {
+        impl crate::core::event::CECommandMarker for #ident {
             const COMMAND: &'static str = #command_value;
         }
         inventory::submit! {
-            ClientEventRegistry {
-                command: <#ident as CECommandMarker>::COMMAND,
-                parse_fn: <#ident as ClientEvent>::parse,
+            crate::core::event::ClientEventRegistry {
+                command: <#ident as crate::core::event::CECommandMarker>::COMMAND,
+                parse_fn: <#ident as crate::core::event::ClientEvent>::parse,
             }
         }
     };
@@ -82,7 +82,7 @@ pub fn derive_server_event(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = input.ident;
     let expanded = quote! {
-        impl ServerEvent for #struct_name {
+        impl crate::core::event::ServerEvent for #struct_name {
             fn as_any(&self) -> &dyn std::any::Any {
                 self
             }
@@ -91,6 +91,39 @@ pub fn derive_server_event(input: TokenStream) -> TokenStream {
             }
         }
     };
+    TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(DummyEvent)]
+pub fn derive_dummy_event(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let struct_name = &input.ident;
+
+    let expanded = quote! {
+        impl crate::core::event::CECommandMarker for #struct_name {
+            const COMMAND: &'static str = "";
+        }
+
+        impl crate::core::event::ServerEvent for #struct_name {
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+            fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+                self
+            }
+        }
+
+        impl crate::core::event::ClientEvent for #struct_name {
+            fn build(&self, _: &crate::core::context::Context) -> crate::core::event::CEBuildResult {
+                unreachable!("DummyEvent should not be built");
+            }
+
+            fn parse(_: bytes::Bytes, _: &crate::core::context::Context) -> crate::core::event::CEParseResult {
+                unreachable!("DummyEvent should not be parsed");
+            }
+        }
+    };
+
     TokenStream::from(expanded)
 }
 
@@ -166,14 +199,14 @@ pub fn handle_event(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[derive(Debug)]
 struct ManiaEventPreferOptions {
-    debug: bool,
+    display: bool,
 }
 
 impl Parse for ManiaEventPreferOptions {
     fn parse(input: ParseStream) -> Result<Self, syn::Error> {
         let ident: Ident = input.parse()?;
         Ok(ManiaEventPreferOptions {
-            debug: ident == "debug",
+            display: ident == "display",
         })
     }
 }
@@ -187,7 +220,7 @@ pub fn derive_mania_event(input: proc_macro::TokenStream) -> proc_macro::TokenSt
         impl crate::event::ManiaEvent for #struct_name {}
     };
 
-    let debug_impl = match &input.data {
+    let display_impl = match &input.data {
         Data::Struct(data_struct) => match &data_struct.fields {
             Fields::Named(fields_named) => {
                 let field_entries: Vec<String> = fields_named
@@ -195,12 +228,25 @@ pub fn derive_mania_event(input: proc_macro::TokenStream) -> proc_macro::TokenSt
                     .iter()
                     .map(|field| {
                         let field_name = field.ident.as_ref().unwrap().to_string();
+                        let field_type = &field.ty;
                         let placeholder = field
                             .attrs
                             .iter()
                             .find(|attr| attr.path().is_ident("prefer"))
                             .and_then(|attr| attr.parse_args::<ManiaEventPreferOptions>().ok())
-                            .map_or("{}", |opts| if opts.debug { "{:?}" } else { "{}" });
+                            .map_or_else(
+                                || {
+                                    if let syn::Type::Path(path) = field_type {
+                                        if let Some(segment) = path.path.segments.first() {
+                                            if segment.ident == "String" || segment.ident == "str" {
+                                                return "{}";
+                                            }
+                                        }
+                                    }
+                                    "{:?}"
+                                },
+                                |opts| if opts.display { "{}" } else { "{:?}" },
+                            );
                         format!("{}: {}", field_name, placeholder)
                     })
                     .collect();
@@ -224,7 +270,7 @@ pub fn derive_mania_event(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 
     let expanded = quote! {
         #mania_event_impl
-        #debug_impl
+        #display_impl
     };
     expanded.into()
 }

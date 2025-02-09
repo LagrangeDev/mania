@@ -42,7 +42,7 @@ pub trait MessageEntity: Debug + Display {
         Self: Sized;
 }
 
-#[allow(clippy::large_enum_variant)] // TODO: do we need refactoring?
+#[allow(clippy::large_enum_variant)] // FIXME: do we need refactoring?
 pub enum Entity {
     Text(text::TextEntity),
     Json(json::JsonEntity),
@@ -55,9 +55,9 @@ pub enum Entity {
     Mention(mention::MentionEntity),
     File(file::FileEntity),
     Record(record::RecordEntity),
-    Video(video::VideoEntity),
+    Video(video::VideoEntity), // FIXME: clippy warn: at least 800 bytes
     Xml(xml::XmlEntity),
-    LongMsg(long_msg::LongMsgEntity),
+    LongMsg(long_msg::LongMsgEntity), // FIXME: clippy warn: at least 344 bytes
 }
 
 macro_rules! impl_entity_show {

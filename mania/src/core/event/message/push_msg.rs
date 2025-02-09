@@ -1,5 +1,6 @@
+use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
-use crate::core::protos::message::PushMsg;
+use crate::core::protos::message::{GroupJoin, PushMsg};
 use crate::message::chain::MessageChain;
 use crate::message::packer::MessagePacker;
 
@@ -9,8 +10,8 @@ enum PkgType {
     PrivateMessage = 166,
     GroupMessage = 82,
     TempMessage = 141,
-    Event0x210 = 528, // friend related event
-    Event0x2DC = 732, // group related event
+    Event0x210 = 0x210, // friend related event (528)
+    Event0x2DC = 0x2DC, // group related event (732)
     PrivateRecordMessage = 208,
     PrivateFileMessage = 529,
     GroupRequestInvitationNotice = 525, // from group member invitation
@@ -60,11 +61,11 @@ pub struct PushMessageEvent {
 }
 
 impl ClientEvent for PushMessageEvent {
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+    fn build(&self, _: &Context) -> CEBuildResult {
         todo!()
     }
 
-    fn parse(bytes: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(bytes: Bytes, _: &Context) -> CEParseResult {
         let packet = PushMsg::decode(bytes)?;
         let typ = packet
             .message
@@ -74,32 +75,57 @@ impl ClientEvent for PushMessageEvent {
             .ok_or_else(|| EventError::OtherError("Cannot get typ in PushMsg".to_string()))?;
         let packet_type =
             PkgType::try_from(typ).map_err(|_| EventError::UnknownOlpushMessageTypeError(typ))?;
-        let mut chain = MessageChain::default(); // FIXME: maybe exist better way to handle this
+        let mut chain: Option<MessageChain> = None;
+        let mut extra: Option<Vec<Box<dyn ServerEvent>>> = match packet_type {
+            PkgType::PrivateMessage
+            | PkgType::GroupMessage
+            | PkgType::TempMessage
+            | PkgType::PrivateRecordMessage => None,
+            _ => Some(Vec::with_capacity(1)),
+        };
         match packet_type {
             PkgType::PrivateMessage
             | PkgType::GroupMessage
             | PkgType::TempMessage
             | PkgType::PrivateRecordMessage => {
-                chain =
+                chain = Some(
                     MessagePacker::parse_chain(packet.message.ok_or_else(|| {
                         EventError::OtherError("PushMsgBody is None".to_string())
                     })?)
-                    .map_err(|e| EventError::OtherError(format!("parse_chain failed: {}", e)))?;
+                    .map_err(|e| EventError::OtherError(format!("parse_chain failed: {}", e)))?,
+                );
             }
             PkgType::PrivateFileMessage => {
-                chain =
+                chain = Some(
                     MessagePacker::parse_private_file(packet.message.ok_or_else(|| {
                         EventError::OtherError("PushMsgBody is None".to_string())
                     })?)
                     .map_err(|e| {
                         EventError::OtherError(format!("parse_file_chain failed: {}", e))
-                    })?;
+                    })?,
+                )
+            }
+            PkgType::GroupRequestJoinNotice => {
+                if let Some(msg_content) = packet
+                    .message
+                    .and_then(|content| content.body)
+                    .and_then(|body| body.msg_content)
+                {
+                    let join = GroupJoin::decode(Bytes::from(msg_content))?;
+                    extra
+                        .as_mut()
+                        .unwrap()
+                        .push(Box::new(GroupSysRequestJoinEvent {
+                            target_uid: join.target_uid,
+                            group_uin: join.group_uin,
+                        }));
+                }
             }
             // TODO: handle other message types
             _ => {
                 tracing::warn!("receive unknown message type: {:?}", packet_type);
             }
         }
-        Ok(Box::new(PushMessageEvent { chain: Some(chain) }))
+        Ok(ClientResult::with_extra(Box::new(Self { chain }), extra))
     }
 }

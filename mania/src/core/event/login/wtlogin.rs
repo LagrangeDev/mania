@@ -32,7 +32,7 @@ impl ClientEvent for WtLogin {
         Ok(BinaryPacket(body.into()))
     }
 
-    fn parse(packet: Bytes, ctx: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(packet: Bytes, ctx: &Context) -> CEParseResult {
         let packet = parse_wtlogin_packet(packet, ctx)?;
         let mut reader = PacketReader::new(packet);
         reader.skip(2);
@@ -97,15 +97,15 @@ impl ClientEvent for WtLogin {
                 gender: self_info.gender,
                 name: self_info.nick_name.to_owned(),
             }));
-            Ok(Box::new(Self { code: 0, msg: None }))
+            Ok(ClientResult::single(Box::new(Self { code: 0, msg: None })))
         } else {
             let tlv146 = original_tlvs
                 .get::<t146::T146>()
                 .map_err(TlvError::MissingTlv)?;
-            Ok(Box::new(Self {
+            Ok(ClientResult::single(Box::new(Self {
                 code: typ as i32,
                 msg: Some(tlv146.message.to_owned()),
-            }))
+            })))
         }
     }
 }

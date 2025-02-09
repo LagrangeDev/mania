@@ -15,7 +15,7 @@ pub struct FetchMembersEvent {
 }
 
 impl ClientEvent for FetchMembersEvent {
-    fn build(&self, _: &Context) -> Result<BinaryPacket, EventError> {
+    fn build(&self, _: &Context) -> CEBuildResult {
         let request = OidbSvcTrpcTcp0xFe73 {
             group_uin: self.group_uin,
             field2: 5,
@@ -35,7 +35,7 @@ impl ClientEvent for FetchMembersEvent {
         Ok(OidbPacket::new(0xfe7, 3, request.encode_to_vec(), false, true).to_binary())
     }
 
-    fn parse(packet: Bytes, _: &Context) -> Result<Box<dyn ServerEvent>, EventError> {
+    fn parse(packet: Bytes, _: &Context) -> CEParseResult {
         let response = OidbPacket::parse_into::<OidbSvcTrpcTcp0xFe73response>(packet)?;
         let to_dt = |ts: u32, err_msg: &'static str| {
             DateTime::from_timestamp(ts as i64, 0)
@@ -75,10 +75,10 @@ impl ClientEvent for FetchMembersEvent {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(Box::new(FetchMembersEvent {
+        Ok(ClientResult::single(Box::new(FetchMembersEvent {
             group_uin: response.group_uin,
             group_members,
             token: response.token,
-        }))
+        })))
     }
 }
