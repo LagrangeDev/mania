@@ -154,3 +154,33 @@ jobs:
       - name: Check typo
         run: |
           nix build .#checks.x86_64-linux.typo 2>&1
+  check-devshell:
+    runs-on: ubuntu-latest
+    needs: build-nixpkg
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Flake Inputs Update
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            lockfile:
+              - 'flake.lock'
+              - '**/*.nix'
+
+      - name: Install Nix
+        if: steps.filter.outputs.lockfile == 'true'
+        uses: nixbuild/nix-quick-install-action@v27
+
+      - name: Restore Nix Cache
+        if: steps.filter.outputs.lockfile == 'true'
+        uses: nix-community/cache-nix-action@v5
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.nix') }}
+
+      - name: Check devShell
+        if: steps.filter.outputs.lockfile == 'true'
+        run: |
+          nix build .#devShells.x86_64-linux.default 2>&1
