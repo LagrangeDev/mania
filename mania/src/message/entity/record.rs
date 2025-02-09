@@ -4,7 +4,7 @@ use crate::core::protos::service::oidb::MsgInfo;
 #[derive(Default)]
 pub struct RecordEntity {
     pub audio_length: u32,
-    pub audio_md5: Bytes,
+    pub audio_md5: Bytes = Bytes::new(),
     pub audio_name: String,
     pub audio_url: String,
     // TODO: stream

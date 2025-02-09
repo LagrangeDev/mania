@@ -3,7 +3,7 @@ use super::prelude::*;
 #[derive(Default)]
 pub struct XmlEntity {
     pub xml: String,
-    pub service_id: i32, // 35
+    pub service_id: i32 = 35,
 }
 
 impl Debug for XmlEntity {

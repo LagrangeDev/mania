@@ -172,13 +172,13 @@ const DEFAULT_THUMB: [u8; 2643] = [
 
 #[derive(Default)]
 pub struct VideoEntity {
-    pub file_name: String,
-    pub video_hash: String,
+    pub file_name: String = String::new(),
+    pub video_hash: String = String::new(),
     pub height: i32,
     pub width: i32,
     pub video_size: i32,
     pub video_length: i32,
-    pub video_url: String,
+    pub video_url: String = String::new(),
     // TODO: stream (video, thumb)
     pub(crate) node: Option<IndexNode>, // for download, 2025/02/08
     pub(crate) video_uuid: Option<String>,
