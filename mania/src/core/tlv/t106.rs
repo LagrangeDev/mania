@@ -36,7 +36,6 @@ impl TlvSer for T106 {
     }
 
     fn serialize(&self, p: PacketBuilder) -> PacketBuilder {
-        tracing::warn!("T106: &self.temp = {}", hex::encode(&self.temp));
         p.tlv(0x106, |p| p.bytes(&self.temp))
     }
 }

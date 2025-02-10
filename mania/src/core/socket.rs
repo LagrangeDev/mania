@@ -4,7 +4,6 @@ use std::sync::{Arc, Weak};
 
 use byteorder::{BigEndian, ByteOrder};
 use bytes::{Bytes, BytesMut};
-use log::debug;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -103,7 +102,7 @@ async fn recv_loop(mut stream: OwnedReadHalf, channel: Sender<Bytes>) -> Result<
         buffer.resize(packet_length as usize, 0);
         BigEndian::write_u32(&mut buffer, packet_length);
         stream.read_exact(&mut buffer[4..]).await?;
-        debug!("Received packet (len= {:?})", buffer.len());
+        tracing::trace!("Received packet (len= {:?})", buffer.len());
 
         if channel.send(buffer.split().freeze()).await.is_err() {
             return Ok(()); // dropped

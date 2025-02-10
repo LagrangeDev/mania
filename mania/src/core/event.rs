@@ -73,11 +73,6 @@ static EVENT_MAP: Lazy<EventMap> = Lazy::new(|| {
 pub async fn resolve_event(packet: SsoPacket, context: &Arc<Context>) -> CEParseResult {
     // Lagrange.Core.Internal.Context.ServiceContext.ResolveEventByPacket
     let payload = PacketReader::new(packet.payload()).section(|p| p.bytes());
-    tracing::debug!(
-        "receive SSO event: {}, payload: {:?}",
-        packet.command(),
-        hex::encode(&payload)
-    );
     let Some(parse) = EVENT_MAP.get(packet.command()) else {
         return Err(EventError::UnsupportedEvent(packet.command().to_string()));
     };

@@ -12,7 +12,7 @@ async fn main() {
             .with(console_layer)
             .with(
                 tracing_subscriber::fmt::layer()
-                    .with_filter(tracing_subscriber::EnvFilter::new("debug")),
+                    .with_filter(tracing_subscriber::EnvFilter::new("trace")),
             )
             .init();
         tracing::info!("tokio-tracing initialized.");

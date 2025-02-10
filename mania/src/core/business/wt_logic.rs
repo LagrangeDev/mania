@@ -13,7 +13,6 @@ async fn messaging_logic(
     handle: Arc<BusinessHandle>,
     flow: LogicFlow,
 ) -> &dyn ServerEvent {
-    tracing::debug!("[{}] Handling event: {:?}", flow, event);
     match flow {
         LogicFlow::InComing => messaging_logic_incoming(event, handle).await,
         LogicFlow::OutGoing => event,

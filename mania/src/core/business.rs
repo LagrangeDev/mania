@@ -77,7 +77,7 @@ static LOGIC_MAP: Lazy<LogicHandlerMap> = Lazy::new(|| {
         map.entry(tid)
             .or_insert_with(Vec::new)
             .push(item.event_handle_fn);
-        tracing::debug!(
+        tracing::trace!(
             "Registered event handler {:?} for type: {:?}",
             item.event_handle_fn,
             tid
@@ -93,12 +93,12 @@ pub async fn dispatch_logic(
 ) -> &dyn ServerEvent {
     let tid = event.as_any().type_id();
     if let Some(fns) = LOGIC_MAP.get(&tid) {
-        tracing::debug!("[{}] Found {} handlers for {:?}.", flow, fns.len(), event);
+        tracing::trace!("[{}] Found {} handlers for {:?}.", flow, fns.len(), event);
         for handle_fn in fns.iter() {
             handle_fn(event, handle.to_owned(), flow).await;
         }
     } else {
-        tracing::debug!("[{}] No handler found for {:?}", flow, event);
+        tracing::trace!("[{}] No handler found for {:?}", flow, event);
     }
     event
 }
@@ -153,6 +153,8 @@ impl Business {
                         continue;
                     }
                 };
+                tracing::debug!("Incoming packet: {}", packet.command());
+                tracing::trace!("Full: {:?}", packet);
                 let handle = self.handle.clone();
                 tokio::spawn(async move {
                     if let Err(e) = handle.dispatch_sso_packet(packet).await {
@@ -285,12 +287,13 @@ impl BusinessHandle {
     }
 
     async fn post_packet(&self, packet: SsoPacket) -> BusinessResult<()> {
+        tracing::debug!("Outgoing packet: {}", packet.command());
+        tracing::trace!("Full: {:?}", packet);
         let packet = packet.build(&self.context);
         Ok(self.sender.load().send(packet).await?)
     }
 
     async fn send_packet(&self, packet: SsoPacket) -> BusinessResult<CEParse> {
-        tracing::debug!("sending packet: {:?}", packet);
         let sequence = packet.sequence();
         let (tx, rx) = oneshot::channel::<BusinessResult<CEParse>>();
         self.pending_requests.insert(sequence, tx);
