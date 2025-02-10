@@ -1,16 +1,20 @@
 use crate::core::business::LogicRegistry;
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::message::push_msg::PushMessageEvent;
+use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
+use crate::event::friend::{FriendEvent, friend_message};
+use crate::event::group::group_poke::GroupPokeEvent;
 use crate::event::group::{GroupEvent, group_message};
+use crate::event::system::{SystemEvent, temp_message};
 use crate::message::chain::{MessageChain, MessageType};
 use crate::message::entity::Entity;
 use crate::message::entity::file::FileUnique;
 use mania_macros::handle_event;
 use std::sync::Arc;
 
-#[handle_event(PushMessageEvent, GroupSysRequestJoinEvent)]
+#[handle_event(PushMessageEvent, GroupSysRequestJoinEvent, GroupSysPokeEvent)]
 async fn messaging_logic(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
@@ -42,9 +46,26 @@ async fn messaging_logic_incoming(
                             .send(Some(GroupEvent::GroupMessage(
                                 group_message::GroupMessageEvent { chain },
                             )))
-                            .expect("Failed to send group event");
+                            .expect("Failed to send group_message event");
                     }
-                    // TODO: friend message & temp message
+                    MessageType::Friend(_) => {
+                        handle
+                            .event_dispatcher
+                            .friend
+                            .send(Some(FriendEvent::FriendMessageEvent(
+                                friend_message::FriendMessageEvent { chain },
+                            )))
+                            .expect("Failed to send friend_message event");
+                    }
+                    MessageType::Temp => {
+                        handle
+                            .event_dispatcher
+                            .system
+                            .send(Some(SystemEvent::TempMessageEvent(
+                                temp_message::TempMessageEvent { chain },
+                            )))
+                            .expect("Failed to send temp_message event");
+                    }
                     _ => {}
                 }
             } else {
@@ -57,6 +78,18 @@ async fn messaging_logic_incoming(
         {
             tracing::debug!("Handling GroupSysRequestJoinEvent: {:?}", event); // TODO: dispatch
         }
+        _ if let Some(event) = event.as_any_mut().downcast_mut::<GroupSysPokeEvent>() => handle
+            .event_dispatcher
+            .group
+            .send(Some(GroupEvent::GroupPoke(GroupPokeEvent {
+                group_uin: event.group_uin,
+                operator_uin: event.operator_uin,
+                target_uin: event.target_uin,
+                action: event.action.to_owned(),
+                suffix: event.suffix.to_owned(),
+                action_img_url: event.action_img_url.to_owned(),
+            })))
+            .expect("Failed to send group event"),
         _ => {}
     }
     event

@@ -115,11 +115,11 @@ pub fn derive_dummy_event(input: TokenStream) -> TokenStream {
 
         impl crate::core::event::ClientEvent for #struct_name {
             fn build(&self, _: &crate::core::context::Context) -> crate::core::event::CEBuildResult {
-                unreachable!("DummyEvent should not be built");
+                unreachable!("DummyEvent {} should not be parsed", stringify!(#struct_name));
             }
 
             fn parse(_: bytes::Bytes, _: &crate::core::context::Context) -> crate::core::event::CEParseResult {
-                unreachable!("DummyEvent should not be parsed");
+                unreachable!("DummyEvent {} should not be parsed", stringify!(#struct_name));
             }
         }
     };

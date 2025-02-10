@@ -117,9 +117,6 @@ pub enum EventError {
     #[error("failed to parse mania internal packet: {0}")]
     PacketParseError(#[from] crate::core::packet::PacketError),
 
-    #[error("Unknown olpush message type {0}")]
-    UnknownOlpushMessageTypeError(u32),
-
     #[error("An mania internal event error occurred: {0}")]
     OtherError(String),
 

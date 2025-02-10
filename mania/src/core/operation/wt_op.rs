@@ -9,6 +9,8 @@ use crate::core::event::system::info_sync::InfoSyncEvent;
 use crate::core::event::system::nt_sso_alive::NtSsoAliveEvent;
 use crate::core::http;
 use crate::core::session::QrSign;
+use crate::event::system::SystemEvent;
+use crate::event::system::bot_online::BotOnlineEvent;
 use crate::{KeyStore, ManiaError, ManiaResult};
 use bytes::Bytes;
 use std::borrow::Cow;
@@ -192,6 +194,12 @@ impl BusinessHandle {
             "d2key: {:?}",
             hex::encode(**self.context.key_store.session.d2_key.load())
         );
+        self.event_dispatcher
+            .system
+            .send(Some(SystemEvent::BotOnlineEvent(BotOnlineEvent {
+                reason: None,
+            })))
+            .expect("send BotOnlineEvent failed");
         let handle = self.clone();
         let heartbeat = async move {
             let mut hb_interval = tokio::time::interval(Duration::from_secs(10));

@@ -4,8 +4,8 @@ use crate::core::protos::system::ServiceKickNtResponse;
 #[command("trpc.qq_new_tech.status_svc.StatusService.KickNT")]
 #[derive(Debug, ServerEvent)]
 pub struct KickNTEvent {
-    tips: String,
-    title: String,
+    pub tips: String,
+    pub title: String,
 }
 
 impl ClientEvent for KickNTEvent {
