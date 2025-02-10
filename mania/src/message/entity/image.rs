@@ -53,7 +53,40 @@ impl Display for ImageEntity {
 
 impl MessageEntity for ImageEntity {
     fn pack_element(&self) -> Vec<Elem> {
-        todo!()
+        let is_group = self.msg_info.as_ref().is_some_and(|info| {
+            !info.msg_info_body.is_empty()
+                && info.msg_info_body[0]
+                    .hash_sum
+                    .as_ref()
+                    .is_some_and(|hash_sum| {
+                        hash_sum
+                            .troop_source
+                            .as_ref()
+                            .is_some_and(|troop| troop.group_uin != 0)
+                    })
+        });
+        let common = self.msg_info.as_ref().map_or_else(
+            || {
+                MsgInfo {
+                    ..Default::default()
+                }
+                .encode_to_vec()
+            },
+            |msg_info| msg_info.encode_to_vec(),
+        );
+        vec![
+            dda!(Elem {
+                custom_face: Some(self.custom_face.clone()),
+                not_online_image: Some(self.not_online_image.clone()),
+            }),
+            dda!(Elem {
+                common_elem: Some(CommonElem {
+                    service_type: 48,
+                    pb_elem: common,
+                    business_type: if is_group { 20 } else { 10 }
+                })
+            }),
+        ]
     }
 
     fn unpack_element(elem: &Elem) -> Option<Self> {

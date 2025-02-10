@@ -1,4 +1,5 @@
 use super::prelude::*;
+use std::iter::once;
 
 #[derive(Default)]
 pub struct JsonEntity {
@@ -20,8 +21,6 @@ impl Display for JsonEntity {
 
 impl MessageEntity for JsonEntity {
     fn pack_element(&self) -> Vec<Elem> {
-        let mut template1 = zlib::compress(self.json.as_bytes());
-        template1.push(0x01);
         vec![
             dda!(Elem {
                 text: Some(dda!(Text {
@@ -31,7 +30,11 @@ impl MessageEntity for JsonEntity {
             dda!(Elem {
                 rich_msg: Some(dda!(RichMsg {
                     service_id: Some(1),
-                    template1: Some(template1),
+                    template1: Some(
+                        once(0x01)
+                            .chain(zlib::compress(self.json.as_bytes()))
+                            .collect()
+                    ),
                 }),),
             }),
         ]

@@ -1,6 +1,7 @@
 use super::prelude::*;
 use serde_json::Value;
 use std::fmt::Debug;
+use std::iter::once;
 
 #[derive(Default)]
 pub struct LightAppEntity {
@@ -22,7 +23,13 @@ impl Display for LightAppEntity {
 
 impl MessageEntity for LightAppEntity {
     fn pack_element(&self) -> Vec<Elem> {
-        todo!()
+        vec![dda!(Elem {
+            light_app_elem: Some(dda!(LightAppElem {
+                data: once(0x01)
+                    .chain(zlib::compress(self.payload.as_bytes()))
+                    .collect(),
+            })),
+        })]
     }
 
     fn unpack_element(elem: &Elem) -> Option<Self> {
