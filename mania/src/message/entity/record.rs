@@ -28,7 +28,22 @@ impl Display for RecordEntity {
 
 impl MessageEntity for RecordEntity {
     fn pack_element(&self) -> Vec<Elem> {
-        todo!()
+        let common = self.msg_info.as_ref().map_or_else(
+            || {
+                MsgInfo {
+                    ..Default::default()
+                }
+                .encode_to_vec()
+            },
+            |msg_info| msg_info.encode_to_vec(),
+        );
+        vec![dda!(Elem {
+            common_elem: Some(CommonElem {
+                service_type: 48,
+                pb_elem: common,
+                business_type: 22,
+            }),
+        })]
     }
 
     fn unpack_element(elem: &Elem) -> Option<Self> {

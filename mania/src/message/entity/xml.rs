@@ -1,4 +1,5 @@
 use super::prelude::*;
+use std::iter::once;
 
 #[derive(Default)]
 pub struct XmlEntity {
@@ -20,7 +21,16 @@ impl Display for XmlEntity {
 
 impl MessageEntity for XmlEntity {
     fn pack_element(&self) -> Vec<Elem> {
-        todo!()
+        vec![dda!(Elem {
+            rich_msg: Some(dda!(RichMsg {
+                service_id: Some(self.service_id),
+                template1: Some(
+                    once(0x01)
+                        .chain(zlib::compress(self.xml.as_bytes()))
+                        .collect(),
+                ),
+            })),
+        })]
     }
 
     fn unpack_element(elem: &Elem) -> Option<Self> {

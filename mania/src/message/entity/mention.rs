@@ -27,7 +27,19 @@ impl Display for MentionEntity {
 
 impl MessageEntity for MentionEntity {
     fn pack_element(&self) -> Vec<Elem> {
-        todo!()
+        let pb_reserve = MentionExtra {
+            r#type: Some(if self.uin == 0 { 1 } else { 2 }),
+            uin: Some(self.uin),
+            field5: Some(0),
+            uid: Some(self.uid.clone()),
+        }
+        .encode_to_vec();
+        vec![dda!(Elem {
+            text: Some(dda!(Text {
+                str: self.name.clone(),
+                pb_reserve: Some(pb_reserve),
+            }))
+        })]
     }
 
     fn unpack_element(elem: &Elem) -> Option<Self> {
