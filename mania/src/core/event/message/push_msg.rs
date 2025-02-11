@@ -1,4 +1,5 @@
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
+use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
 use crate::core::protos::message::{GroupJoin, NotifyMessageBody, PushMsg};
@@ -139,6 +140,7 @@ impl ClientEvent for PushMessageEvent {
     }
 }
 
+#[allow(clippy::single_match)] // FIXME:
 fn process_event_0x2dc<'a>(
     packet: &'a PushMsg,
     extra: &'a mut Option<Vec<Box<dyn ServerEvent>>>,
@@ -171,6 +173,54 @@ fn process_event_0x2dc<'a>(
         }
     };
     match sub_type {
+        Event0x2DCSubType::SubType16 => {
+            let msg_content = match packet
+                .message
+                .as_ref()
+                .and_then(|m| m.body.as_ref())
+                .and_then(|b| b.msg_content.as_ref())
+            {
+                Some(content) => content,
+                None => return Ok(extra),
+            };
+            let mut packet_reader = PacketReader::new(Bytes::from(msg_content.to_owned()));
+            let group_uin = packet_reader.u32();
+            packet_reader.u8();
+            let proto = packet_reader
+                .read_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }>(|p| p.bytes());
+            let msg_body = NotifyMessageBody::decode(proto)?;
+            match Event0x2DCSubType16Field13::try_from(msg_body.field13.unwrap_or_default()) {
+                Ok(ev) => match ev {
+                    Event0x2DCSubType16Field13::GroupReactionNotice => {
+                        let data_2 = msg_body
+                            .reaction
+                            .as_ref()
+                            .and_then(|d| d.data.to_owned())
+                            .and_then(|d| d.data)
+                            .ok_or(EventError::OtherError(
+                                "Missing reaction data_2 in 0x2dc sub type 16 field 13".into(),
+                            ))?;
+                        let data_3 = data_2.data.as_ref().ok_or(EventError::OtherError(
+                            "Missing reaction data_3 in 0x2dc sub type 16 field 13".into(),
+                        ))?;
+                        extra.as_mut().unwrap().push(Box::new(GroupSysReactionEvent {
+                            target_group_uin: group_uin,
+                            target_sequence: data_2.target.ok_or_else(
+                                || EventError::OtherError("Missing target_sequence in reaction in 0x2dc sub type 16 field 13".into())
+                            )?.sequence,
+                            operator_uid: data_3.operator_uid.to_owned(),
+                            is_add: data_3.r#type == 1,
+                            code: data_3.code.to_owned(),
+                            count: data_3.count,
+                        }));
+                    }
+                    _ => {}
+                },
+                Err(e) => {
+                    tracing::warn!("Failed to parse 0x2dc sub type 16 field 13: {}", e);
+                }
+            }
+        }
         Event0x2DCSubType::GroupGreyTipNotice => {
             let msg_content = match packet
                 .message

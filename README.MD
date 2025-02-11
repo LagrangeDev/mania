@@ -27,7 +27,7 @@
 | Linux    |   🟢    | EasyLogin                      |   🟡    | File          | 🟡[^1]  | Leave Group       |   🔴    | BotOffline          |   🟢    |
 |          |         | ~~UnusualDevice<br/>Password~~ |   🔴    | Forward       |   🟢    | Set Special Title |   🔴    | Message             |   🟢    |
 |          |         | ~~UnusualDevice<br/>Easy~~     |   🔴    | ~~GreyTip~~   |   🔴    | Kick Member       |   🔴    | Poke                |   🟢    |
-|          |         | ~~NewDeviceVerify~~            |   🔴    | GroupReaction |   🔴    | Mute Member       |   🔴    | MessageRecall       |   🔴    |
+|          |         | ~~NewDeviceVerify~~            |   🔴    | GroupReaction | 🟡[^1]  | Mute Member       |   🔴    | MessageRecall       |   🔴    |
 |          |         |                                |         | Image         |   🟢    | Set Admin         |   🔴    | GroupMemberDecrease |   🔴    |
 |          |         |                                |         | Json          |   🟢    | Friend Request    |   🔴    | GroupMemberIncrease |   🔴    |
 |          |         |                                |         | KeyBoard      |   🔴    | Group Request     |   🔴    | GroupPromoteAdmin   |   🔴    |

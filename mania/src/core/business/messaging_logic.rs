@@ -2,10 +2,12 @@ use crate::core::business::LogicRegistry;
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::message::push_msg::PushMessageEvent;
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
+use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
 use crate::event::friend::{FriendEvent, friend_message};
 use crate::event::group::group_poke::GroupPokeEvent;
+use crate::event::group::group_reaction::GroupReactionEvent;
 use crate::event::group::{GroupEvent, group_join_request, group_message};
 use crate::event::system::{SystemEvent, temp_message};
 use crate::message::chain::{MessageChain, MessageType};
@@ -14,7 +16,12 @@ use crate::message::entity::file::FileUnique;
 use mania_macros::handle_event;
 use std::sync::Arc;
 
-#[handle_event(PushMessageEvent, GroupSysRequestJoinEvent, GroupSysPokeEvent)]
+#[handle_event(
+    PushMessageEvent,
+    GroupSysRequestJoinEvent,
+    GroupSysPokeEvent,
+    GroupSysReactionEvent
+)]
 async fn messaging_logic(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
@@ -140,6 +147,26 @@ async fn messaging_logic_incoming(
                 })))
             {
                 tracing::error!("Failed to send group poke event: {:?}", e);
+            }
+            return event;
+        }
+        if let Some(reaction) = event.as_any_mut().downcast_mut::<GroupSysReactionEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupReaction(GroupReactionEvent {
+                    target_group_uin: reaction.target_group_uin,
+                    target_sequence: reaction.target_sequence,
+                    operator_uin: handle
+                        .uid2uin(&reaction.operator_uid, Some(reaction.target_group_uin))
+                        .await
+                        .unwrap_or_default(),
+                    is_add: reaction.is_add,
+                    code: reaction.code.to_owned(),
+                    count: reaction.count,
+                })))
+            {
+                tracing::error!("Failed to send group reaction event: {:?}", e);
             }
             return event;
         }

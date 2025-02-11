@@ -173,12 +173,13 @@ message NotifyMessageBody {
   uint32 GroupUin = 4;
   bytes EventParam = 5;
   GroupRecall Recall = 11;
-  uint32 Field13 = 13;
+  optional uint32 Field13 = 13;
   string OperatorUid = 21;
   GeneralGrayTipInfo GrayTipInfo = 26;
   EssenceMessage EssenceMessage = 33;
   uint32 MsgSequence = 37;
   uint32 Field39 = 39;
+  GroupReactionData0 Reaction = 44;
 }
 
 message EssenceMessage {
