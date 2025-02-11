@@ -3,6 +3,8 @@ use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::message::push_msg::PushMessageEvent;
 use crate::core::event::notify::friend_sys_poke::FriendSysPokeEvent;
 use crate::core::event::notify::friend_sys_recall::FriendSysRecallEvent;
+use crate::core::event::notify::group_sys_decrease::GroupSysDecreaseEvent;
+use crate::core::event::notify::group_sys_increase::GroupSysIncreaseEvent;
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
 use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
 use crate::core::event::notify::group_sys_recall::GroupSysRecallEvent;
@@ -13,7 +15,9 @@ use crate::event::friend::{FriendEvent, friend_message, friend_recall};
 use crate::event::group::group_poke::GroupPokeEvent;
 use crate::event::group::group_reaction::GroupReactionEvent;
 use crate::event::group::group_recall::GroupRecallEvent;
-use crate::event::group::{GroupEvent, group_join_request, group_message};
+use crate::event::group::{
+    GroupEvent, group_join_request, group_member_decrease, group_member_increase, group_message,
+};
 use crate::event::system::{SystemEvent, temp_message};
 use crate::message::chain::{MessageChain, MessageType};
 use crate::message::entity::Entity;
@@ -27,6 +31,8 @@ use std::sync::Arc;
     GroupSysPokeEvent,
     GroupSysReactionEvent,
     GroupSysRecallEvent,
+    GroupSysIncreaseEvent,
+    GroupSysDecreaseEvent,
     FriendSysRecallEvent,
     FriendSysPokeEvent
 )]
@@ -42,6 +48,7 @@ async fn messaging_logic(
     }
 }
 
+// FIXME: avoid take things from event
 async fn messaging_logic_incoming(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
@@ -155,6 +162,64 @@ async fn messaging_logic_incoming(
                 })))
             {
                 tracing::error!("Failed to send group poke event: {:?}", e);
+            }
+            return event;
+        }
+        if let Some(join) = event.as_any_mut().downcast_mut::<GroupSysIncreaseEvent>() {
+            let member_uin = handle
+                .resolve_stranger_uid2uin(&join.member_uid)
+                .await
+                .unwrap_or_default();
+            let invitor_uin = handle
+                .uid2uin(
+                    join.invitor_uid.as_deref().unwrap_or(""),
+                    Some(join.group_uin),
+                )
+                .await
+                .ok();
+            if let Err(e) =
+                handle
+                    .event_dispatcher
+                    .group
+                    .send(Some(GroupEvent::GroupMemberIncrease(
+                        group_member_increase::GroupMemberIncreaseEvent {
+                            group_uin: join.group_uin,
+                            member_uin,
+                            invitor_uin,
+                            event_type: std::mem::take(&mut join.event_type), // FIXME: maybe bug?
+                        },
+                    )))
+            {
+                tracing::error!("Failed to send group increase event: {:?}", e);
+            }
+            return event;
+        }
+        if let Some(leave) = event.as_any_mut().downcast_mut::<GroupSysDecreaseEvent>() {
+            let member_uin = handle
+                .resolve_stranger_uid2uin(&leave.member_uid)
+                .await
+                .unwrap_or_default();
+            let operator_uin = handle
+                .uid2uin(
+                    leave.operator_uid.as_deref().unwrap_or(""),
+                    Some(leave.group_uin),
+                )
+                .await
+                .ok();
+            if let Err(e) =
+                handle
+                    .event_dispatcher
+                    .group
+                    .send(Some(GroupEvent::GroupMemberDecrease(
+                        group_member_decrease::GroupMemberDecreaseEvent {
+                            group_uin: leave.group_uin,
+                            member_uin,
+                            operator_uin,
+                            event_type: std::mem::take(&mut leave.event_type), // FIXME: maybe bug?
+                        },
+                    )))
+            {
+                tracing::error!("Failed to send group decrease event: {:?}", e);
             }
             return event;
         }

@@ -1,12 +1,18 @@
+use crate::core::entity::group_sys_enum::{
+    GroupMemberDecreaseEventType, GroupMemberIncreaseEventType,
+};
 use crate::core::event::notify::friend_sys_poke::FriendSysPokeEvent;
 use crate::core::event::notify::friend_sys_recall::FriendSysRecallEvent;
+use crate::core::event::notify::group_sys_decrease::GroupSysDecreaseEvent;
+use crate::core::event::notify::group_sys_increase::GroupSysIncreaseEvent;
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
 use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
 use crate::core::event::notify::group_sys_recall::GroupSysRecallEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
 use crate::core::protos::message::{
-    FriendRecall, GeneralGrayTipInfo, GroupJoin, NotifyMessageBody, PushMsg,
+    FriendRecall, GeneralGrayTipInfo, GroupChange, GroupJoin, NotifyMessageBody, OperatorInfo,
+    PushMsg,
 };
 use crate::message::chain::MessageChain;
 use crate::message::packer::MessagePacker;
@@ -131,6 +137,76 @@ impl ClientEvent for PushMessageEvent {
                             target_uid: join.target_uid,
                             group_uin: join.group_uin,
                         }));
+                }
+            }
+            PkgType::GroupMemberIncreaseNotice => {
+                if let Some(msg_content) = packet
+                    .message
+                    .and_then(|content| content.body)
+                    .and_then(|body| body.msg_content)
+                {
+                    let increase = GroupChange::decode(Bytes::from(msg_content))?;
+                    let invitor_uid = increase
+                        .operator
+                        .and_then(|operator| String::from_utf8(operator).ok());
+                    extra
+                        .as_mut()
+                        .unwrap()
+                        .push(Box::new(GroupSysIncreaseEvent {
+                            group_uin: increase.group_uin,
+                            member_uid: increase.member_uid,
+                            invitor_uid,
+                            event_type: GroupMemberIncreaseEventType::try_from(
+                                increase.decrease_type,
+                            )
+                            .unwrap_or_default(),
+                        }));
+                }
+            }
+            PkgType::GroupMemberDecreaseNotice => {
+                if let Some(msg_content) = packet
+                    .message
+                    .and_then(|content| content.body)
+                    .and_then(|body| body.msg_content)
+                {
+                    let decrease = GroupChange::decode(Bytes::from(msg_content))?;
+                    match decrease.decrease_type {
+                        3 => {
+                            // bot itself is kicked
+                            let op = OperatorInfo::decode(Bytes::from(
+                                decrease.operator.unwrap_or_default(),
+                            ))?;
+                            extra
+                                .as_mut()
+                                .unwrap()
+                                .push(Box::new(GroupSysDecreaseEvent {
+                                    group_uin: decrease.group_uin,
+                                    member_uid: decrease.member_uid,
+                                    operator_uid: op.operator_field1.map(|o| o.operator_uid),
+                                    event_type: GroupMemberDecreaseEventType::try_from(
+                                        decrease.decrease_type,
+                                    )
+                                    .unwrap_or_default(),
+                                }));
+                        }
+                        _ => {
+                            let op_uid = decrease
+                                .operator
+                                .and_then(|operator| String::from_utf8(operator).ok());
+                            extra
+                                .as_mut()
+                                .unwrap()
+                                .push(Box::new(GroupSysDecreaseEvent {
+                                    group_uin: decrease.group_uin,
+                                    member_uid: decrease.member_uid,
+                                    operator_uid: op_uid,
+                                    event_type: GroupMemberDecreaseEventType::try_from(
+                                        decrease.decrease_type,
+                                    )
+                                    .unwrap_or_default(),
+                                }));
+                        }
+                    }
                 }
             }
             PkgType::Event0x2DC => {

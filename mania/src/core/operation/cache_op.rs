@@ -164,7 +164,11 @@ impl BusinessHandle {
         Ok(None::<T>)
     }
 
-    async fn refresh_friends_cache(self: &Arc<Self>) -> ManiaResult<()> {
+    pub(crate) async fn refresh_friends_cache(self: &Arc<Self>) -> ManiaResult<()> {
+        if self.cache.cache_mode == CacheMode::None {
+            tracing::warn!("Cache mode is None, no need to refresh friends cache");
+            return Ok(());
+        }
         let mut friends: HashMap<u32, BotFriend> = HashMap::new();
         let mut friend_groups: HashMap<u32, String> = HashMap::new();
         self.iter_fetch_friends(|event: &mut FetchFriendsEvent| {
@@ -242,7 +246,14 @@ impl BusinessHandle {
         Ok(None::<T>)
     }
 
-    async fn refresh_group_members_cache(self: &Arc<Self>, group_uin: u32) -> ManiaResult<()> {
+    pub(crate) async fn refresh_group_members_cache(
+        self: &Arc<Self>,
+        group_uin: u32,
+    ) -> ManiaResult<()> {
+        if self.cache.cache_mode == CacheMode::None {
+            tracing::warn!("Cache mode is None, no need to refresh group members cache");
+            return Ok(());
+        }
         let mut group_members: Vec<BotGroupMember> = Vec::new();
         self.iter_fetch_group(group_uin, |event| {
             group_members.extend(event.group_members.clone());
