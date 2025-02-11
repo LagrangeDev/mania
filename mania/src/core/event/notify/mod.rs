@@ -1,3 +1,4 @@
+pub mod friend_sys_poke;
 pub mod friend_sys_recall;
 pub mod group_sys_poke;
 pub mod group_sys_reaction;

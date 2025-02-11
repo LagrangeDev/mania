@@ -1,10 +1,13 @@
+use crate::core::event::notify::friend_sys_poke::FriendSysPokeEvent;
 use crate::core::event::notify::friend_sys_recall::FriendSysRecallEvent;
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
 use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
 use crate::core::event::notify::group_sys_recall::GroupSysRecallEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
-use crate::core::protos::message::{FriendRecall, GroupJoin, NotifyMessageBody, PushMsg};
+use crate::core::protos::message::{
+    FriendRecall, GeneralGrayTipInfo, GroupJoin, NotifyMessageBody, PushMsg,
+};
 use crate::message::chain::MessageChain;
 use crate::message::packer::MessagePacker;
 
@@ -145,7 +148,7 @@ impl ClientEvent for PushMessageEvent {
     }
 }
 
-fn extract_fucking_head<T>(msg_content: &Vec<u8>) -> Result<(u32, T), EventError>
+fn extract_0x2dc_fucking_head<T>(msg_content: &Vec<u8>) -> Result<(u32, T), EventError>
 where
     T: prost::Message + Default,
 {
@@ -201,7 +204,8 @@ fn process_event_0x2dc<'a>(
                 Some(content) => content,
                 None => return Ok(extra),
             };
-            let (group_uin, msg_body) = extract_fucking_head::<NotifyMessageBody>(msg_content)?;
+            let (group_uin, msg_body) =
+                extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
             match Event0x2DCSubType16Field13::try_from(msg_body.field13.unwrap_or_default()) {
                 Ok(ev) => match ev {
                     Event0x2DCSubType16Field13::GroupReactionNotice => {
@@ -244,7 +248,7 @@ fn process_event_0x2dc<'a>(
                 Some(content) => content,
                 None => return Ok(extra),
             };
-            let (_, recall_notify) = extract_fucking_head::<NotifyMessageBody>(msg_content)?;
+            let (_, recall_notify) = extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
             let recall = recall_notify.recall.ok_or(EventError::OtherError(
                 "Missing recall meta in 0x2dc sub type 17".into(),
             ))?;
@@ -275,7 +279,8 @@ fn process_event_0x2dc<'a>(
                 Some(content) => content,
                 None => return Ok(extra),
             };
-            let (group_uin, grey_tip) = extract_fucking_head::<NotifyMessageBody>(msg_content)?;
+            let (group_uin, grey_tip) =
+                extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
             let gray_tip_info = match grey_tip.gray_tip_info.as_ref() {
                 Some(info) if info.busi_type == 12 => info,
                 _ => return Ok(extra),
@@ -383,6 +388,54 @@ fn process_event_0x210<'a>(
                 time: info.time,
                 random: info.random,
                 tip: info.tip_info.unwrap_or_default().tip.unwrap_or_default(),
+            }));
+        }
+        Event0x210SubType::FriendPokeNotice => {
+            let msg_content = match packet
+                .message
+                .as_ref()
+                .and_then(|m| m.body.as_ref())
+                .and_then(|b| b.msg_content.as_ref())
+            {
+                Some(content) => content,
+                None => return Ok(extra),
+            };
+            let grey_tip = GeneralGrayTipInfo::decode(Bytes::from(msg_content.to_owned()))?;
+            if grey_tip.busi_type != 12 {
+                return Ok(extra);
+            }
+            let templates: HashMap<String, String> = grey_tip
+                .msg_templ_param
+                .iter()
+                .map(|param| (param.key.to_owned(), param.value.to_owned()))
+                .collect();
+            let action = templates
+                .get("action_str")
+                .or_else(|| templates.get("alt_str1"))
+                .cloned()
+                .unwrap_or_default();
+            let operator_uin = templates
+                .get("uin_str1")
+                .ok_or_else(|| EventError::OtherError("Missing uin_str1 in grey tip event".into()))?
+                .parse::<u32>()
+                .map_err(|e| {
+                    EventError::OtherError(format!("Failed to parse uin_str1 in poke event: {}", e))
+                })?;
+            let target_uin = templates
+                .get("uin_str2")
+                .ok_or_else(|| EventError::OtherError("Missing uin_str2 in grey tip event".into()))?
+                .parse::<u32>()
+                .map_err(|e| {
+                    EventError::OtherError(format!("Failed to parse uin_str2 in poke event: {}", e))
+                })?;
+            let suffix = templates.get("suffix").cloned().unwrap_or_default();
+            let action_img_url = templates.get("action_img_url").cloned().unwrap_or_default();
+            extra.as_mut().unwrap().push(Box::new(FriendSysPokeEvent {
+                operator_uin,
+                target_uin,
+                action,
+                suffix,
+                action_img_url,
             }));
         }
         _ => {

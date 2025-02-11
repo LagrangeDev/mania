@@ -1,12 +1,14 @@
 use crate::core::business::LogicRegistry;
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::message::push_msg::PushMessageEvent;
+use crate::core::event::notify::friend_sys_poke::FriendSysPokeEvent;
 use crate::core::event::notify::friend_sys_recall::FriendSysRecallEvent;
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
 use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
 use crate::core::event::notify::group_sys_recall::GroupSysRecallEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
+use crate::event::friend::friend_poke::FriendPokeEvent;
 use crate::event::friend::{FriendEvent, friend_message, friend_recall};
 use crate::event::group::group_poke::GroupPokeEvent;
 use crate::event::group::group_reaction::GroupReactionEvent;
@@ -25,7 +27,8 @@ use std::sync::Arc;
     GroupSysPokeEvent,
     GroupSysReactionEvent,
     GroupSysRecallEvent,
-    FriendSysRecallEvent
+    FriendSysRecallEvent,
+    FriendSysPokeEvent
 )]
 async fn messaging_logic(
     event: &mut dyn ServerEvent,
@@ -152,6 +155,22 @@ async fn messaging_logic_incoming(
                 })))
             {
                 tracing::error!("Failed to send group poke event: {:?}", e);
+            }
+            return event;
+        }
+        if let Some(poke) = event.as_any_mut().downcast_mut::<FriendSysPokeEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .friend
+                .send(Some(FriendEvent::FriendPokeEvent(FriendPokeEvent {
+                    operator_uin: poke.operator_uin,
+                    target_uin: poke.target_uin,
+                    action: poke.action.to_owned(),
+                    suffix: poke.suffix.to_owned(),
+                    action_url: poke.action_img_url.to_owned(),
+                })))
+            {
+                tracing::error!("Failed to send friend poke event: {:?}", e);
             }
             return event;
         }
