@@ -186,7 +186,7 @@ async fn messaging_logic_incoming(
                             group_uin: join.group_uin,
                             member_uin,
                             invitor_uin,
-                            event_type: std::mem::take(&mut join.event_type), // FIXME: maybe bug?
+                            event_type: std::mem::take(&mut join.event_type),
                         },
                     )))
             {
@@ -215,7 +215,7 @@ async fn messaging_logic_incoming(
                             group_uin: leave.group_uin,
                             member_uin,
                             operator_uin,
-                            event_type: std::mem::take(&mut leave.event_type), // FIXME: maybe bug?
+                            event_type: std::mem::take(&mut leave.event_type),
                         },
                     )))
             {
