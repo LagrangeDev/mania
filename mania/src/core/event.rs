@@ -135,6 +135,7 @@ pub(crate) mod prelude {
     pub use mania_macros::{DummyEvent, ServerEvent, command, oidb_command};
     pub use num_enum::TryFromPrimitive;
     pub use prost::Message;
+    pub use std::collections::HashMap;
     pub use std::convert::TryFrom;
     pub use std::fmt::Debug;
 }

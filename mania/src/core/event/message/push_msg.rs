@@ -4,7 +4,6 @@ use crate::core::event::prelude::*;
 use crate::core::protos::message::{GroupJoin, NotifyMessageBody, PushMsg};
 use crate::message::chain::MessageChain;
 use crate::message::packer::MessagePacker;
-use std::collections::HashMap;
 
 #[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]

@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![allow(dead_code)] // TODO: remove this after stable
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -10,7 +9,7 @@ pub mod message;
 pub mod utility;
 
 use crate::core::business::{Business, BusinessHandle};
-use crate::core::connect::optimum_server;
+pub use crate::core::cache::CacheMode;
 use crate::core::context::Protocol;
 pub use crate::core::context::{AppInfo, Context, DeviceInfo};
 pub use crate::core::error::{ManiaError, ManiaResult};
@@ -32,10 +31,12 @@ pub struct ClientConfig {
     pub get_optimum_server: bool,
     /// Custom Sign Provider
     pub sign_provider: Option<Box<dyn SignProvider>>,
-    ///  The maximum size of the highway block in byte, max 1MB (1024 * 1024 byte)
+    /// The maximum size of the highway block in byte, max 1MB (1024 * 1024 byte)
     pub highway_chuck_size: usize,
     /// Highway uploading concurrency, if the image failed to send, set this to 1
     pub highway_concurrency: usize,
+    /// Cache mode for the client
+    pub cache_mode: CacheMode,
 }
 
 impl Default for ClientConfig {
@@ -48,6 +49,7 @@ impl Default for ClientConfig {
             sign_provider: None,
             highway_chuck_size: 1024 * 1024,
             highway_concurrency: 4,
+            cache_mode: CacheMode::Full,
         }
     }
 }
@@ -59,16 +61,18 @@ pub struct Client {
 
 impl Client {
     pub async fn new(
-        config: ClientConfig,
+        mut config: ClientConfig,
         device: DeviceInfo,
         key_store: KeyStore,
     ) -> ManiaResult<Self> {
+        let sign_provider = config.sign_provider.take();
+        let config = Arc::new(config);
         let app_info = AppInfo::get(config.protocol);
         let context = Context {
             app_info,
             device,
             key_store,
-            sign_provider: config.sign_provider.unwrap_or_else(|| {
+            sign_provider: sign_provider.unwrap_or_else(|| {
                 default_sign_provider(
                     config.protocol,
                     env::var("MANIA_LINUX_SIGN_URL")
@@ -84,10 +88,7 @@ impl Client {
             session: Session::new(),
         };
         let context = Arc::new(context);
-
-        let addr = optimum_server(config.get_optimum_server, config.use_ipv6_network).await?;
-        let business = Business::new(addr, context.clone()).await?;
-
+        let business = Business::new(config, context.clone()).await?;
         let handle = ClientHandle {
             business: business.handle(),
             context,

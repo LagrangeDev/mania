@@ -33,7 +33,7 @@ message OidbSvcTrpcTcp0xFE1_2ResponseBody {
 
 message OidbSvcTrpcTcp0xFE1_2ResponseProperty {
   repeated OidbTwoNumber NumberProperties = 1;
-  repeated OidbFriendProperty StringProperties = 2;
+  repeated OidbFriendByteProperty BytesProperties = 2;
 }
 
 message CustomStatus {

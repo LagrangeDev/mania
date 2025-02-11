@@ -39,7 +39,7 @@ impl PacketReceiver {
                 "socket closed",
             ));
         }
-        Ok(self.packets_rx.recv().await.expect("channel closed"))
+        Ok(self.packets_rx.recv().await.expect("channel closed")) // TODO: ERROR mania::core::socket: Socket error: An established connection was aborted by the software in your host machine. (os error 10053)
     }
 }
 

@@ -11,7 +11,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::core::cache::Cache;
+use crate::ClientConfig;
+pub use crate::core::cache::Cache;
+use crate::core::connect::optimum_server;
 use crate::core::context::Context;
 use crate::core::event::prelude::*;
 use crate::core::event::{CEParse, resolve_event};
@@ -110,7 +112,8 @@ pub struct Business {
 }
 
 impl Business {
-    pub async fn new(addr: SocketAddr, context: Arc<Context>) -> BusinessResult<Self> {
+    pub async fn new(config: Arc<ClientConfig>, context: Arc<Context>) -> BusinessResult<Self> {
+        let addr = optimum_server(config.get_optimum_server, config.use_ipv6_network).await?;
         let (sender, receiver) = socket::connect(addr).await?;
         let event_dispatcher = EventDispatcher::new();
         let event_listener = EventListener::new(&event_dispatcher);
@@ -119,7 +122,7 @@ impl Business {
             reconnecting: Mutex::new(()),
             pending_requests: DashMap::new(),
             context,
-            cache: Arc::new(Cache::new()),
+            cache: Arc::new(Cache::new(config.cache_mode)), // TODO: construct from context
             event_dispatcher,
             event_listener,
         });

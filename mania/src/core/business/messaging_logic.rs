@@ -6,7 +6,7 @@ use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent
 use crate::core::event::prelude::*;
 use crate::event::friend::{FriendEvent, friend_message};
 use crate::event::group::group_poke::GroupPokeEvent;
-use crate::event::group::{GroupEvent, group_message};
+use crate::event::group::{GroupEvent, group_join_request, group_message};
 use crate::event::system::{SystemEvent, temp_message};
 use crate::message::chain::{MessageChain, MessageType};
 use crate::message::entity::Entity;
@@ -31,8 +31,8 @@ async fn messaging_logic_incoming(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
 ) -> &dyn ServerEvent {
-    match event {
-        _ if let Some(msg) = event.as_any_mut().downcast_mut::<PushMessageEvent>() => {
+    {
+        if let Some(msg) = event.as_any_mut().downcast_mut::<PushMessageEvent>() {
             if let Some(mut chain) = msg.chain.take() {
                 resolve_incoming_chain(&mut chain, handle.clone()).await;
                 // TODO: await ResolveChainMetadata(push.Chain);
@@ -40,57 +40,109 @@ async fn messaging_logic_incoming(
                 // TODO?: sb tx! Collection.Invoker.PostEvent(new GroupInvitationEvent(groupUin, chain.FriendUin, sequence));
                 match &chain.typ {
                     MessageType::Group(_) => {
-                        handle
-                            .event_dispatcher
-                            .group
-                            .send(Some(GroupEvent::GroupMessage(
-                                group_message::GroupMessageEvent { chain },
-                            )))
-                            .expect("Failed to send group_message event");
+                        if let Err(e) =
+                            handle
+                                .event_dispatcher
+                                .group
+                                .send(Some(GroupEvent::GroupMessage(
+                                    group_message::GroupMessageEvent { chain },
+                                )))
+                        {
+                            tracing::error!("Failed to send group_message event: {:?}", e);
+                        }
                     }
                     MessageType::Friend(_) => {
-                        handle
-                            .event_dispatcher
-                            .friend
-                            .send(Some(FriendEvent::FriendMessageEvent(
-                                friend_message::FriendMessageEvent { chain },
-                            )))
-                            .expect("Failed to send friend_message event");
+                        if let Err(e) = handle.event_dispatcher.friend.send(Some(
+                            FriendEvent::FriendMessageEvent(friend_message::FriendMessageEvent {
+                                chain,
+                            }),
+                        )) {
+                            tracing::error!("Failed to send friend_message event: {:?}", e);
+                        }
                     }
                     MessageType::Temp => {
-                        handle
-                            .event_dispatcher
-                            .system
-                            .send(Some(SystemEvent::TempMessageEvent(
-                                temp_message::TempMessageEvent { chain },
-                            )))
-                            .expect("Failed to send temp_message event");
+                        if let Err(e) = handle.event_dispatcher.system.send(Some(
+                            SystemEvent::TempMessageEvent(temp_message::TempMessageEvent { chain }),
+                        )) {
+                            tracing::error!("Failed to send temp_message event: {:?}", e);
+                        }
                     }
                     _ => {}
                 }
             } else {
                 tracing::warn!("Empty message chain in PushMessageEvent");
             }
+            return event;
         }
-        _ if let Some(event) = event
+    }
+    {
+        if let Some(req) = event
             .as_any_mut()
-            .downcast_mut::<GroupSysRequestJoinEvent>() =>
+            .downcast_mut::<GroupSysRequestJoinEvent>()
         {
-            tracing::debug!("Handling GroupSysRequestJoinEvent: {:?}", event); // TODO: dispatch
+            let target_uin = match handle.resolve_stranger_uid2uin(&req.target_uid).await {
+                Ok(uin) => uin,
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to resolve stranger uid for {}: {:?}",
+                        req.target_uid,
+                        e
+                    );
+                    return event;
+                }
+            };
+            let requests = match handle.fetch_group_requests().await {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::error!("Failed to fetch group requests: {:?}", e);
+                    return event;
+                }
+            };
+            if let Some(r) = requests
+                .iter()
+                .find(|r| r.group_uin == req.group_uin && r.target_member_uin == target_uin)
+            {
+                if let Err(e) =
+                    handle
+                        .event_dispatcher
+                        .group
+                        .send(Some(GroupEvent::GroupJoinRequest(
+                            group_join_request::GroupJoinRequestEvent {
+                                group_uin: req.group_uin,
+                                target_uin,
+                                target_nickname: r.target_member_card.to_owned(),
+                                invitor_uin: r.invitor_member_uin.unwrap_or_default(),
+                                answer: r.comment.to_owned().unwrap_or_default(),
+                                request_seq: r.sequence,
+                            },
+                        )))
+                {
+                    tracing::error!("Failed to send group join request event: {:?}", e);
+                }
+            } else {
+                tracing::warn!("No group join request found for target: {}", target_uin);
+            }
+            return event;
         }
-        _ if let Some(event) = event.as_any_mut().downcast_mut::<GroupSysPokeEvent>() => handle
-            .event_dispatcher
-            .group
-            .send(Some(GroupEvent::GroupPoke(GroupPokeEvent {
-                group_uin: event.group_uin,
-                operator_uin: event.operator_uin,
-                target_uin: event.target_uin,
-                action: event.action.to_owned(),
-                suffix: event.suffix.to_owned(),
-                action_img_url: event.action_img_url.to_owned(),
-            })))
-            .expect("Failed to send group event"),
-        _ => {}
+    }
+    {
+        if let Some(poke) = event.as_any_mut().downcast_mut::<GroupSysPokeEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupPoke(GroupPokeEvent {
+                    group_uin: poke.group_uin,
+                    operator_uin: poke.operator_uin,
+                    target_uin: poke.target_uin,
+                    action: poke.action.to_owned(),
+                    suffix: poke.suffix.to_owned(),
+                    action_img_url: poke.action_img_url.to_owned(),
+                })))
+            {
+                tracing::error!("Failed to send group poke event: {:?}", e);
+            }
+            return event;
+        }
     }
     event
 }
@@ -229,9 +281,9 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
                 let download_result = match &chain.typ {
                     MessageType::Group(grp) => {
                         let uid = handle
-                            .resolve_uid(Some(grp.group_uin), chain.friend_uin)
-                            .await;
-                        let uid = uid.unwrap_or_default();
+                            .uin2uid(chain.friend_uin, Some(grp.group_uin))
+                            .await
+                            .unwrap_or_default();
                         match handle
                             .download_video(
                                 &uid,

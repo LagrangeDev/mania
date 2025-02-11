@@ -4,7 +4,6 @@ use crate::core::protos::service::oidb::{
     OidbSvcTrpcTcp0xFd41uin,
 };
 use crate::entity::bot_friend::{BotFriend, BotFriendGroup};
-use std::collections::HashMap;
 
 #[oidb_command(0xfd4, 1)]
 #[derive(Debug, ServerEvent, Default)]

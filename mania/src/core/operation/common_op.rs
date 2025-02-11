@@ -8,12 +8,18 @@ use crate::core::event::message::record_c2c_download::RecordC2CDownloadEvent;
 use crate::core::event::message::record_group_download::RecordGroupDownloadEvent;
 use crate::core::event::message::video_c2c_download::VideoC2CDownloadEvent;
 use crate::core::event::message::video_group_download::VideoGroupDownloadEvent;
+use crate::core::event::system::fetch_filtered_group_request::FetchFilteredGroupRequestsEvent;
+use crate::core::event::system::fetch_group_requests::FetchGroupRequestsEvent;
 use crate::core::event::system::fetch_rkey::FetchRKeyEvent;
+use crate::core::event::system::fetch_user_info::FetchUserInfoEvent;
 use crate::core::event::{downcast_major_event, downcast_mut_major_event};
 use crate::core::protos::service::oidb::IndexNode;
+use crate::entity::bot_group_request::BotGroupRequest;
 use crate::message::chain::MessageChain;
 use crate::{ManiaError, ManiaResult, dda};
+use futures::future::join_all;
 use std::sync::Arc;
+use tokio::join;
 
 impl BusinessHandle {
     pub async fn fetch_rkey(self: &Arc<Self>) -> ManiaResult<()> {
@@ -237,5 +243,63 @@ impl BusinessHandle {
         let event: &VideoGroupDownloadEvent =
             downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
         Ok(event.video_url.clone())
+    }
+
+    pub(crate) async fn resolve_stranger_uid2uin(
+        self: &Arc<Self>,
+        stranger_uid: &str,
+    ) -> ManiaResult<u32> {
+        let mut fetch_event = dda!(FetchUserInfoEvent {
+            uid: Some(stranger_uid.to_string()),
+        });
+        let res = self.send_event(&mut fetch_event).await?;
+        let event: &FetchUserInfoEvent =
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+        Ok(event.uin)
+    }
+
+    pub async fn fetch_group_requests(self: &Arc<Self>) -> ManiaResult<Vec<BotGroupRequest>> {
+        let mut fetch_event = FetchGroupRequestsEvent::default();
+        let res = self.send_event(&mut fetch_event).await?;
+        let fetch_event: &FetchGroupRequestsEvent =
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+        let mut fetch_filter_event = FetchFilteredGroupRequestsEvent::default();
+        let res = self.send_event(&mut fetch_filter_event).await?;
+        let fetch_filter_event: &FetchFilteredGroupRequestsEvent =
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+
+        let all_requests: Vec<_> = fetch_event
+            .results
+            .iter()
+            .chain(fetch_filter_event.results.iter())
+            .collect();
+
+        let requests = join_all(all_requests.into_iter().map(|req| {
+            let this = Arc::clone(self);
+            async move {
+                let (invitor_member_uin, target_member_uin, operator_uin) = join!(
+                    this.resolve_stranger_uid2uin(req.invitor_member_uid.as_deref().unwrap_or("")),
+                    this.resolve_stranger_uid2uin(&req.target_member_uid),
+                    this.resolve_stranger_uid2uin(req.operator_uid.as_deref().unwrap_or(""))
+                );
+                BotGroupRequest {
+                    group_uin: req.group_uin,
+                    invitor_member_uin: invitor_member_uin.ok(),
+                    invitor_member_card: req.invitor_member_card.to_owned(),
+                    target_member_uin: target_member_uin.unwrap_or_default(),
+                    target_member_card: req.target_member_card.to_owned(),
+                    operator_uin: operator_uin.ok(),
+                    operator_name: req.operator_name.to_owned(),
+                    sequence: req.sequence,
+                    state: req.state,
+                    event_type: req.event_type,
+                    comment: req.comment.to_owned(),
+                    is_filtered: req.is_filtered,
+                }
+            }
+        }))
+        .await;
+
+        Ok(requests)
     }
 }

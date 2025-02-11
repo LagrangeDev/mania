@@ -23,6 +23,11 @@ message OidbFriendProperty {
   string Value = 2;
 }
 
+message OidbFriendByteProperty {
+  uint32 Code = 1;
+  bytes Value = 2;
+}
+
 message OidbLafter {
   int32 Type = 1;
   bytes D2 = 2;

@@ -2,9 +2,7 @@ use crate::core::event::prelude::*;
 
 #[command("Heartbeat.Alive")]
 #[derive(Debug, ServerEvent)]
-pub struct AliveEvent {
-    pub test: u32, // TODO: remove it
-}
+pub struct AliveEvent;
 
 impl ClientEvent for AliveEvent {
     fn packet_type(&self) -> PacketType {
@@ -16,6 +14,6 @@ impl ClientEvent for AliveEvent {
     }
 
     fn parse(_: Bytes, _: &Context) -> CEParseResult {
-        Ok(ClientResult::single(Box::new(Self { test: 0 })))
+        Ok(ClientResult::single(Box::new(Self {})))
     }
 }

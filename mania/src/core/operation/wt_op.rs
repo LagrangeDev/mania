@@ -207,7 +207,7 @@ impl BusinessHandle {
             loop {
                 tokio::select! {
                     _ = hb_interval.tick() => {
-                        if let Err(e) = handle.push_event(&AliveEvent { test: 1 }).await {
+                        if let Err(e) = handle.push_event(&AliveEvent).await {
                             tracing::error!("Failed to send Alive event: {:?}", e);
                         }
                     }

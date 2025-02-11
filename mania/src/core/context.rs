@@ -1,13 +1,12 @@
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-use std::{fs, io};
-use uuid::Uuid;
-
 use crate::core::crypto::consts::ECDH_256_PEER_LOGIN_KEY;
 use crate::core::crypto::{Ecdh, P256};
 use crate::core::key_store::KeyStore;
 use crate::core::session::Session;
 use crate::core::sign::SignProvider;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::{fs, io};
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum Protocol {
