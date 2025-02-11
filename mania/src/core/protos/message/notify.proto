@@ -20,6 +20,11 @@ message FriendRecallInfo {
   uint32 PkgNum = 7;
   uint32 PkgIndex = 8;
   uint32 DivSeq = 9;
+  FriendRecallTipInfo TipInfo = 13;
+}
+
+message FriendRecallTipInfo {
+  optional string Tip = 2;
 }
 
 message NewFriend {
@@ -157,6 +162,11 @@ message GroupRecall {
   bytes UserDef = 5;
   int32 GroupType = 6;
   int32 OpType = 7;
+  GroupRecallTipInfo TipInfo = 9;
+}
+
+message GroupRecallTipInfo {
+  string Tip = 2;
 }
 
 message RecallMessage {

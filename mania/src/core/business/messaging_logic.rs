@@ -1,13 +1,16 @@
 use crate::core::business::LogicRegistry;
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::message::push_msg::PushMessageEvent;
+use crate::core::event::notify::friend_sys_recall::FriendSysRecallEvent;
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
 use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
+use crate::core::event::notify::group_sys_recall::GroupSysRecallEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
-use crate::event::friend::{FriendEvent, friend_message};
+use crate::event::friend::{FriendEvent, friend_message, friend_recall};
 use crate::event::group::group_poke::GroupPokeEvent;
 use crate::event::group::group_reaction::GroupReactionEvent;
+use crate::event::group::group_recall::GroupRecallEvent;
 use crate::event::group::{GroupEvent, group_join_request, group_message};
 use crate::event::system::{SystemEvent, temp_message};
 use crate::message::chain::{MessageChain, MessageType};
@@ -20,7 +23,9 @@ use std::sync::Arc;
     PushMessageEvent,
     GroupSysRequestJoinEvent,
     GroupSysPokeEvent,
-    GroupSysReactionEvent
+    GroupSysReactionEvent,
+    GroupSysRecallEvent,
+    FriendSysRecallEvent
 )]
 async fn messaging_logic(
     event: &mut dyn ServerEvent,
@@ -167,6 +172,56 @@ async fn messaging_logic_incoming(
                 })))
             {
                 tracing::error!("Failed to send group reaction event: {:?}", e);
+            }
+            return event;
+        }
+        if let Some(recall) = event.as_any_mut().downcast_mut::<GroupSysRecallEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupRecall(GroupRecallEvent {
+                    group_uin: recall.group_uin,
+                    author_uin: handle
+                        .uid2uin(&recall.author_uid, Some(recall.group_uin))
+                        .await
+                        .unwrap_or_default(),
+                    operator_uin: if let Some(uid) = recall.operator_uid.as_ref() {
+                        handle
+                            .uid2uin(uid, Some(recall.group_uin))
+                            .await
+                            .unwrap_or_default()
+                    } else {
+                        0
+                    },
+                    sequence: recall.sequence,
+                    time: recall.time,
+                    random: recall.random,
+                    tip: recall.tip.to_owned(),
+                })))
+            {
+                tracing::error!("Failed to send group recall event: {:?}", e);
+            }
+            return event;
+        }
+        if let Some(recall) = event.as_any_mut().downcast_mut::<FriendSysRecallEvent>() {
+            if let Err(e) =
+                handle
+                    .event_dispatcher
+                    .friend
+                    .send(Some(FriendEvent::FriendRecallEvent(
+                        friend_recall::FriendRecallEvent {
+                            friend_uin: handle
+                                .uid2uin(&recall.from_uid, None)
+                                .await
+                                .unwrap_or_default(),
+                            client_sequence: recall.client_sequence,
+                            time: recall.time,
+                            random: recall.random,
+                            tip: recall.tip.to_owned(),
+                        },
+                    )))
+            {
+                tracing::error!("Failed to send friend recall event: {:?}", e);
             }
             return event;
         }

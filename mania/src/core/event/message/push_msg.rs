@@ -1,8 +1,10 @@
+use crate::core::event::notify::friend_sys_recall::FriendSysRecallEvent;
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
 use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
+use crate::core::event::notify::group_sys_recall::GroupSysRecallEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
 use crate::core::event::prelude::*;
-use crate::core::protos::message::{GroupJoin, NotifyMessageBody, PushMsg};
+use crate::core::protos::message::{FriendRecall, GroupJoin, NotifyMessageBody, PushMsg};
 use crate::message::chain::MessageChain;
 use crate::message::packer::MessagePacker;
 
@@ -131,6 +133,9 @@ impl ClientEvent for PushMessageEvent {
             PkgType::Event0x2DC => {
                 extra = process_event_0x2dc(&packet, &mut extra)?.take();
             }
+            PkgType::Event0x210 => {
+                extra = process_event_0x210(&packet, &mut extra)?.take();
+            }
             // TODO: handle other message types
             _ => {
                 tracing::warn!("receive unknown message type: {:?}", packet_type);
@@ -138,6 +143,19 @@ impl ClientEvent for PushMessageEvent {
         }
         Ok(ClientResult::with_extra(Box::new(Self { chain }), extra))
     }
+}
+
+fn extract_fucking_head<T>(msg_content: &Vec<u8>) -> Result<(u32, T), EventError>
+where
+    T: prost::Message + Default,
+{
+    let mut packet_reader = PacketReader::new(Bytes::from(msg_content.to_owned()));
+    let group_uin = packet_reader.u32();
+    packet_reader.u8();
+    let proto =
+        packet_reader.read_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }>(|p| p.bytes());
+    let msg_body = T::decode(proto)?;
+    Ok((group_uin, msg_body))
 }
 
 #[allow(clippy::single_match)] // FIXME:
@@ -183,12 +201,7 @@ fn process_event_0x2dc<'a>(
                 Some(content) => content,
                 None => return Ok(extra),
             };
-            let mut packet_reader = PacketReader::new(Bytes::from(msg_content.to_owned()));
-            let group_uin = packet_reader.u32();
-            packet_reader.u8();
-            let proto = packet_reader
-                .read_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }>(|p| p.bytes());
-            let msg_body = NotifyMessageBody::decode(proto)?;
+            let (group_uin, msg_body) = extract_fucking_head::<NotifyMessageBody>(msg_content)?;
             match Event0x2DCSubType16Field13::try_from(msg_body.field13.unwrap_or_default()) {
                 Ok(ev) => match ev {
                     Event0x2DCSubType16Field13::GroupReactionNotice => {
@@ -221,6 +234,37 @@ fn process_event_0x2dc<'a>(
                 }
             }
         }
+        Event0x2DCSubType::GroupRecallNotice => {
+            let msg_content = match packet
+                .message
+                .as_ref()
+                .and_then(|m| m.body.as_ref())
+                .and_then(|b| b.msg_content.as_ref())
+            {
+                Some(content) => content,
+                None => return Ok(extra),
+            };
+            let (_, recall_notify) = extract_fucking_head::<NotifyMessageBody>(msg_content)?;
+            let recall = recall_notify.recall.ok_or(EventError::OtherError(
+                "Missing recall meta in 0x2dc sub type 17".into(),
+            ))?;
+            let tip_info = recall.tip_info.unwrap_or_default();
+            let meta = recall
+                .recall_messages
+                .first()
+                .ok_or(EventError::OtherError(
+                    "Missing recall message in 0x2dc sub type 17".into(),
+                ))?;
+            extra.as_mut().unwrap().push(Box::new(GroupSysRecallEvent {
+                group_uin: recall_notify.group_uin,
+                author_uid: meta.author_uid.to_owned(),
+                operator_uid: recall.operator_uid,
+                sequence: meta.sequence as u32,
+                time: meta.time,
+                random: meta.random,
+                tip: tip_info.tip,
+            }));
+        }
         Event0x2DCSubType::GroupGreyTipNotice => {
             let msg_content = match packet
                 .message
@@ -231,12 +275,7 @@ fn process_event_0x2dc<'a>(
                 Some(content) => content,
                 None => return Ok(extra),
             };
-            let mut packet_reader = PacketReader::new(Bytes::from(msg_content.to_owned()));
-            let group_uin = packet_reader.u32();
-            packet_reader.u8();
-            let proto = packet_reader
-                .read_with_length::<_, { PREFIX_U16 | PREFIX_LENGTH_ONLY }>(|p| p.bytes());
-            let grey_tip = NotifyMessageBody::decode(proto)?;
+            let (group_uin, grey_tip) = extract_fucking_head::<NotifyMessageBody>(msg_content)?;
             let gray_tip_info = match grey_tip.gray_tip_info.as_ref() {
                 Some(info) if info.busi_type == 12 => info,
                 _ => return Ok(extra),
@@ -278,6 +317,76 @@ fn process_event_0x2dc<'a>(
         }
         _ => {
             tracing::warn!("receive unknown message 0x2dc sub type: {:?}", sub_type);
+        }
+    }
+    Ok(extra)
+}
+
+#[allow(clippy::single_match)] // FIXME:
+fn process_event_0x210<'a>(
+    packet: &'a PushMsg,
+    extra: &'a mut Option<Vec<Box<dyn ServerEvent>>>,
+) -> Result<&'a mut Option<Vec<Box<dyn ServerEvent>>>, EventError> {
+    let sub_type = Event0x210SubType::try_from(
+        packet
+            .message
+            .as_ref()
+            .ok_or(EventError::OtherError(
+                "Cannot get message in PushMsg".to_string(),
+            ))?
+            .content_head
+            .as_ref()
+            .ok_or(EventError::OtherError(
+                "Cannot get content_head in PushMsg".to_string(),
+            ))?
+            .sub_type
+            .ok_or(EventError::OtherError(
+                "Cannot get sub_type in PushMsgContentHead".to_string(),
+            ))?,
+    );
+    let sub_type = match sub_type {
+        Ok(sub_type) => sub_type,
+        Err(_) => {
+            tracing::warn!(
+                "receive unknown olpush message 0x210 sub type: {:?}",
+                sub_type
+            );
+            return Ok(extra);
+        }
+    };
+    match sub_type {
+        Event0x210SubType::FriendRecallNotice => {
+            let msg_content = match packet
+                .message
+                .as_ref()
+                .and_then(|m| m.body.as_ref())
+                .and_then(|b| b.msg_content.as_ref())
+            {
+                Some(content) => content,
+                None => return Ok(extra),
+            };
+            let response_head = match packet
+                .message
+                .as_ref()
+                .and_then(|m| m.response_head.as_ref())
+            {
+                Some(content) => content,
+                None => return Ok(extra),
+            };
+            let friend_request = FriendRecall::decode(Bytes::from(msg_content.to_owned()))?;
+            let info = friend_request.info.ok_or(EventError::OtherError(
+                "Missing friend request info in 0x210 sub type 138".into(),
+            ))?;
+            extra.as_mut().unwrap().push(Box::new(FriendSysRecallEvent {
+                from_uid: response_head.from_uid.to_owned().unwrap_or_default(),
+                client_sequence: info.sequence,
+                time: info.time,
+                random: info.random,
+                tip: info.tip_info.unwrap_or_default().tip.unwrap_or_default(),
+            }));
+        }
+        _ => {
+            tracing::warn!("receive unknown message 0x210 sub type: {:?}", sub_type);
         }
     }
     Ok(extra)
