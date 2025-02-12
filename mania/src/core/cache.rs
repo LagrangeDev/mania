@@ -57,8 +57,11 @@ impl Cache {
     }
 
     pub(crate) fn insert_uin_uid(&self, uin: u32, uid: String) {
-        // SAFETY: we can ensure that the DashMap is not None
-        self.uin2uid.as_ref().unwrap().insert(uin, uid.clone());
-        self.uid2uin.as_ref().unwrap().insert(uid, uin);
+        self.uin2uid
+            .as_ref()
+            .map(|uin2uid| uin2uid.insert(uin, uid.clone()));
+        self.uid2uin
+            .as_ref()
+            .map(|uid2uin| uid2uin.insert(uid, uin));
     }
 }

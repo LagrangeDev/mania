@@ -186,7 +186,9 @@ impl BusinessHandle {
                     });
                 }
                 friends.insert(friend.uin, friend.to_owned());
-                self.cache.insert_uin_uid(friend.uin, friend.uid.clone());
+                if self.cache.cache_mode == CacheMode::Full {
+                    self.cache.insert_uin_uid(friend.uin, friend.uid.clone());
+                }
             }
             Ok(None::<()>)
         })
@@ -260,9 +262,11 @@ impl BusinessHandle {
             Ok(None::<()>)
         })
         .await?;
-        group_members.iter().for_each(|bgm| {
-            self.cache.insert_uin_uid(bgm.uin, bgm.uid.clone());
-        });
+        if self.cache.cache_mode == CacheMode::Full {
+            group_members.iter().for_each(|bgm| {
+                self.cache.insert_uin_uid(bgm.uin, bgm.uid.clone());
+            });
+        }
         self.cache
             .cached_group_members
             .as_ref()
