@@ -16,12 +16,11 @@ pub(crate) struct MessagePacker;
 
 impl MessagePacker {
     pub(crate) fn parse_chain(push_msg_body: PushMsgBody) -> Result<MessageChain, String> {
-        let response_head = push_msg_body.response_head.expect("missing ResponseHead");
+        let response_head = push_msg_body.response_head.ok_or("missing ResponseHead")?;
         let content_head = push_msg_body
             .content_head
             .as_ref()
-            .expect("missing ContentHead");
-
+            .ok_or("missing ContentHead")?;
         let pre_len = push_msg_body
             .body
             .as_ref()
@@ -47,7 +46,7 @@ impl MessagePacker {
                     content_head.time_stamp.unwrap_or_default() as i64,
                     0
                 )
-                .ok_or_else(|| "failed to parse timestamp".to_string())?,
+                .ok_or("failed to parse timestamp")?,
                 sequence: content_head.sequence.unwrap_or_default(),
                 entities: entities,
             }));
@@ -69,7 +68,7 @@ impl MessagePacker {
                 content_head.time_stamp.unwrap_or_default() as i64,
                 0
             )
-            .ok_or_else(|| "failed to parse timestamp".to_string())?,
+            .ok_or("failed to parse timestamp")?,
             sequence: content_head.nt_msg_seq.unwrap_or_default(),
             entities: entities,
         }))
@@ -122,7 +121,7 @@ impl MessagePacker {
         let is_group = body
             .response_head
             .as_ref()
-            .expect("missing response_head")
+            .ok_or("missing response_head")?
             .grp
             .is_some();
         let typ = if is_group {

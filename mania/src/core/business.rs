@@ -161,7 +161,7 @@ impl Business {
                 let handle = self.handle.clone();
                 tokio::spawn(async move {
                     if let Err(e) = handle.dispatch_sso_packet(packet).await {
-                        tracing::error!("Unhandled error occurred when handling packet: {}", e);
+                        tracing::error!("Unhandled error occurred when handling packet: {:?}", e);
                     }
                 });
             }

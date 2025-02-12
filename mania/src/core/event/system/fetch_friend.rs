@@ -43,7 +43,7 @@ impl ClientEvent for FetchFriendsEvent {
     fn parse(packet: Bytes, _: &Context) -> CEParseResult {
         let response = OidbPacket::parse_into::<OidbSvcTrpcTcp0xFd41response>(packet)?;
         let mut friends = Vec::with_capacity(response.friends.len());
-        for friend in &response.friends {
+        for friend in response.friends {
             let additional = friend
                 .additional
                 .iter()
@@ -69,7 +69,7 @@ impl ClientEvent for FetchFriendsEvent {
             let display_name = display_name.map_or_else(|| friend.uin.to_string(), str::to_owned);
             let bot_friend = BotFriend::new(
                 friend.uin,
-                friend.uid.to_owned(),
+                friend.uid,
                 display_name,
                 remark.unwrap_or("").to_owned(),
                 signature.unwrap_or("").to_owned(),

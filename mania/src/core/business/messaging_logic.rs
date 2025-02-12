@@ -49,6 +49,7 @@ async fn messaging_logic(
 }
 
 // FIXME: avoid take things from event
+// FIXME: (TODO) make it return Result(?)
 async fn messaging_logic_incoming(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
@@ -327,7 +328,10 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
                     .and_then(|node| node.index.clone())
                 {
                     Some(idx) => idx,
-                    None => continue,
+                    None => {
+                        tracing::warn!("Missing index node in image entity: {:?}", image);
+                        continue;
+                    }
                 };
                 let download = match &chain.typ {
                     MessageType::Group(grp) => {
@@ -348,6 +352,7 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
                 }
             }
             Entity::MultiMsg(ref mut multi) => {
+                // TODO: recursively resolve?
                 if multi.chains.is_empty() {
                     let msg = handle
                         .multi_msg_download(chain.uid.clone(), multi.res_id.clone())

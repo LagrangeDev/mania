@@ -73,26 +73,32 @@ pub struct PushMessageEvent {
     pub chain: Option<MessageChain>,
 }
 
+fn extract_msg_content(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, EventError> {
+    packet
+        .message
+        .as_mut()
+        .and_then(|content| content.body.as_mut())
+        .and_then(|body| body.msg_content.take())
+        .map(Bytes::from)
+        .ok_or_else(|| EventError::OtherError(err_tip.to_string()))
+}
+
 impl ClientEvent for PushMessageEvent {
     fn build(&self, _: &Context) -> CEBuildResult {
         todo!()
     }
 
     fn parse(bytes: Bytes, _: &Context) -> CEParseResult {
-        let packet = PushMsg::decode(bytes)?;
+        let mut packet = PushMsg::decode(bytes)?;
         let typ = packet
             .message
             .as_ref()
             .and_then(|msg| msg.content_head.as_ref())
             .map(|content_head| content_head.r#type)
             .ok_or_else(|| EventError::OtherError("Cannot get typ in PushMsg".to_string()))?;
-        let packet_type = match PkgType::try_from(typ) {
-            Ok(packet_type) => packet_type,
-            Err(_) => {
-                tracing::warn!("receive unknown olpush message type: {:?}", typ);
-                return Ok(ClientResult::single(Box::new(Self { chain: None })));
-            }
-        };
+        let packet_type = PkgType::try_from(typ).map_err(|_| {
+            EventError::OtherError(format!("receive unknown olpush message type: {:?}", typ))
+        })?;
         let mut chain: Option<MessageChain> = None;
         let mut extra: Option<Vec<Box<dyn ServerEvent>>> = match packet_type {
             PkgType::PrivateMessage
@@ -124,96 +130,95 @@ impl ClientEvent for PushMessageEvent {
                 )
             }
             PkgType::GroupRequestJoinNotice => {
-                if let Some(msg_content) = packet
-                    .message
-                    .and_then(|content| content.body)
-                    .and_then(|body| body.msg_content)
-                {
-                    let join = GroupJoin::decode(Bytes::from(msg_content))?;
-                    extra
-                        .as_mut()
-                        .unwrap()
-                        .push(Box::new(GroupSysRequestJoinEvent {
-                            target_uid: join.target_uid,
-                            group_uin: join.group_uin,
-                        }));
-                }
+                let msg_content =
+                    extract_msg_content(&mut packet, "GroupRequestJoinNotice missing msg_content")?;
+                let join = GroupJoin::decode(msg_content)?;
+                extra
+                    .as_mut()
+                    .unwrap()
+                    .push(Box::new(GroupSysRequestJoinEvent {
+                        target_uid: join.target_uid,
+                        group_uin: join.group_uin,
+                    }));
             }
             PkgType::GroupMemberIncreaseNotice => {
-                if let Some(msg_content) = packet
-                    .message
-                    .and_then(|content| content.body)
-                    .and_then(|body| body.msg_content)
-                {
-                    let increase = GroupChange::decode(Bytes::from(msg_content))?;
-                    let invitor_uid = increase
-                        .operator
-                        .and_then(|operator| String::from_utf8(operator).ok());
-                    extra
-                        .as_mut()
-                        .unwrap()
-                        .push(Box::new(GroupSysIncreaseEvent {
-                            group_uin: increase.group_uin,
-                            member_uid: increase.member_uid,
-                            invitor_uid,
-                            event_type: GroupMemberIncreaseEventType::try_from(
-                                increase.decrease_type,
-                            )
+                let msg_content = extract_msg_content(
+                    &mut packet,
+                    "GroupMemberIncreaseNotice missing msg_content",
+                )?;
+                let increase = GroupChange::decode(msg_content)?;
+                let invitor_uid = increase
+                    .operator
+                    .map(String::from_utf8)
+                    .transpose()
+                    .map_err(|e| {
+                        EventError::OtherError(format!(
+                            "Failed to parse invitor_uid in GroupChange: {}",
+                            e
+                        ))
+                    })?;
+                extra
+                    .as_mut()
+                    .unwrap()
+                    .push(Box::new(GroupSysIncreaseEvent {
+                        group_uin: increase.group_uin,
+                        member_uid: increase.member_uid,
+                        invitor_uid,
+                        event_type: GroupMemberIncreaseEventType::try_from(increase.decrease_type)
                             .unwrap_or_default(),
-                        }));
-                }
+                    }));
             }
             PkgType::GroupMemberDecreaseNotice => {
-                if let Some(msg_content) = packet
-                    .message
-                    .and_then(|content| content.body)
-                    .and_then(|body| body.msg_content)
-                {
-                    let decrease = GroupChange::decode(Bytes::from(msg_content))?;
-                    match decrease.decrease_type {
-                        3 => {
-                            // bot itself is kicked
-                            let op = OperatorInfo::decode(Bytes::from(
-                                decrease.operator.unwrap_or_default(),
-                            ))?;
-                            extra
-                                .as_mut()
-                                .unwrap()
-                                .push(Box::new(GroupSysDecreaseEvent {
-                                    group_uin: decrease.group_uin,
-                                    member_uid: decrease.member_uid,
-                                    operator_uid: op.operator_field1.map(|o| o.operator_uid),
-                                    event_type: GroupMemberDecreaseEventType::try_from(
-                                        decrease.decrease_type,
-                                    )
-                                    .unwrap_or_default(),
-                                }));
-                        }
-                        _ => {
-                            let op_uid = decrease
-                                .operator
-                                .and_then(|operator| String::from_utf8(operator).ok());
-                            extra
-                                .as_mut()
-                                .unwrap()
-                                .push(Box::new(GroupSysDecreaseEvent {
-                                    group_uin: decrease.group_uin,
-                                    member_uid: decrease.member_uid,
-                                    operator_uid: op_uid,
-                                    event_type: GroupMemberDecreaseEventType::try_from(
-                                        decrease.decrease_type,
-                                    )
-                                    .unwrap_or_default(),
-                                }));
-                        }
+                let msg_content = extract_msg_content(
+                    &mut packet,
+                    "GroupMemberDecreaseNotice missing msg_content",
+                )?;
+                let decrease = GroupChange::decode(msg_content)?;
+                match decrease.decrease_type {
+                    3 => {
+                        // bot itself is kicked
+                        let op = OperatorInfo::decode(Bytes::from(decrease.operator.ok_or(
+                            EventError::OtherError(
+                                "Cannot get operator in GroupChange".to_string(),
+                            ),
+                        )?))?;
+                        extra
+                            .as_mut()
+                            .unwrap()
+                            .push(Box::new(GroupSysDecreaseEvent {
+                                group_uin: decrease.group_uin,
+                                member_uid: decrease.member_uid,
+                                operator_uid: op.operator_field1.map(|o| o.operator_uid),
+                                event_type: GroupMemberDecreaseEventType::try_from(
+                                    decrease.decrease_type,
+                                )
+                                .unwrap_or_default(),
+                            }));
+                    }
+                    _ => {
+                        let op_uid = decrease
+                            .operator
+                            .and_then(|operator| String::from_utf8(operator).ok());
+                        extra
+                            .as_mut()
+                            .unwrap()
+                            .push(Box::new(GroupSysDecreaseEvent {
+                                group_uin: decrease.group_uin,
+                                member_uid: decrease.member_uid,
+                                operator_uid: op_uid,
+                                event_type: GroupMemberDecreaseEventType::try_from(
+                                    decrease.decrease_type,
+                                )
+                                .unwrap_or_default(),
+                            }));
                     }
                 }
             }
             PkgType::Event0x2DC => {
-                extra = process_event_0x2dc(&packet, &mut extra)?.take();
+                extra = process_event_0x2dc(&mut packet, &mut extra)?.take();
             }
             PkgType::Event0x210 => {
-                extra = process_event_0x210(&packet, &mut extra)?.take();
+                extra = process_event_0x210(&mut packet, &mut extra)?.take();
             }
             // TODO: handle other message types
             _ => {
@@ -224,11 +229,11 @@ impl ClientEvent for PushMessageEvent {
     }
 }
 
-fn extract_0x2dc_fucking_head<T>(msg_content: &Vec<u8>) -> Result<(u32, T), EventError>
+fn extract_0x2dc_fucking_head<T>(msg_content: Bytes) -> Result<(u32, T), EventError>
 where
     T: prost::Message + Default,
 {
-    let mut packet_reader = PacketReader::new(Bytes::from(msg_content.to_owned()));
+    let mut packet_reader = PacketReader::new(msg_content);
     let group_uin = packet_reader.u32();
     packet_reader.u8();
     let proto =
@@ -237,93 +242,109 @@ where
     Ok((group_uin, msg_body))
 }
 
+fn extract_0x_sub_type(packet: &PushMsg) -> Result<u32, EventError> {
+    packet
+        .message
+        .as_ref()
+        .and_then(|msg| msg.content_head.as_ref())
+        .and_then(|content_head| content_head.sub_type)
+        .ok_or_else(|| EventError::OtherError("Cannot get sub_type in PushMsg".to_string()))
+}
+
+struct PokeArgs {
+    action: String,
+    operator_uin: u32,
+    target_uin: u32,
+    suffix: String,
+    action_img_url: String,
+}
+
+fn extract_poke_info(gt: &mut GeneralGrayTipInfo) -> PokeArgs {
+    let mut templates: HashMap<String, String> = gt
+        .msg_templ_param
+        .drain(..)
+        .map(|param| (param.key, param.value))
+        .collect();
+    let action = templates
+        .remove("action_str")
+        .or_else(|| templates.remove("alt_str1"))
+        .unwrap_or_default();
+    let operator_uin = templates
+        .get("uin_str1")
+        .unwrap_or(&"".to_string())
+        .parse::<u32>()
+        .unwrap_or_default();
+    let target_uin = templates
+        .get("uin_str2")
+        .unwrap_or(&"".to_string())
+        .parse::<u32>()
+        .unwrap_or_default();
+    let suffix = templates.remove("suffix").unwrap_or_default();
+    let action_img_url = templates.remove("action_img_url").unwrap_or_default();
+    PokeArgs {
+        action,
+        operator_uin,
+        target_uin,
+        suffix,
+        action_img_url,
+    }
+}
+
 #[allow(clippy::single_match)] // FIXME:
 fn process_event_0x2dc<'a>(
-    packet: &'a PushMsg,
+    packet: &'a mut PushMsg,
     extra: &'a mut Option<Vec<Box<dyn ServerEvent>>>,
 ) -> Result<&'a mut Option<Vec<Box<dyn ServerEvent>>>, EventError> {
-    let sub_type = Event0x2DCSubType::try_from(
-        packet
-            .message
-            .as_ref()
-            .ok_or(EventError::OtherError(
-                "Cannot get message in PushMsg".to_string(),
-            ))?
-            .content_head
-            .as_ref()
-            .ok_or(EventError::OtherError(
-                "Cannot get content_head in PushMsg".to_string(),
-            ))?
-            .sub_type
-            .ok_or(EventError::OtherError(
-                "Cannot get sub_type in PushMsgContentHead".to_string(),
-            ))?,
-    );
-    let sub_type = match sub_type {
-        Ok(sub_type) => sub_type,
-        Err(_) => {
-            tracing::warn!(
-                "receive unknown olpush message 0x2dc sub type: {:?}",
-                sub_type
-            );
-            return Ok(extra);
-        }
-    };
+    let sub_type = Event0x2DCSubType::try_from(extract_0x_sub_type(packet)?).map_err(|err| {
+        EventError::OtherError(format!(
+            "receive unknown olpush message 0x2dc sub type: {:?}",
+            err
+        ))
+    })?;
     match sub_type {
         Event0x2DCSubType::SubType16 => {
-            let msg_content = match packet
-                .message
-                .as_ref()
-                .and_then(|m| m.body.as_ref())
-                .and_then(|b| b.msg_content.as_ref())
-            {
-                Some(content) => content,
-                None => return Ok(extra),
-            };
+            let msg_content = extract_msg_content(packet, "0x2dc SubType16 missing msg_content")?;
             let (group_uin, msg_body) =
                 extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
-            match Event0x2DCSubType16Field13::try_from(msg_body.field13.unwrap_or_default()) {
-                Ok(ev) => match ev {
-                    Event0x2DCSubType16Field13::GroupReactionNotice => {
-                        let data_2 = msg_body
-                            .reaction
-                            .as_ref()
-                            .and_then(|d| d.data.to_owned())
-                            .and_then(|d| d.data)
-                            .ok_or(EventError::OtherError(
+            let ev = Event0x2DCSubType16Field13::try_from(msg_body.field13.unwrap_or_default())
+                .map_err(|e| {
+                    EventError::OtherError(format!(
+                        "Failed to parse 0x2dc sub type 16 field 13: {}",
+                        e
+                    ))
+                })?;
+            match ev {
+                Event0x2DCSubType16Field13::GroupReactionNotice => {
+                    let data_2 = msg_body
+                        .reaction
+                        .as_ref()
+                        .and_then(|d| d.data.to_owned())
+                        .and_then(|d| d.data)
+                        .ok_or_else(|| {
+                            EventError::OtherError(
                                 "Missing reaction data_2 in 0x2dc sub type 16 field 13".into(),
-                            ))?;
-                        let data_3 = data_2.data.as_ref().ok_or(EventError::OtherError(
-                            "Missing reaction data_3 in 0x2dc sub type 16 field 13".into(),
-                        ))?;
-                        extra.as_mut().unwrap().push(Box::new(GroupSysReactionEvent {
-                            target_group_uin: group_uin,
-                            target_sequence: data_2.target.ok_or_else(
-                                || EventError::OtherError("Missing target_sequence in reaction in 0x2dc sub type 16 field 13".into())
-                            )?.sequence,
-                            operator_uid: data_3.operator_uid.to_owned(),
-                            is_add: data_3.r#type == 1,
-                            code: data_3.code.to_owned(),
-                            count: data_3.count,
-                        }));
-                    }
-                    _ => {}
-                },
-                Err(e) => {
-                    tracing::warn!("Failed to parse 0x2dc sub type 16 field 13: {}", e);
+                            )
+                        })?;
+                    let data_3 = data_2.data.as_ref().ok_or(EventError::OtherError(
+                        "Missing reaction data_3 in 0x2dc sub type 16 field 13".into(),
+                    ))?;
+                    extra.as_mut().unwrap().push(Box::new(GroupSysReactionEvent {
+                        target_group_uin: group_uin,
+                        target_sequence: data_2.target.ok_or_else(
+                            || EventError::OtherError("Missing target_sequence in reaction in 0x2dc sub type 16 field 13".into())
+                        )?.sequence,
+                        operator_uid: data_3.operator_uid.to_owned(),
+                        is_add: data_3.r#type == 1,
+                        code: data_3.code.to_owned(),
+                        count: data_3.count,
+                    }));
                 }
+                _ => {}
             }
         }
         Event0x2DCSubType::GroupRecallNotice => {
-            let msg_content = match packet
-                .message
-                .as_ref()
-                .and_then(|m| m.body.as_ref())
-                .and_then(|b| b.msg_content.as_ref())
-            {
-                Some(content) => content,
-                None => return Ok(extra),
-            };
+            let msg_content =
+                extract_msg_content(packet, "0x2dc GroupRecallNotice missing msg_content")?;
             let (_, recall_notify) = extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
             let recall = recall_notify.recall.ok_or(EventError::OtherError(
                 "Missing recall meta in 0x2dc sub type 17".into(),
@@ -346,58 +367,25 @@ fn process_event_0x2dc<'a>(
             }));
         }
         Event0x2DCSubType::GroupGreyTipNotice => {
-            let msg_content = match packet
-                .message
-                .as_ref()
-                .and_then(|m| m.body.as_ref())
-                .and_then(|b| b.msg_content.as_ref())
-            {
-                Some(content) => content,
-                None => return Ok(extra),
-            };
-            let (group_uin, grey_tip) =
+            let msg_content = extract_msg_content(packet, "0x2dc sub type 20 missing msg_content")?;
+            let (group_uin, mut grey_tip) =
                 extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
-            let gray_tip_info = match grey_tip.gray_tip_info.as_ref() {
+            let gray_tip_info = match grey_tip.gray_tip_info.as_mut() {
                 Some(info) if info.busi_type == 12 => info,
                 _ => return Ok(extra),
             };
-            let templates: HashMap<String, String> = gray_tip_info
-                .msg_templ_param
-                .iter()
-                .map(|param| (param.key.to_owned(), param.value.to_owned()))
-                .collect();
-            let action = templates
-                .get("action_str")
-                .or_else(|| templates.get("alt_str1"))
-                .cloned()
-                .unwrap_or_default();
-            let operator_uin = templates
-                .get("uin_str1")
-                .ok_or_else(|| EventError::OtherError("Missing uin_str1 in grey tip event".into()))?
-                .parse::<u32>()
-                .map_err(|e| {
-                    EventError::OtherError(format!("Failed to parse uin_str1 in poke event: {}", e))
-                })?;
-            let target_uin = templates
-                .get("uin_str2")
-                .ok_or_else(|| EventError::OtherError("Missing uin_str2 in grey tip event".into()))?
-                .parse::<u32>()
-                .map_err(|e| {
-                    EventError::OtherError(format!("Failed to parse uin_str2 in poke event: {}", e))
-                })?;
-            let suffix = templates.get("suffix").cloned().unwrap_or_default();
-            let action_img_url = templates.get("action_img_url").cloned().unwrap_or_default();
+            let poke_args = extract_poke_info(gray_tip_info);
             extra.as_mut().unwrap().push(Box::new(GroupSysPokeEvent {
                 group_uin,
-                operator_uin,
-                target_uin,
-                action,
-                suffix,
-                action_img_url,
+                operator_uin: poke_args.operator_uin,
+                target_uin: poke_args.target_uin,
+                action: poke_args.action,
+                suffix: poke_args.suffix,
+                action_img_url: poke_args.action_img_url,
             }));
         }
         _ => {
-            tracing::warn!("receive unknown message 0x2dc sub type: {:?}", sub_type);
+            tracing::warn!("TODO: unhandled 0x2dc sub type: {:?}", sub_type);
         }
     }
     Ok(extra)
@@ -405,55 +393,36 @@ fn process_event_0x2dc<'a>(
 
 #[allow(clippy::single_match)] // FIXME:
 fn process_event_0x210<'a>(
-    packet: &'a PushMsg,
+    packet: &'a mut PushMsg,
     extra: &'a mut Option<Vec<Box<dyn ServerEvent>>>,
 ) -> Result<&'a mut Option<Vec<Box<dyn ServerEvent>>>, EventError> {
-    let sub_type = Event0x210SubType::try_from(
-        packet
-            .message
-            .as_ref()
-            .ok_or(EventError::OtherError(
-                "Cannot get message in PushMsg".to_string(),
-            ))?
-            .content_head
-            .as_ref()
-            .ok_or(EventError::OtherError(
-                "Cannot get content_head in PushMsg".to_string(),
-            ))?
-            .sub_type
-            .ok_or(EventError::OtherError(
-                "Cannot get sub_type in PushMsgContentHead".to_string(),
-            ))?,
-    );
-    let sub_type = match sub_type {
-        Ok(sub_type) => sub_type,
-        Err(_) => {
-            tracing::warn!(
-                "receive unknown olpush message 0x210 sub type: {:?}",
-                sub_type
-            );
-            return Ok(extra);
-        }
-    };
+    let sub_type = Event0x210SubType::try_from(extract_0x_sub_type(packet)?).map_err(|err| {
+        EventError::OtherError(format!(
+            "receive unknown olpush message 0x210 sub type: {:?}",
+            err
+        ))
+    })?;
     match sub_type {
         Event0x210SubType::FriendRecallNotice => {
-            let msg_content = match packet
+            let msg_content = packet
                 .message
                 .as_ref()
                 .and_then(|m| m.body.as_ref())
                 .and_then(|b| b.msg_content.as_ref())
-            {
-                Some(content) => content,
-                None => return Ok(extra),
-            };
-            let response_head = match packet
+                .ok_or_else(|| {
+                    EventError::OtherError(
+                        "Missing msg_content in Event0x210SubType::FriendRecallNotice".into(),
+                    )
+                })?;
+            let response_head = packet
                 .message
                 .as_ref()
                 .and_then(|m| m.response_head.as_ref())
-            {
-                Some(content) => content,
-                None => return Ok(extra),
-            };
+                .ok_or_else(|| {
+                    EventError::OtherError(
+                        "Missing response_head in Event0x210SubType::FriendRecallNotice".into(),
+                    )
+                })?;
             let friend_request = FriendRecall::decode(Bytes::from(msg_content.to_owned()))?;
             let info = friend_request.info.ok_or(EventError::OtherError(
                 "Missing friend request info in 0x210 sub type 138".into(),
@@ -467,55 +436,23 @@ fn process_event_0x210<'a>(
             }));
         }
         Event0x210SubType::FriendPokeNotice => {
-            let msg_content = match packet
-                .message
-                .as_ref()
-                .and_then(|m| m.body.as_ref())
-                .and_then(|b| b.msg_content.as_ref())
-            {
-                Some(content) => content,
-                None => return Ok(extra),
-            };
-            let grey_tip = GeneralGrayTipInfo::decode(Bytes::from(msg_content.to_owned()))?;
+            let msg_content =
+                extract_msg_content(packet, "0x210 FriendPokeNotice missing msg_content")?;
+            let mut grey_tip = GeneralGrayTipInfo::decode(msg_content)?;
             if grey_tip.busi_type != 12 {
                 return Ok(extra);
             }
-            let templates: HashMap<String, String> = grey_tip
-                .msg_templ_param
-                .iter()
-                .map(|param| (param.key.to_owned(), param.value.to_owned()))
-                .collect();
-            let action = templates
-                .get("action_str")
-                .or_else(|| templates.get("alt_str1"))
-                .cloned()
-                .unwrap_or_default();
-            let operator_uin = templates
-                .get("uin_str1")
-                .ok_or_else(|| EventError::OtherError("Missing uin_str1 in grey tip event".into()))?
-                .parse::<u32>()
-                .map_err(|e| {
-                    EventError::OtherError(format!("Failed to parse uin_str1 in poke event: {}", e))
-                })?;
-            let target_uin = templates
-                .get("uin_str2")
-                .ok_or_else(|| EventError::OtherError("Missing uin_str2 in grey tip event".into()))?
-                .parse::<u32>()
-                .map_err(|e| {
-                    EventError::OtherError(format!("Failed to parse uin_str2 in poke event: {}", e))
-                })?;
-            let suffix = templates.get("suffix").cloned().unwrap_or_default();
-            let action_img_url = templates.get("action_img_url").cloned().unwrap_or_default();
+            let poke_args = extract_poke_info(&mut grey_tip);
             extra.as_mut().unwrap().push(Box::new(FriendSysPokeEvent {
-                operator_uin,
-                target_uin,
-                action,
-                suffix,
-                action_img_url,
+                operator_uin: poke_args.operator_uin,
+                target_uin: poke_args.target_uin,
+                action: poke_args.action,
+                suffix: poke_args.suffix,
+                action_img_url: poke_args.action_img_url,
             }));
         }
         _ => {
-            tracing::warn!("receive unknown message 0x210 sub type: {:?}", sub_type);
+            tracing::warn!("TODO: unhandled 0x210 sub type: {:?}", sub_type);
         }
     }
     Ok(extra)

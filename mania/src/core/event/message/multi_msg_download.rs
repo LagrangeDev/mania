@@ -37,10 +37,13 @@ impl ClientEvent for MultiMsgDownloadEvent {
 
     fn parse(packet: Bytes, _: &Context) -> CEParseResult {
         let packet = RecvLongMsgResp::decode(packet)?;
-        let inflate = gzip::decompress(&packet.result.expect("missing RecvLongMsgInfo").payload)
-            .ok_or_else(|| {
-                EventError::OtherError("Failed to decompress long message".to_string())
-            })?;
+        let inflate = packet
+            .result
+            .ok_or_else(|| EventError::OtherError("Missing RecvLongMsgInfo".to_string()))?
+            .payload;
+        let inflate = gzip::decompress(&inflate).ok_or_else(|| {
+            EventError::OtherError("Failed to decompress long message".to_string())
+        })?;
         let result = LongMsgResult::decode(Bytes::from(inflate))?;
         let main = result
             .action

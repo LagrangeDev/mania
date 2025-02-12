@@ -22,20 +22,14 @@ impl ClientEvent for FetchFilteredGroupRequestsEvent {
         let results = response
             .requests
             .into_iter()
-            .map(|req| FetchGroupRequests {
-                group_uin: req.group.as_ref().map_or(0, |g| g.group_uin),
-                invitor_member_uid: req.invitor.as_ref().map(|i| i.uid.to_owned()),
-                invitor_member_card: req.invitor.as_ref().map(|i| i.name.clone()),
-                target_member_uid: req
-                    .target
-                    .as_ref()
-                    .map_or("".to_string(), |t| t.uid.to_owned()),
-                target_member_card: req
-                    .target
-                    .as_ref()
-                    .map_or("".to_string(), |t| t.name.to_owned()),
-                operator_uid: req.operator.as_ref().map(|o| o.uid.to_owned()),
-                operator_name: req.operator.as_ref().map(|o| o.name.to_owned()),
+            .map(|mut req| FetchGroupRequests {
+                group_uin: req.group.take().map_or(0, |g| g.group_uin),
+                invitor_member_uid: req.invitor.take().map(|i| i.uid),
+                invitor_member_card: req.invitor.take().map(|i| i.name),
+                target_member_uid: req.target.take().map_or("".to_string(), |t| t.uid),
+                target_member_card: req.target.take().map_or("".to_string(), |t| t.name),
+                operator_uid: req.operator.take().map(|o| o.uid),
+                operator_name: req.operator.take().map(|o| o.name),
                 sequence: req.sequence,
                 state: req.state,
                 event_type: req.event_type,
