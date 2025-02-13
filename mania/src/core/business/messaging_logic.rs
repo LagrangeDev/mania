@@ -129,7 +129,7 @@ async fn messaging_logic_incoming(
                     _ => {}
                 }
             } else {
-                tracing::warn!("Empty message chain in PushMessageEvent");
+                tracing::trace!("Empty message chain in PushMessageEvent");
             }
             return event;
         }

@@ -96,7 +96,24 @@ pub struct PushMessageEvent {
     pub chain: Option<MessageChain>,
 }
 
-fn extract_msg_content(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, EventError> {
+fn extract_msg_body_content(packet: &mut PushMsg) -> Option<Bytes> {
+    packet
+        .message
+        .as_mut()
+        .and_then(|content| content.body.as_mut())
+        .and_then(|body| body.msg_content.take())
+        .map(Bytes::from)
+}
+
+fn extract_msg_content_stable(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, EventError> {
+    extract_msg_body_content(packet).ok_or_else(|| EventError::OtherError(err_tip.to_string()))
+}
+
+fn extract_msg_content_unstable(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, EventError> {
+    extract_msg_body_content(packet).ok_or_else(|| EventError::InternalWarning(err_tip.to_string()))
+}
+
+fn extract_stable_msg_content(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, EventError> {
     packet
         .message
         .as_mut()
@@ -104,6 +121,16 @@ fn extract_msg_content(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, Eve
         .and_then(|body| body.msg_content.take())
         .map(Bytes::from)
         .ok_or_else(|| EventError::OtherError(err_tip.to_string()))
+}
+
+fn extract_unstable_msg_content(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, EventError> {
+    packet
+        .message
+        .as_mut()
+        .and_then(|content| content.body.as_mut())
+        .and_then(|body| body.msg_content.take())
+        .map(Bytes::from)
+        .ok_or_else(|| EventError::InternalWarning(err_tip.to_string()))
 }
 
 impl ClientEvent for PushMessageEvent {
@@ -153,7 +180,7 @@ impl ClientEvent for PushMessageEvent {
                 )
             }
             PkgType::GroupRequestInvitationNotice => {
-                let msg_content = extract_msg_content(
+                let msg_content = extract_stable_msg_content(
                     &mut packet,
                     "GroupRequestInvitationNotice missing msg_content",
                 )?;
@@ -186,8 +213,10 @@ impl ClientEvent for PushMessageEvent {
                 }
             }
             PkgType::GroupRequestJoinNotice => {
-                let msg_content =
-                    extract_msg_content(&mut packet, "GroupRequestJoinNotice missing msg_content")?;
+                let msg_content = extract_stable_msg_content(
+                    &mut packet,
+                    "GroupRequestJoinNotice missing msg_content",
+                )?;
                 let join = GroupJoin::decode(msg_content)?;
                 extra
                     .as_mut()
@@ -198,8 +227,10 @@ impl ClientEvent for PushMessageEvent {
                     }));
             }
             PkgType::GroupInviteNotice => {
-                let msg_content =
-                    extract_msg_content(&mut packet, "GroupInviteNotice missing msg_content")?;
+                let msg_content = extract_stable_msg_content(
+                    &mut packet,
+                    "GroupInviteNotice missing msg_content",
+                )?;
                 let invite = GroupInvite::decode(msg_content)?;
                 extra.as_mut().unwrap().push(Box::new(GroupSysInviteEvent {
                     group_uin: invite.group_uin,
@@ -207,7 +238,7 @@ impl ClientEvent for PushMessageEvent {
                 }));
             }
             PkgType::GroupAdminChangedNotice => {
-                let msg_content = extract_msg_content(
+                let msg_content = extract_stable_msg_content(
                     &mut packet,
                     "GroupAdminChangedNotice missing msg_content",
                 )?;
@@ -230,7 +261,7 @@ impl ClientEvent for PushMessageEvent {
                 }));
             }
             PkgType::GroupMemberIncreaseNotice => {
-                let msg_content = extract_msg_content(
+                let msg_content = extract_stable_msg_content(
                     &mut packet,
                     "GroupMemberIncreaseNotice missing msg_content",
                 )?;
@@ -257,7 +288,7 @@ impl ClientEvent for PushMessageEvent {
                     }));
             }
             PkgType::GroupMemberDecreaseNotice => {
-                let msg_content = extract_msg_content(
+                let msg_content = extract_stable_msg_content(
                     &mut packet,
                     "GroupMemberDecreaseNotice missing msg_content",
                 )?;
@@ -407,7 +438,7 @@ fn process_event_0x2dc<'a>(
     match sub_type {
         Event0x2DCSubType::GroupMuteNotice => {
             let msg_content =
-                extract_msg_content(packet, "0x2dc GroupMuteNotice missing msg_content")?;
+                extract_stable_msg_content(packet, "0x2dc GroupMuteNotice missing msg_content")?;
             let mute = GroupMute::decode(msg_content)?;
             let state = mute
                 .data
@@ -435,12 +466,13 @@ fn process_event_0x2dc<'a>(
             }
         }
         Event0x2DCSubType::SubType16 => {
-            let msg_content = extract_msg_content(packet, "0x2dc SubType16 missing msg_content")?;
+            let msg_content =
+                extract_unstable_msg_content(packet, "0x2dc SubType16 missing msg_content")?;
             let (group_uin, msg_body) =
                 extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
             let ev = Event0x2DCSubType16Field13::try_from(msg_body.field13.unwrap_or_default())
                 .map_err(|e| {
-                    EventError::OtherError(format!(
+                    EventError::InternalWarning(format!(
                         "Failed to parse 0x2dc sub type 16 field 13: {}",
                         e
                     ))
@@ -523,7 +555,7 @@ fn process_event_0x2dc<'a>(
         }
         Event0x2DCSubType::GroupRecallNotice => {
             let msg_content =
-                extract_msg_content(packet, "0x2dc GroupRecallNotice missing msg_content")?;
+                extract_stable_msg_content(packet, "0x2dc GroupRecallNotice missing msg_content")?;
             let (_, recall_notify) = extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
             let recall = recall_notify.recall.ok_or(EventError::OtherError(
                 "Missing recall meta in 0x2dc sub type 17".into(),
@@ -547,7 +579,7 @@ fn process_event_0x2dc<'a>(
         }
         Event0x2DCSubType::GroupEssenceNotice => {
             let msg_content =
-                extract_msg_content(packet, "0x2dc GroupEssenceNotice missing msg_content")?;
+                extract_stable_msg_content(packet, "0x2dc GroupEssenceNotice missing msg_content")?;
             let (group_uin, mut essence) =
                 extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
             let essence_msg = essence.essence_message.take().ok_or_else(|| {
@@ -563,7 +595,8 @@ fn process_event_0x2dc<'a>(
             }));
         }
         Event0x2DCSubType::GroupGreyTipNotice => {
-            let msg_content = extract_msg_content(packet, "0x2dc sub type 20 missing msg_content")?;
+            let msg_content =
+                extract_unstable_msg_content(packet, "0x2dc sub type 20 missing msg_content")?;
             let (group_uin, mut grey_tip) =
                 extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
             let gray_tip_info = match grey_tip.gray_tip_info.as_mut() {
@@ -598,7 +631,7 @@ fn process_event_0x210<'a>(
     match sub_type {
         Event0x210SubType::SelfRenameNotice => {
             let msg_content =
-                extract_msg_content(packet, "0x210 SelfRenameNotice missing msg_content")?;
+                extract_stable_msg_content(packet, "0x210 SelfRenameNotice missing msg_content")?;
             let rename_data = SelfRenameNotify::decode(msg_content)?
                 .body
                 .ok_or_else(|| EventError::OtherError("Missing body in 0x210 sub type 29".into()))?
@@ -653,23 +686,25 @@ fn process_event_0x210<'a>(
                 }));
         }
         Event0x210SubType::GroupMemberEnterNotice => {
-            let msg_content =
-                extract_msg_content(packet, "0x210 GroupMemberEnterNotice missing msg_content")?;
+            let msg_content = extract_unstable_msg_content(
+                packet,
+                "0x210 GroupMemberEnterNotice missing msg_content",
+            )?;
             let info = GroupMemberEnterNotify::decode(msg_content)?;
             let detail = info
                 .body
-                .ok_or(EventError::OtherError(
+                .ok_or(EventError::InternalWarning(
                     "Missing body in 0x210 sub type 38".into(),
                 ))?
                 .info
-                .ok_or(EventError::OtherError(
+                .ok_or(EventError::InternalWarning(
                     "Missing info in 0x210 sub type 38".into(),
                 ))?
                 .detail
-                .ok_or(EventError::OtherError(
+                .ok_or(EventError::InternalWarning(
                     "Missing detail in 0x210 sub type 38".into(),
                 ))?;
-            let style = detail.style.ok_or(EventError::OtherError(
+            let style = detail.style.ok_or(EventError::InternalWarning(
                 "Missing style in 0x210 sub type 38".into(),
             ))?;
             extra
@@ -682,7 +717,7 @@ fn process_event_0x210<'a>(
                 }));
         }
         Event0x210SubType::FriendDeleteOrPinChangedNotice => {
-            let msg_content = extract_msg_content(
+            let msg_content = extract_stable_msg_content(
                 packet,
                 "0x210 FriendDeleteOrPinChangedNotice missing msg_content",
             )?;
@@ -771,7 +806,7 @@ fn process_event_0x210<'a>(
         }
         Event0x210SubType::FriendPokeNotice => {
             let msg_content =
-                extract_msg_content(packet, "0x210 FriendPokeNotice missing msg_content")?;
+                extract_stable_msg_content(packet, "0x210 FriendPokeNotice missing msg_content")?;
             let mut grey_tip = GeneralGrayTipInfo::decode(msg_content)?;
             if grey_tip.busi_type != 12 {
                 return Ok(extra);
@@ -786,7 +821,8 @@ fn process_event_0x210<'a>(
             }));
         }
         Event0x210SubType::SubType179 | Event0x210SubType::SubType226 => {
-            let msg_content = extract_msg_content(packet, "0x210 SubType179 missing msg_content")?;
+            let msg_content =
+                extract_unstable_msg_content(packet, "0x210 SubType179 missing msg_content")?;
             let new_friend = NewFriend::decode(msg_content)?.info.ok_or_else(|| {
                 EventError::OtherError("Missing info in 0x210 sub type 179".into())
             })?;
