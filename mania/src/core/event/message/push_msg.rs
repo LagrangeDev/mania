@@ -105,14 +105,6 @@ fn extract_msg_body_content(packet: &mut PushMsg) -> Option<Bytes> {
         .map(Bytes::from)
 }
 
-fn extract_msg_content_stable(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, EventError> {
-    extract_msg_body_content(packet).ok_or_else(|| EventError::OtherError(err_tip.to_string()))
-}
-
-fn extract_msg_content_unstable(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, EventError> {
-    extract_msg_body_content(packet).ok_or_else(|| EventError::InternalWarning(err_tip.to_string()))
-}
-
 fn extract_stable_msg_content(packet: &mut PushMsg, err_tip: &str) -> Result<Bytes, EventError> {
     packet
         .message
