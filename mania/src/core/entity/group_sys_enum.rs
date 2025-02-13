@@ -19,3 +19,12 @@ pub enum GroupMemberDecreaseEventType {
     Leave = 130,
     Kick = 131,
 }
+
+#[derive(Debug, Default, Eq, PartialEq, TryFromPrimitive)]
+#[repr(u32)]
+pub enum GroupEssenceSetFlag {
+    #[default]
+    Unknown = 0,
+    Set = 1,
+    Unset = 2,
+}

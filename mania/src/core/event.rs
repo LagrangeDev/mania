@@ -115,6 +115,9 @@ pub enum EventError {
     #[error("An mania internal event error occurred: {0}")]
     OtherError(String),
 
+    #[error("Internal warn: {0}")]
+    InternalWarning(String),
+
     #[error("An internal oidb packet inner error occurred, ret_code: {0}, wording: {1}")]
     OidbPacketInternalError(i32, String),
 }

@@ -1,24 +1,45 @@
 use crate::core::business::LogicRegistry;
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::message::push_msg::PushMessageEvent;
+use crate::core::event::notify::bot_sys_rename::BotSysRenameEvent;
+use crate::core::event::notify::friend_sys_new::FriendSysNewEvent;
 use crate::core::event::notify::friend_sys_poke::FriendSysPokeEvent;
 use crate::core::event::notify::friend_sys_recall::FriendSysRecallEvent;
+use crate::core::event::notify::friend_sys_rename::FriendSysRenameEvent;
+use crate::core::event::notify::friend_sys_request::FriendSysRequestEvent;
+use crate::core::event::notify::group_sys_admin::GroupSysAdminEvent;
 use crate::core::event::notify::group_sys_decrease::GroupSysDecreaseEvent;
+use crate::core::event::notify::group_sys_essence::GroupSysEssenceEvent;
 use crate::core::event::notify::group_sys_increase::GroupSysIncreaseEvent;
+use crate::core::event::notify::group_sys_invite::GroupSysInviteEvent;
+use crate::core::event::notify::group_sys_member_enter::GroupSysMemberEnterEvent;
+use crate::core::event::notify::group_sys_member_mute::GroupSysMemberMuteEvent;
+use crate::core::event::notify::group_sys_mute::GroupSysMuteEvent;
+use crate::core::event::notify::group_sys_name_change::GroupSysNameChangeEvent;
+use crate::core::event::notify::group_sys_pin_change::GroupSysPinChangeEvent;
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
 use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
 use crate::core::event::notify::group_sys_recall::GroupSysRecallEvent;
+use crate::core::event::notify::group_sys_request_invitation::GroupSysRequestInvitationEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
+use crate::core::event::notify::group_sys_special_title::GroupSysSpecialTitleEvent;
+use crate::core::event::notify::group_sys_todo::GroupSysTodoEvent;
 use crate::core::event::prelude::*;
 use crate::event::friend::friend_poke::FriendPokeEvent;
-use crate::event::friend::{FriendEvent, friend_message, friend_recall};
+use crate::event::friend::{
+    FriendEvent, friend_message, friend_new, friend_recall, friend_rename, friend_request,
+};
+use crate::event::group::group_pin_changed::ChatType;
 use crate::event::group::group_poke::GroupPokeEvent;
 use crate::event::group::group_reaction::GroupReactionEvent;
 use crate::event::group::group_recall::GroupRecallEvent;
 use crate::event::group::{
-    GroupEvent, group_join_request, group_member_decrease, group_member_increase, group_message,
+    GroupEvent, group_admin_changed, group_essence, group_invitation, group_invitation_request,
+    group_join_request, group_member_decrease, group_member_enter, group_member_increase,
+    group_member_mute, group_message, group_mute, group_name_change, group_pin_changed,
+    group_special_title, group_todo,
 };
-use crate::event::system::{SystemEvent, temp_message};
+use crate::event::system::{SystemEvent, bot_rename, temp_message};
 use crate::message::chain::{MessageChain, MessageType};
 use crate::message::entity::Entity;
 use crate::message::entity::file::FileUnique;
@@ -28,13 +49,28 @@ use std::sync::Arc;
 #[handle_event(
     PushMessageEvent,
     GroupSysRequestJoinEvent,
+    GroupSysInviteEvent,
+    GroupSysAdminEvent,
     GroupSysPokeEvent,
     GroupSysReactionEvent,
     GroupSysRecallEvent,
+    GroupSysEssenceEvent,
     GroupSysIncreaseEvent,
     GroupSysDecreaseEvent,
+    GroupSysMuteEvent,
+    GroupSysMemberMuteEvent,
+    GroupSysNameChangeEvent,
+    GroupSysTodoEvent,
+    GroupSysSpecialTitleEvent,
+    GroupSysMemberEnterEvent,
+    GroupSysPinChangeEvent,
+    GroupSysRequestInvitationEvent,
     FriendSysRecallEvent,
-    FriendSysPokeEvent
+    FriendSysPokeEvent,
+    FriendSysNewEvent,
+    FriendSysRenameEvent,
+    FriendSysRequestEvent,
+    BotSysRenameEvent
 )]
 async fn messaging_logic(
     event: &mut dyn ServerEvent,
@@ -147,8 +183,50 @@ async fn messaging_logic_incoming(
             }
             return event;
         }
-    }
-    {
+
+        if let Some(invite) = event.as_any_mut().downcast_mut::<GroupSysInviteEvent>() {
+            let invitor_uin = handle
+                .resolve_stranger_uid2uin(&invite.invitor_uid)
+                .await
+                .unwrap_or_default();
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupInvitation(
+                    group_invitation::GroupInvitationEvent {
+                        group_uin: invite.group_uin,
+                        invitor_uin,
+                        sequence: None,
+                    },
+                )))
+            {
+                tracing::error!("Failed to send group invitation event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(change) = event.as_any_mut().downcast_mut::<GroupSysAdminEvent>() {
+            let group_uin = change.group_uin;
+            let admin_uin = handle
+                .uid2uin(&change.uid, Some(group_uin))
+                .await
+                .unwrap_or_default();
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupAdminChanged(
+                    group_admin_changed::GroupAdminChangedEvent {
+                        group_uin,
+                        admin_uin,
+                        is_promote: change.is_promoted,
+                    },
+                )))
+            {
+                tracing::error!("Failed to send group admin change event: {:?}", e);
+            }
+            return event;
+        }
+
         if let Some(poke) = event.as_any_mut().downcast_mut::<GroupSysPokeEvent>() {
             if let Err(e) = handle
                 .event_dispatcher
@@ -166,6 +244,7 @@ async fn messaging_logic_incoming(
             }
             return event;
         }
+
         if let Some(join) = event.as_any_mut().downcast_mut::<GroupSysIncreaseEvent>() {
             let member_uin = handle
                 .resolve_stranger_uid2uin(&join.member_uid)
@@ -195,6 +274,7 @@ async fn messaging_logic_incoming(
             }
             return event;
         }
+
         if let Some(leave) = event.as_any_mut().downcast_mut::<GroupSysDecreaseEvent>() {
             let member_uin = handle
                 .resolve_stranger_uid2uin(&leave.member_uid)
@@ -224,22 +304,95 @@ async fn messaging_logic_incoming(
             }
             return event;
         }
-        if let Some(poke) = event.as_any_mut().downcast_mut::<FriendSysPokeEvent>() {
+
+        if let Some(sys_mute) = event.as_any_mut().downcast_mut::<GroupSysMuteEvent>() {
+            let group_uin = sys_mute.group_uin;
+            let operator_uin = handle
+                .uid2uin(
+                    sys_mute.operator_uid.as_deref().unwrap_or(""),
+                    Some(group_uin),
+                )
+                .await
+                .unwrap_or_default();
             if let Err(e) = handle
                 .event_dispatcher
-                .friend
-                .send(Some(FriendEvent::FriendPokeEvent(FriendPokeEvent {
-                    operator_uin: poke.operator_uin,
-                    target_uin: poke.target_uin,
-                    action: poke.action.to_owned(),
-                    suffix: poke.suffix.to_owned(),
-                    action_url: poke.action_img_url.to_owned(),
+                .group
+                .send(Some(GroupEvent::GroupMute(group_mute::GroupMuteEvent {
+                    group_uin,
+                    operator_uin: Some(operator_uin),
+                    is_muted: sys_mute.is_muted,
                 })))
             {
-                tracing::error!("Failed to send friend poke event: {:?}", e);
+                tracing::error!("Failed to send group mute event: {:?}", e);
             }
             return event;
         }
+
+        if let Some(member_mute) = event.as_any_mut().downcast_mut::<GroupSysMemberMuteEvent>() {
+            let group_uin = member_mute.group_uin;
+            let operator_uin = match &member_mute.operator_uid {
+                Some(uid) => Some(
+                    handle
+                        .uid2uin(uid, Some(group_uin))
+                        .await
+                        .unwrap_or_default(),
+                ),
+                None => None,
+            };
+            let target_uin = handle
+                .resolve_stranger_uid2uin(&member_mute.target_uid)
+                .await
+                .unwrap_or_default();
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupMemberMute(
+                    group_member_mute::GroupMemberMuteEvent {
+                        group_uin,
+                        operator_uin,
+                        target_uin,
+                        duration: member_mute.duration,
+                    },
+                )))
+            {
+                tracing::error!("Failed to send group member mute event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(name_change) = event.as_any_mut().downcast_mut::<GroupSysNameChangeEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupNameChange(
+                    group_name_change::GroupNameChangeEvent {
+                        group_uin: name_change.group_uin,
+                        name: name_change.name.to_owned(),
+                    },
+                )))
+            {
+                tracing::error!("Failed to send group name change event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(todo) = event.as_any_mut().downcast_mut::<GroupSysTodoEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupTodo(group_todo::GroupTodoEvent {
+                    group_uin: todo.group_uin,
+                    operator_uin: handle
+                        .uid2uin(&todo.operator_uid, Some(todo.group_uin))
+                        .await
+                        .unwrap_or_default(),
+                })))
+            {
+                tracing::error!("Failed to send group todo event: {:?}", e);
+            }
+            return event;
+        }
+
         if let Some(reaction) = event.as_any_mut().downcast_mut::<GroupSysReactionEvent>() {
             if let Err(e) = handle
                 .event_dispatcher
@@ -260,6 +413,7 @@ async fn messaging_logic_incoming(
             }
             return event;
         }
+
         if let Some(recall) = event.as_any_mut().downcast_mut::<GroupSysRecallEvent>() {
             if let Err(e) = handle
                 .event_dispatcher
@@ -288,6 +442,96 @@ async fn messaging_logic_incoming(
             }
             return event;
         }
+
+        if let Some(essence) = event.as_any_mut().downcast_mut::<GroupSysEssenceEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupEssence(
+                    group_essence::GroupEssenceEvent {
+                        group_uin: essence.group_uin,
+                        sequence: essence.sequence,
+                        random: essence.random,
+                        is_set: std::mem::take(&mut essence.set_flag),
+                        from_uin: essence.from_uin,
+                        operator_uin: essence.operator_uin,
+                    },
+                )))
+            {
+                tracing::error!("Failed to send group sys essence event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(st) = event
+            .as_any_mut()
+            .downcast_mut::<GroupSysSpecialTitleEvent>()
+        {
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupSpecialTitle(
+                    group_special_title::GroupSpecialTitleEvent {
+                        target_uin: st.target_uin,
+                        target_nickname: st.target_nickname.to_owned(),
+                        special_title: st.special_title.to_owned(),
+                        special_title_detail_url: st.special_title_detail_url.to_owned(),
+                        group_uin: st.group_uin,
+                    },
+                )))
+            {
+                tracing::error!("Failed to send group special title event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(enter) = event
+            .as_any_mut()
+            .downcast_mut::<GroupSysMemberEnterEvent>()
+        {
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupMemberEnter(
+                    group_member_enter::GroupMemberEnterEvent {
+                        group_uin: enter.group_uin,
+                        group_member_uin: enter.group_member_uin,
+                        style_id: enter.style_id,
+                    },
+                )))
+            {
+                tracing::error!("Failed to send group member enter event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(invite) = event
+            .as_any_mut()
+            .downcast_mut::<GroupSysRequestInvitationEvent>()
+        {
+            if let Err(e) =
+                handle
+                    .event_dispatcher
+                    .group
+                    .send(Some(GroupEvent::GroupInvitationRequest(
+                        group_invitation_request::GroupInvitationRequestEvent {
+                            group_uin: invite.group_uin,
+                            target_uin: handle
+                                .resolve_stranger_uid2uin(&invite.target_uid)
+                                .await
+                                .unwrap_or_default(),
+                            invitor_uin: handle
+                                .uid2uin(&invite.invitor_uid, Some(invite.group_uin))
+                                .await
+                                .unwrap_or_default(),
+                        },
+                    )))
+            {
+                tracing::error!("Failed to send group invitation request event: {:?}", e);
+            }
+            return event;
+        }
+
         if let Some(recall) = event.as_any_mut().downcast_mut::<FriendSysRecallEvent>() {
             if let Err(e) =
                 handle
@@ -307,6 +551,119 @@ async fn messaging_logic_incoming(
                     )))
             {
                 tracing::error!("Failed to send friend recall event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(pin) = event.as_any_mut().downcast_mut::<GroupSysPinChangeEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .group
+                .send(Some(GroupEvent::GroupPinChanged(
+                    group_pin_changed::PinChangedEvent {
+                        chat_type: match pin.group_uin {
+                            Some(_) => ChatType::Group,
+                            None => ChatType::Friend,
+                        },
+                        uin: handle
+                            .uid2uin(&pin.uid, pin.group_uin)
+                            .await
+                            .unwrap_or_default(),
+                        is_pin: pin.is_pin,
+                    },
+                )))
+            {
+                tracing::error!("Failed to send group pin change event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(poke) = event.as_any_mut().downcast_mut::<FriendSysPokeEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .friend
+                .send(Some(FriendEvent::FriendPokeEvent(FriendPokeEvent {
+                    operator_uin: poke.operator_uin,
+                    target_uin: poke.target_uin,
+                    action: poke.action.to_owned(),
+                    suffix: poke.suffix.to_owned(),
+                    action_url: poke.action_img_url.to_owned(),
+                })))
+            {
+                tracing::error!("Failed to send friend poke event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(friend_new) = event.as_any_mut().downcast_mut::<FriendSysNewEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .friend
+                .send(Some(FriendEvent::FriendNewEvent(
+                    friend_new::FriendNewEvent {
+                        from_uin: handle
+                            .uid2uin(&friend_new.from_uid, None)
+                            .await
+                            .unwrap_or_default(),
+                        from_nickname: friend_new.from_nickname.to_owned(),
+                        msg: friend_new.msg.to_owned(),
+                    },
+                )))
+            {
+                tracing::error!("Failed to send friend new event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(rename) = event.as_any_mut().downcast_mut::<FriendSysRenameEvent>() {
+            if let Err(e) =
+                handle
+                    .event_dispatcher
+                    .friend
+                    .send(Some(FriendEvent::FriendRenameEvent(
+                        friend_rename::FriendRenameEvent {
+                            uin: handle.uid2uin(&rename.uid, None).await.unwrap_or_default(),
+                            nickname: rename.nickname.to_owned(),
+                        },
+                    )))
+            {
+                tracing::error!("Failed to send friend rename event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(request) = event.as_any_mut().downcast_mut::<FriendSysRequestEvent>() {
+            if let Err(e) =
+                handle
+                    .event_dispatcher
+                    .friend
+                    .send(Some(FriendEvent::FriendRequestEvent(
+                        friend_request::FriendRequestEvent {
+                            source_uin: handle
+                                .uid2uin(&request.source_uid, None)
+                                .await
+                                .unwrap_or_default(),
+                            message: request.message.to_owned(),
+                            source: request.source.to_owned(),
+                        },
+                    )))
+            {
+                tracing::error!("Failed to send friend request event: {:?}", e);
+            }
+            return event;
+        }
+
+        if let Some(rename) = event.as_any_mut().downcast_mut::<BotSysRenameEvent>() {
+            if let Err(e) = handle
+                .event_dispatcher
+                .system
+                .send(Some(SystemEvent::BotRenameEvent(
+                    bot_rename::BotRenameEvent {
+                        nickname: rename.nickname.to_owned(),
+                    },
+                )))
+            {
+                tracing::error!("Failed to send bot rename event: {:?}", e);
             }
             return event;
         }

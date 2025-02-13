@@ -45,7 +45,7 @@ impl KeyStore {
 pub(crate) struct AccountInfo {
     pub age: u8,
     pub gender: u8,
-    pub name: String,
+    pub name: ArcSwap<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

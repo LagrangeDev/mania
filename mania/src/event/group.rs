@@ -14,6 +14,7 @@ pub mod group_pin_changed;
 pub mod group_poke;
 pub mod group_reaction;
 pub mod group_recall;
+pub mod group_special_title;
 pub mod group_todo;
 
 #[derive(Debug)]
@@ -36,4 +37,5 @@ pub enum GroupEvent {
     GroupReaction(group_reaction::GroupReactionEvent),
     GroupRecall(group_recall::GroupRecallEvent),
     GroupTodo(group_todo::GroupTodoEvent),
+    GroupSpecialTitle(group_special_title::GroupSpecialTitleEvent),
 }

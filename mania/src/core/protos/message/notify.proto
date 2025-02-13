@@ -192,6 +192,12 @@ message NotifyMessageBody {
   GroupReactionData0 Reaction = 44;
 }
 
+message SpecialTittleNotify {
+  string NotifyInner = 2;
+//  uint32 Unknown3 = 3;
+  uint32 TargetUin = 5;
+}
+
 message EssenceMessage {
   uint32 GroupUin = 1;
   uint32 MsgSequence = 2;
@@ -256,4 +262,90 @@ message GroupReactionData3 {
   uint32 count = 3;
   string operator_uid = 4;
   uint32 type = 5;  // 1 Add, 2 Remove
+}
+
+message GroupNameChange {
+  string name = 2;
+}
+
+message GroupMemberEnterNotify {
+  bool field1 = 1;
+  GroupMemberEnterContentBody body = 2;
+}
+
+message GroupMemberEnterContentBody {
+  GroupMemberEnterContentBodyField1 field1 = 1;
+  uint32 group_id = 2;
+  uint32 field3 = 3;
+  GroupMemberEnterInfo info = 4;
+  uint32 field5 = 5;
+}
+
+message GroupMemberEnterContentBodyField1 {
+  uint32 field1 = 1;
+}
+
+message GroupMemberEnterInfo {
+  uint32 field2 = 2;
+  GroupMemberEnterDetail detail = 3;
+  uint32 field4 = 4;
+  uint32 field5 = 5;
+}
+
+message GroupMemberEnterDetail {
+  uint32 group_member_uin = 3;
+  uint32 group_id = 4;
+  uint32 field5 = 5;
+  uint32 field6 = 6;
+  GroupMemberEnterStyle style = 20;
+  uint32 field21 = 21;
+}
+
+message GroupMemberEnterStyle {
+  uint32 style_id = 1;
+}
+
+message SelfRenameNotify {
+  uint32 Field1 = 1; // 20
+  SelfRenameBody Body = 20;
+}
+
+message SelfRenameBody {
+  uint32 Uin = 1;
+  RenameData RenameData = 2;
+}
+
+///
+message Event0x210Sub39Notify {
+  Event0x210Sub39NotifyBody Body = 1;
+}
+
+message Event0x210Sub39NotifyBody {
+  uint32 type = 2; // friend delete: 5, pin changed: 7, friend rename: 20
+  FriendRenameMsgData Data = 8;
+  PinChanged PinChanged = 20;
+}
+
+message FriendRenameMsgData {
+  string Uid = 1;
+  RenameData RenameData = 2;
+}
+
+message RenameData {
+  uint32 Field1 = 1; // 20002
+  string NickName = 2;
+}
+
+message PinChanged {
+  PinChangedBody Body = 1;
+}
+
+message PinChangedBody {
+  string uid = 1;
+  optional uint32 GroupUin = 2;
+  PinChangedInfo Info = 400;
+}
+
+message PinChangedInfo {
+  bytes Timestamp = 2;
 }

@@ -1,21 +1,41 @@
 use crate::core::entity::group_sys_enum::{
-    GroupMemberDecreaseEventType, GroupMemberIncreaseEventType,
+    GroupEssenceSetFlag, GroupMemberDecreaseEventType, GroupMemberIncreaseEventType,
 };
+use crate::core::event::notify::bot_sys_rename::BotSysRenameEvent;
+use crate::core::event::notify::friend_sys_new::FriendSysNewEvent;
 use crate::core::event::notify::friend_sys_poke::FriendSysPokeEvent;
 use crate::core::event::notify::friend_sys_recall::FriendSysRecallEvent;
+use crate::core::event::notify::friend_sys_rename::FriendSysRenameEvent;
+use crate::core::event::notify::friend_sys_request::FriendSysRequestEvent;
+use crate::core::event::notify::group_sys_admin::GroupSysAdminEvent;
 use crate::core::event::notify::group_sys_decrease::GroupSysDecreaseEvent;
+use crate::core::event::notify::group_sys_essence::GroupSysEssenceEvent;
 use crate::core::event::notify::group_sys_increase::GroupSysIncreaseEvent;
+use crate::core::event::notify::group_sys_invite::GroupSysInviteEvent;
+use crate::core::event::notify::group_sys_member_enter::GroupSysMemberEnterEvent;
+use crate::core::event::notify::group_sys_member_mute::GroupSysMemberMuteEvent;
+use crate::core::event::notify::group_sys_mute::GroupSysMuteEvent;
+use crate::core::event::notify::group_sys_name_change::GroupSysNameChangeEvent;
+use crate::core::event::notify::group_sys_pin_change::GroupSysPinChangeEvent;
 use crate::core::event::notify::group_sys_poke::GroupSysPokeEvent;
 use crate::core::event::notify::group_sys_reaction::GroupSysReactionEvent;
 use crate::core::event::notify::group_sys_recall::GroupSysRecallEvent;
+use crate::core::event::notify::group_sys_request_invitation::GroupSysRequestInvitationEvent;
 use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent;
+use crate::core::event::notify::group_sys_special_title::GroupSysSpecialTitleEvent;
+use crate::core::event::notify::group_sys_todo::GroupSysTodoEvent;
 use crate::core::event::prelude::*;
 use crate::core::protos::message::{
-    FriendRecall, GeneralGrayTipInfo, GroupChange, GroupJoin, NotifyMessageBody, OperatorInfo,
-    PushMsg,
+    Event0x210Sub39Notify, FriendRecall, FriendRequest, GeneralGrayTipInfo, GroupAdmin,
+    GroupChange, GroupInvitation, GroupInvite, GroupJoin, GroupMemberEnterNotify, GroupMute,
+    GroupNameChange, NewFriend, NotifyMessageBody, OperatorInfo, PushMsg, SelfRenameNotify,
+    SpecialTittleNotify,
 };
 use crate::message::chain::MessageChain;
 use crate::message::packer::MessagePacker;
+use regex::Regex;
+use serde::Deserialize;
+use std::sync::Arc;
 
 #[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
@@ -58,11 +78,14 @@ enum Event0x2DCSubType16Field13 {
 #[derive(Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
 enum Event0x210SubType {
+    SelfRenameNotice = 29,
     FriendRequestNotice = 35,
     GroupMemberEnterNotice = 38,
     FriendDeleteOrPinChangedNotice = 39,
     FriendRecallNotice = 138,
+    SubType179 = 179,
     ServicePinChanged = 199,
+    SubType226 = 226,
     FriendPokeNotice = 290,
     GroupKickNotice = 212,
 }
@@ -88,7 +111,7 @@ impl ClientEvent for PushMessageEvent {
         todo!()
     }
 
-    fn parse(bytes: Bytes, _: &Context) -> CEParseResult {
+    fn parse(bytes: Bytes, ctx: &Context) -> CEParseResult {
         let mut packet = PushMsg::decode(bytes)?;
         let typ = packet
             .message
@@ -97,7 +120,7 @@ impl ClientEvent for PushMessageEvent {
             .map(|content_head| content_head.r#type)
             .ok_or_else(|| EventError::OtherError("Cannot get typ in PushMsg".to_string()))?;
         let packet_type = PkgType::try_from(typ).map_err(|_| {
-            EventError::OtherError(format!("receive unknown olpush message type: {:?}", typ))
+            EventError::InternalWarning(format!("receive unknown olpush message type: {:?}", typ))
         })?;
         let mut chain: Option<MessageChain> = None;
         let mut extra: Option<Vec<Box<dyn ServerEvent>>> = match packet_type {
@@ -129,6 +152,39 @@ impl ClientEvent for PushMessageEvent {
                     })?,
                 )
             }
+            PkgType::GroupRequestInvitationNotice => {
+                let msg_content = extract_msg_content(
+                    &mut packet,
+                    "GroupRequestInvitationNotice missing msg_content",
+                )?;
+                let invite = GroupInvitation::decode(msg_content)?;
+                match invite.cmd {
+                    87 => {
+                        let info_inner = invite
+                            .info
+                            .ok_or_else(|| {
+                                EventError::OtherError("GroupInvitation missing data".to_string())
+                            })?
+                            .inner
+                            .ok_or_else(|| {
+                                EventError::OtherError("GroupInvitation missing inner".to_string())
+                            })?;
+                        extra
+                            .as_mut()
+                            .unwrap()
+                            .push(Box::new(GroupSysRequestInvitationEvent {
+                                group_uin: info_inner.group_uin,
+                                target_uid: info_inner.target_uid,
+                                invitor_uid: info_inner.invitor_uid,
+                            }));
+                    }
+                    _ => {
+                        Err(EventError::InternalWarning(
+                            "GroupRequestInvitationNotice unknown cmd".to_string(),
+                        ))?;
+                    }
+                }
+            }
             PkgType::GroupRequestJoinNotice => {
                 let msg_content =
                     extract_msg_content(&mut packet, "GroupRequestJoinNotice missing msg_content")?;
@@ -140,6 +196,38 @@ impl ClientEvent for PushMessageEvent {
                         target_uid: join.target_uid,
                         group_uin: join.group_uin,
                     }));
+            }
+            PkgType::GroupInviteNotice => {
+                let msg_content =
+                    extract_msg_content(&mut packet, "GroupInviteNotice missing msg_content")?;
+                let invite = GroupInvite::decode(msg_content)?;
+                extra.as_mut().unwrap().push(Box::new(GroupSysInviteEvent {
+                    group_uin: invite.group_uin,
+                    invitor_uid: invite.invitor_uid,
+                }));
+            }
+            PkgType::GroupAdminChangedNotice => {
+                let msg_content = extract_msg_content(
+                    &mut packet,
+                    "GroupAdminChangedNotice missing msg_content",
+                )?;
+                let mut change = GroupAdmin::decode(msg_content)?;
+                let body = change
+                    .body
+                    .take()
+                    .ok_or_else(|| EventError::OtherError("GroupAdmin missing body".to_string()))?;
+                let (enabled, uid) = body
+                    .extra_enable
+                    .map(|extra| (true, extra.admin_uid))
+                    .or_else(|| body.extra_disable.map(|extra| (false, extra.admin_uid)))
+                    .ok_or_else(|| {
+                        EventError::OtherError("GroupAdmin missing extra".to_string())
+                    })?;
+                extra.as_mut().unwrap().push(Box::new(GroupSysAdminEvent {
+                    group_uin: change.group_uin,
+                    uid,
+                    is_promoted: enabled,
+                }));
             }
             PkgType::GroupMemberIncreaseNotice => {
                 let msg_content = extract_msg_content(
@@ -215,14 +303,10 @@ impl ClientEvent for PushMessageEvent {
                 }
             }
             PkgType::Event0x2DC => {
-                extra = process_event_0x2dc(&mut packet, &mut extra)?.take();
+                extra = process_event_0x2dc(ctx, &mut packet, &mut extra)?.take();
             }
             PkgType::Event0x210 => {
-                extra = process_event_0x210(&mut packet, &mut extra)?.take();
-            }
-            // TODO: handle other message types
-            _ => {
-                tracing::warn!("receive unknown message type: {:?}", packet_type);
+                extra = process_event_0x210(ctx, &mut packet, &mut extra)?.take();
             }
         }
         Ok(ClientResult::with_extra(Box::new(Self { chain }), extra))
@@ -290,18 +374,66 @@ fn extract_poke_info(gt: &mut GeneralGrayTipInfo) -> PokeArgs {
     }
 }
 
-#[allow(clippy::single_match)] // FIXME:
+#[derive(Deserialize, Debug)]
+struct SpecialTitleUserInfo {
+    // cmd: u8,
+    data: String,
+    text: String,
+    #[serde(flatten)]
+    ex: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Deserialize, Debug)]
+struct SpecialTitleMedalInfo {
+    // cmd: u8,
+    data: String,
+    text: String,
+    url: String,
+    #[serde(flatten)]
+    ex: HashMap<String, serde_json::Value>,
+}
+
 fn process_event_0x2dc<'a>(
+    _: &Context,
     packet: &'a mut PushMsg,
     extra: &'a mut Option<Vec<Box<dyn ServerEvent>>>,
 ) -> Result<&'a mut Option<Vec<Box<dyn ServerEvent>>>, EventError> {
     let sub_type = Event0x2DCSubType::try_from(extract_0x_sub_type(packet)?).map_err(|err| {
-        EventError::OtherError(format!(
+        EventError::InternalWarning(format!(
             "receive unknown olpush message 0x2dc sub type: {:?}",
             err
         ))
     })?;
     match sub_type {
+        Event0x2DCSubType::GroupMuteNotice => {
+            let msg_content =
+                extract_msg_content(packet, "0x2dc GroupMuteNotice missing msg_content")?;
+            let mute = GroupMute::decode(msg_content)?;
+            let state = mute
+                .data
+                .ok_or_else(|| EventError::OtherError("GroupMute missing data".to_string()))?
+                .state
+                .ok_or_else(|| EventError::OtherError("GroupMute missing state".to_string()))?;
+            if state.target_uid.is_none() {
+                extra.as_mut().unwrap().push(Box::new(GroupSysMuteEvent {
+                    group_uin: mute.group_uin,
+                    operator_uid: mute.operator_uid,
+                    is_muted: state.duration != 0,
+                }));
+            } else {
+                extra
+                    .as_mut()
+                    .unwrap()
+                    .push(Box::new(GroupSysMemberMuteEvent {
+                        group_uin: mute.group_uin,
+                        operator_uid: mute.operator_uid,
+                        target_uid: state.target_uid.ok_or_else(|| {
+                            EventError::OtherError("Missing target_uid".to_string())
+                        })?,
+                        duration: state.duration,
+                    }));
+            }
+        }
         Event0x2DCSubType::SubType16 => {
             let msg_content = extract_msg_content(packet, "0x2dc SubType16 missing msg_content")?;
             let (group_uin, msg_body) =
@@ -314,6 +446,54 @@ fn process_event_0x2dc<'a>(
                     ))
                 })?;
             match ev {
+                Event0x2DCSubType16Field13::GroupMemberSpecialTitleNotice => {
+                    let content = SpecialTittleNotify::decode(Bytes::from(msg_body.event_param))?;
+                    let re = Regex::new(r#"<(.*?)>"#)
+                        .map_err(|_| EventError::OtherError("Failed to compile regex".into()))?;
+                    let captures: Vec<_> = re.captures_iter(&content.notify_inner).collect();
+                    if captures.len() == 2 {
+                        let user_info_json = &captures[0][1];
+                        let medal_info_json = &captures[1][1];
+                        let user_info: SpecialTitleUserInfo = serde_json::from_str(user_info_json)
+                            .map_err(|_| {
+                                EventError::OtherError("Failed to parse special title".into())
+                            })?;
+                        let medal_info: SpecialTitleMedalInfo =
+                            serde_json::from_str(medal_info_json).map_err(|_| {
+                                EventError::OtherError("Failed to parse special title".into())
+                            })?;
+                        extra
+                            .as_mut()
+                            .unwrap()
+                            .push(Box::new(GroupSysSpecialTitleEvent {
+                                target_uin: content.target_uin,
+                                target_nickname: user_info.text,
+                                special_title: medal_info.text,
+                                special_title_detail_url: medal_info.url,
+                                group_uin,
+                            }));
+                    } else {
+                        Err(EventError::OtherError(
+                            "Failed to parse special title".into(),
+                        ))?;
+                    }
+                }
+                Event0x2DCSubType16Field13::GroupNameChangeNotice => {
+                    let param = GroupNameChange::decode(Bytes::from(msg_body.event_param))?;
+                    extra
+                        .as_mut()
+                        .unwrap()
+                        .push(Box::new(GroupSysNameChangeEvent {
+                            group_uin,
+                            name: param.name,
+                        }));
+                }
+                Event0x2DCSubType16Field13::GroupTodoNotice => {
+                    extra.as_mut().unwrap().push(Box::new(GroupSysTodoEvent {
+                        group_uin,
+                        operator_uid: msg_body.operator_uid.to_owned(),
+                    }));
+                }
                 Event0x2DCSubType16Field13::GroupReactionNotice => {
                     let data_2 = msg_body
                         .reaction
@@ -339,7 +519,6 @@ fn process_event_0x2dc<'a>(
                         count: data_3.count,
                     }));
                 }
-                _ => {}
             }
         }
         Event0x2DCSubType::GroupRecallNotice => {
@@ -366,6 +545,23 @@ fn process_event_0x2dc<'a>(
                 tip: tip_info.tip,
             }));
         }
+        Event0x2DCSubType::GroupEssenceNotice => {
+            let msg_content =
+                extract_msg_content(packet, "0x2dc GroupEssenceNotice missing msg_content")?;
+            let (group_uin, mut essence) =
+                extract_0x2dc_fucking_head::<NotifyMessageBody>(msg_content)?;
+            let essence_msg = essence.essence_message.take().ok_or_else(|| {
+                EventError::OtherError("Missing essence_message in 0x2dc sub type 21".into())
+            })?;
+            extra.as_mut().unwrap().push(Box::new(GroupSysEssenceEvent {
+                group_uin,
+                sequence: essence_msg.msg_sequence,
+                random: essence_msg.random,
+                set_flag: GroupEssenceSetFlag::try_from(essence_msg.set_flag).unwrap_or_default(),
+                from_uin: essence_msg.author_uin,
+                operator_uin: essence_msg.operator_uin,
+            }));
+        }
         Event0x2DCSubType::GroupGreyTipNotice => {
             let msg_content = extract_msg_content(packet, "0x2dc sub type 20 missing msg_content")?;
             let (group_uin, mut grey_tip) =
@@ -384,25 +580,163 @@ fn process_event_0x2dc<'a>(
                 action_img_url: poke_args.action_img_url,
             }));
         }
-        _ => {
-            tracing::warn!("TODO: unhandled 0x2dc sub type: {:?}", sub_type);
-        }
     }
     Ok(extra)
 }
 
-#[allow(clippy::single_match)] // FIXME:
 fn process_event_0x210<'a>(
+    ctx: &Context,
     packet: &'a mut PushMsg,
     extra: &'a mut Option<Vec<Box<dyn ServerEvent>>>,
 ) -> Result<&'a mut Option<Vec<Box<dyn ServerEvent>>>, EventError> {
     let sub_type = Event0x210SubType::try_from(extract_0x_sub_type(packet)?).map_err(|err| {
-        EventError::OtherError(format!(
+        EventError::InternalWarning(format!(
             "receive unknown olpush message 0x210 sub type: {:?}",
             err
         ))
     })?;
     match sub_type {
+        Event0x210SubType::SelfRenameNotice => {
+            let msg_content =
+                extract_msg_content(packet, "0x210 SelfRenameNotice missing msg_content")?;
+            let rename_data = SelfRenameNotify::decode(msg_content)?
+                .body
+                .ok_or_else(|| EventError::OtherError("Missing body in 0x210 sub type 29".into()))?
+                .rename_data
+                .ok_or_else(|| {
+                    EventError::OtherError("Missing rename_data in 0x210 sub type 29".into())
+                })?;
+            ctx.key_store
+                .info
+                .load()
+                .name
+                .store(Arc::new(rename_data.nick_name.clone()));
+            extra.as_mut().unwrap().push(Box::new(BotSysRenameEvent {
+                nickname: rename_data.nick_name,
+            }));
+        }
+        Event0x210SubType::FriendRequestNotice => {
+            let msg_content = packet
+                .message
+                .as_ref()
+                .and_then(|m| m.body.as_ref())
+                .and_then(|b| b.msg_content.as_ref())
+                .ok_or_else(|| {
+                    EventError::OtherError(
+                        "Missing msg_content in Event0x210SubType::FriendRecallNotice".into(),
+                    )
+                })?;
+            let response_head = packet
+                .message
+                .as_ref()
+                .and_then(|m| m.response_head.as_ref())
+                .ok_or_else(|| {
+                    EventError::OtherError(
+                        "Missing response_head in Event0x210SubType::FriendRecallNotice".into(),
+                    )
+                })?;
+            let info = FriendRequest::decode(Bytes::from(msg_content.to_owned()))?
+                .info
+                .ok_or_else(|| {
+                    EventError::OtherError(
+                        "Missing friend request info in 0x210 sub type 35".into(),
+                    )
+                })?;
+            extra
+                .as_mut()
+                .unwrap()
+                .push(Box::new(FriendSysRequestEvent {
+                    source_uin: response_head.from_uin,
+                    source_uid: info.source_uid,
+                    message: info.message,
+                    source: info.source,
+                }));
+        }
+        Event0x210SubType::GroupMemberEnterNotice => {
+            let msg_content =
+                extract_msg_content(packet, "0x210 GroupMemberEnterNotice missing msg_content")?;
+            let info = GroupMemberEnterNotify::decode(msg_content)?;
+            let detail = info
+                .body
+                .ok_or(EventError::OtherError(
+                    "Missing body in 0x210 sub type 38".into(),
+                ))?
+                .info
+                .ok_or(EventError::OtherError(
+                    "Missing info in 0x210 sub type 38".into(),
+                ))?
+                .detail
+                .ok_or(EventError::OtherError(
+                    "Missing detail in 0x210 sub type 38".into(),
+                ))?;
+            let style = detail.style.ok_or(EventError::OtherError(
+                "Missing style in 0x210 sub type 38".into(),
+            ))?;
+            extra
+                .as_mut()
+                .unwrap()
+                .push(Box::new(GroupSysMemberEnterEvent {
+                    group_uin: detail.group_id,
+                    group_member_uin: detail.group_member_uin,
+                    style_id: style.style_id,
+                }));
+        }
+        Event0x210SubType::FriendDeleteOrPinChangedNotice => {
+            let msg_content = extract_msg_content(
+                packet,
+                "0x210 FriendDeleteOrPinChangedNotice missing msg_content",
+            )?;
+            let mut nt = Event0x210Sub39Notify::decode(msg_content)?;
+            let nt_body = nt.body.take().ok_or_else(|| {
+                EventError::OtherError("Missing body in 0x210 sub type 39".into())
+            })?;
+            match nt_body.r#type {
+                7 => match nt_body.pin_changed {
+                    Some(pc) => {
+                        let mut body = pc.body.ok_or_else(|| {
+                            EventError::OtherError("Missing pin_changed body".into())
+                        })?;
+                        extra
+                            .as_mut()
+                            .unwrap()
+                            .push(Box::new(GroupSysPinChangeEvent {
+                                uid: body.uid,
+                                group_uin: body.group_uin,
+                                is_pin: body
+                                    .info
+                                    .take()
+                                    .is_some_and(|info| !info.timestamp.is_empty()),
+                            }));
+                    }
+                    None => {
+                        Err(EventError::OtherError(
+                            "Missing pin_changed in 0x210 sub type 39 type 7".into(),
+                        ))?;
+                    }
+                },
+                20 => match nt_body.data {
+                    Some(data) => {
+                        let body = data.rename_data.ok_or_else(|| {
+                            EventError::OtherError("Missing data.rename_data".into())
+                        })?;
+                        extra.as_mut().unwrap().push(Box::new(FriendSysRenameEvent {
+                            uid: data.uid,
+                            nickname: body.nick_name,
+                        }));
+                    }
+                    None => {
+                        Err(EventError::OtherError(
+                            "Missing data in 0x210 sub type 39 type 20".into(),
+                        ))?;
+                    }
+                },
+                _ => {
+                    Err(EventError::OtherError(
+                        "Unknown 0x210 sub type 39 type".into(),
+                    ))?;
+                }
+            }
+        }
         Event0x210SubType::FriendRecallNotice => {
             let msg_content = packet
                 .message
@@ -451,8 +785,22 @@ fn process_event_0x210<'a>(
                 action_img_url: poke_args.action_img_url,
             }));
         }
-        _ => {
-            tracing::warn!("TODO: unhandled 0x210 sub type: {:?}", sub_type);
+        Event0x210SubType::SubType179 | Event0x210SubType::SubType226 => {
+            let msg_content = extract_msg_content(packet, "0x210 SubType179 missing msg_content")?;
+            let new_friend = NewFriend::decode(msg_content)?.info.ok_or_else(|| {
+                EventError::OtherError("Missing info in 0x210 sub type 179".into())
+            })?;
+            extra.as_mut().unwrap().push(Box::new(FriendSysNewEvent {
+                from_uid: new_friend.uid,
+                from_nickname: new_friend.nick_name,
+                msg: new_friend.message,
+            }));
+        }
+        Event0x210SubType::ServicePinChanged | Event0x210SubType::GroupKickNotice => {
+            Err(EventError::InternalWarning(format!(
+                "TODO: handle 0x210 sub type {:?}",
+                sub_type
+            )))?;
         }
     }
     Ok(extra)

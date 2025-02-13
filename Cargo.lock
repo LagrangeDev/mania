@@ -1242,6 +1242,7 @@ dependencies = [
  "quick-xml",
  "rand",
  "rand_chacha",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

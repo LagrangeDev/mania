@@ -20,7 +20,7 @@ async fn main() {
         } else {
             use tracing_subscriber::{fmt, EnvFilter};
             use tracing_appender::rolling::{RollingFileAppender, Rotation};
-            let file_appender = RollingFileAppender::new(Rotation::DAILY, "./logs", "mania.log");
+            let file_appender = RollingFileAppender::new(Rotation::HOURLY, "./logs", "mania.log");
             let fmt_layer = fmt::Layer::default()
                 .with_writer(stdout)
                 .with_filter(EnvFilter::new("debug"));

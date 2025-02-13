@@ -4,6 +4,7 @@ use crate::core::event::login::trans_emp::{build_wtlogin_packet, parse_wtlogin_p
 use crate::core::event::prelude::*;
 use crate::core::key_store::AccountInfo;
 use crate::core::tlv::*;
+use arc_swap::ArcSwap;
 use chrono::Utc;
 use md5::{Digest, Md5};
 use std::sync::Arc;
@@ -95,7 +96,7 @@ impl ClientEvent for WtLogin {
             ctx.key_store.info.store(Arc::from(AccountInfo {
                 age: self_info.age,
                 gender: self_info.gender,
-                name: self_info.nick_name.to_owned(),
+                name: ArcSwap::from(Arc::new(self_info.nick_name.to_owned())),
             }));
             Ok(ClientResult::single(Box::new(Self { code: 0, msg: None })))
         } else {

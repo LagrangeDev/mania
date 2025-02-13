@@ -1,12 +1,11 @@
 use crate::core::entity::group_sys_enum::GroupEssenceSetFlag;
-pub use mania_macros::ManiaEvent;
-
-#[derive(ManiaEvent)]
-pub struct GroupEssenceEvent {
+use crate::core::event::prelude::*;
+#[derive(Debug, DummyEvent, Default)]
+pub struct GroupSysEssenceEvent {
     pub group_uin: u32,
     pub sequence: u32,
     pub random: u32,
-    pub is_set: GroupEssenceSetFlag,
+    pub set_flag: GroupEssenceSetFlag,
     pub from_uin: u32,
     pub operator_uin: u32,
 }
