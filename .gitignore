@@ -4,6 +4,7 @@ target/
 *.png
 *.json
 .run/
+logs/
 
 # direnv
 /.direnv

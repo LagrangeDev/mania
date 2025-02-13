@@ -1,25 +1,36 @@
 use mania::{Client, ClientConfig, DeviceInfo, KeyStore};
 use std::fs;
+use std::io::stdout;
+use tracing_subscriber::prelude::*;
 use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
     cfg_if::cfg_if! {
         if #[cfg(feature = "tokio-tracing")] {
-        use tracing_subscriber::prelude::*;
-        let console_layer = console_subscriber::spawn();
-        tracing_subscriber::registry()
-            .with(console_layer)
-            .with(
-                tracing_subscriber::fmt::layer()
-                    .with_filter(tracing_subscriber::EnvFilter::new("trace")),
-            )
-            .init();
-        tracing::info!("tokio-tracing initialized.");
+            let console_layer = console_subscriber::spawn();
+            tracing_subscriber::registry()
+                .with(console_layer)
+                .with(
+                    tracing_subscriber::fmt::layer()
+                        .with_filter(tracing_subscriber::EnvFilter::new("trace")),
+                )
+                .init();
+            tracing::info!("tokio-tracing initialized.");
         } else {
-            tracing_subscriber::fmt()
-            .with_env_filter(tracing_subscriber::EnvFilter::new("debug"))
-            .init();
+            use tracing_subscriber::{fmt, EnvFilter};
+            use tracing_appender::rolling::{RollingFileAppender, Rotation};
+            let file_appender = RollingFileAppender::new(Rotation::DAILY, "./logs", "mania.log");
+            let fmt_layer = fmt::Layer::default()
+                .with_writer(stdout)
+                .with_filter(EnvFilter::new("debug"));
+            let file_layer = fmt::Layer::default()
+                .with_writer(file_appender)
+                .with_filter(EnvFilter::new("trace"));
+            let subscriber = tracing_subscriber::registry()
+                .with(fmt_layer)
+                .with(file_layer);
+            subscriber.init();
         }
     }
     let config = ClientConfig::default();
