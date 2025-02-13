@@ -37,7 +37,7 @@ pub enum BusinessError {
     #[error("An mania error occurred: {0}")]
     GenericError(String),
 
-    #[error("An mania internal event error occurred: {0}")]
+    #[error("{0}")]
     InternalEventError(#[from] EventError),
 }
 
@@ -254,7 +254,12 @@ impl BusinessHandle {
             tx.send(result).expect("receiver dropped");
         } else if let Err(e) = &result {
             match e {
-                BusinessError::InternalEventError(inner_err @ EventError::UnsupportedEvent(_)) => {
+                BusinessError::InternalEventError(inner_err)
+                    if matches!(
+                        inner_err,
+                        EventError::UnsupportedEvent(_) | EventError::InternalWarning(_)
+                    ) =>
+                {
                     tracing::warn!("{}", inner_err);
                 }
                 _ => {
