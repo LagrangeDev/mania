@@ -258,6 +258,15 @@ impl BusinessHandle {
         Ok(event.uin)
     }
 
+    pub(crate) async fn resolve_stranger_uid2uin_fast(self: &Arc<Self>, stranger_uid: &str) -> u32 {
+        self.resolve_stranger_uid2uin(stranger_uid)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::error!("resolve_stranger_uid2uin_fast failed: {:?}", e);
+                0
+            })
+    }
+
     pub async fn fetch_group_requests(self: &Arc<Self>) -> ManiaResult<Vec<BotGroupRequest>> {
         let mut fetch_event = FetchGroupRequestsEvent::default();
         let res = self.send_event(&mut fetch_event).await?;
@@ -279,16 +288,25 @@ impl BusinessHandle {
             async move {
                 let (invitor_member_uin, target_member_uin, operator_uin) = join!(
                     this.resolve_stranger_uid2uin(req.invitor_member_uid.as_deref().unwrap_or("")),
-                    this.resolve_stranger_uid2uin(&req.target_member_uid),
+                    this.resolve_stranger_uid2uin_fast(&req.target_member_uid),
                     this.resolve_stranger_uid2uin(req.operator_uid.as_deref().unwrap_or(""))
                 );
                 BotGroupRequest {
                     group_uin: req.group_uin,
-                    invitor_member_uin: invitor_member_uin.ok(),
+                    invitor_member_uin: invitor_member_uin.map(Some).unwrap_or_else(|e| {
+                        tracing::error!(
+                            "invitor_member_uin resolve_stranger_uid2uin error: {:?}",
+                            e
+                        );
+                        None
+                    }),
                     invitor_member_card: req.invitor_member_card.to_owned(),
-                    target_member_uin: target_member_uin.unwrap_or_default(),
+                    target_member_uin,
                     target_member_card: req.target_member_card.to_owned(),
-                    operator_uin: operator_uin.ok(),
+                    operator_uin: operator_uin.map(Some).unwrap_or_else(|e| {
+                        tracing::error!("operator_uin resolve_stranger_uid2uin error: {:?}", e);
+                        None
+                    }),
                     operator_name: req.operator_name.to_owned(),
                     sequence: req.sequence,
                     state: req.state,

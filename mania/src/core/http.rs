@@ -32,7 +32,7 @@ impl HttpClient {
         url: &str,
         payload: Option<HashMap<String, String>>,
     ) -> Result<String, Error> {
-        let form_data = payload.unwrap_or_default(); // TODO:
+        let form_data = payload.unwrap_or_default(); // FIXME:
         let response = self.client.post(url).form(&form_data).send().await?;
         response.text().await
     }

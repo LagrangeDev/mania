@@ -45,6 +45,13 @@ impl BusinessHandle {
         }
     }
 
+    pub async fn uin2uid_fast(self: &Arc<Self>, uin: u32, group_uin: Option<u32>) -> String {
+        self.uin2uid(uin, group_uin).await.unwrap_or_else(|e| {
+            tracing::error!("uin2uid_fast failed: {:?}", e);
+            String::new()
+        })
+    }
+
     pub async fn uid2uin(self: &Arc<Self>, uid: &str, group_uin: Option<u32>) -> ManiaResult<u32> {
         match self.cache.cache_mode {
             CacheMode::Full | CacheMode::Half => {
@@ -73,6 +80,13 @@ impl BusinessHandle {
                 }
             }
         }
+    }
+
+    pub async fn uid2uin_fast(self: &Arc<Self>, uid: &str, group_uin: Option<u32>) -> u32 {
+        self.uid2uin(uid, group_uin).await.unwrap_or_else(|e| {
+            tracing::error!("uid2uin_fast failed: {:?}", e);
+            0
+        })
     }
 
     async fn resolve_uin2uid_within_cache(

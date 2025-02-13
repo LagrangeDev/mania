@@ -186,9 +186,8 @@ async fn messaging_logic_incoming(
 
         if let Some(invite) = event.as_any_mut().downcast_mut::<GroupSysInviteEvent>() {
             let invitor_uin = handle
-                .resolve_stranger_uid2uin(&invite.invitor_uid)
-                .await
-                .unwrap_or_default();
+                .resolve_stranger_uid2uin_fast(&invite.invitor_uid)
+                .await;
             if let Err(e) = handle
                 .event_dispatcher
                 .group
@@ -207,10 +206,7 @@ async fn messaging_logic_incoming(
 
         if let Some(change) = event.as_any_mut().downcast_mut::<GroupSysAdminEvent>() {
             let group_uin = change.group_uin;
-            let admin_uin = handle
-                .uid2uin(&change.uid, Some(group_uin))
-                .await
-                .unwrap_or_default();
+            let admin_uin = handle.uid2uin_fast(&change.uid, Some(group_uin)).await;
             if let Err(e) = handle
                 .event_dispatcher
                 .group
@@ -246,17 +242,18 @@ async fn messaging_logic_incoming(
         }
 
         if let Some(join) = event.as_any_mut().downcast_mut::<GroupSysIncreaseEvent>() {
-            let member_uin = handle
-                .resolve_stranger_uid2uin(&join.member_uid)
-                .await
-                .unwrap_or_default();
+            let member_uin = handle.resolve_stranger_uid2uin_fast(&join.member_uid).await;
             let invitor_uin = handle
                 .uid2uin(
                     join.invitor_uid.as_deref().unwrap_or(""),
                     Some(join.group_uin),
                 )
                 .await
-                .ok();
+                .map(Some)
+                .unwrap_or_else(|e| {
+                    tracing::error!("uid2uin error: {:?}", e);
+                    None
+                });
             if let Err(e) =
                 handle
                     .event_dispatcher
@@ -277,16 +274,19 @@ async fn messaging_logic_incoming(
 
         if let Some(leave) = event.as_any_mut().downcast_mut::<GroupSysDecreaseEvent>() {
             let member_uin = handle
-                .resolve_stranger_uid2uin(&leave.member_uid)
-                .await
-                .unwrap_or_default();
+                .resolve_stranger_uid2uin_fast(&leave.member_uid)
+                .await;
             let operator_uin = handle
                 .uid2uin(
                     leave.operator_uid.as_deref().unwrap_or(""),
                     Some(leave.group_uin),
                 )
                 .await
-                .ok();
+                .map(Some)
+                .unwrap_or_else(|e| {
+                    tracing::error!("uid2uin error: {:?}", e);
+                    None
+                });
             if let Err(e) =
                 handle
                     .event_dispatcher
@@ -308,12 +308,11 @@ async fn messaging_logic_incoming(
         if let Some(sys_mute) = event.as_any_mut().downcast_mut::<GroupSysMuteEvent>() {
             let group_uin = sys_mute.group_uin;
             let operator_uin = handle
-                .uid2uin(
+                .uid2uin_fast(
                     sys_mute.operator_uid.as_deref().unwrap_or(""),
                     Some(group_uin),
                 )
-                .await
-                .unwrap_or_default();
+                .await;
             if let Err(e) = handle
                 .event_dispatcher
                 .group
@@ -331,18 +330,12 @@ async fn messaging_logic_incoming(
         if let Some(member_mute) = event.as_any_mut().downcast_mut::<GroupSysMemberMuteEvent>() {
             let group_uin = member_mute.group_uin;
             let operator_uin = match &member_mute.operator_uid {
-                Some(uid) => Some(
-                    handle
-                        .uid2uin(uid, Some(group_uin))
-                        .await
-                        .unwrap_or_default(),
-                ),
+                Some(uid) => Some(handle.uid2uin_fast(uid, Some(group_uin)).await),
                 None => None,
             };
             let target_uin = handle
-                .resolve_stranger_uid2uin(&member_mute.target_uid)
-                .await
-                .unwrap_or_default();
+                .resolve_stranger_uid2uin_fast(&member_mute.target_uid)
+                .await;
             if let Err(e) = handle
                 .event_dispatcher
                 .group
@@ -383,9 +376,8 @@ async fn messaging_logic_incoming(
                 .send(Some(GroupEvent::GroupTodo(group_todo::GroupTodoEvent {
                     group_uin: todo.group_uin,
                     operator_uin: handle
-                        .uid2uin(&todo.operator_uid, Some(todo.group_uin))
-                        .await
-                        .unwrap_or_default(),
+                        .uid2uin_fast(&todo.operator_uid, Some(todo.group_uin))
+                        .await,
                 })))
             {
                 tracing::error!("Failed to send group todo event: {:?}", e);
@@ -401,9 +393,8 @@ async fn messaging_logic_incoming(
                     target_group_uin: reaction.target_group_uin,
                     target_sequence: reaction.target_sequence,
                     operator_uin: handle
-                        .uid2uin(&reaction.operator_uid, Some(reaction.target_group_uin))
-                        .await
-                        .unwrap_or_default(),
+                        .uid2uin_fast(&reaction.operator_uid, Some(reaction.target_group_uin))
+                        .await,
                     is_add: reaction.is_add,
                     code: reaction.code.to_owned(),
                     count: reaction.count,
@@ -421,14 +412,10 @@ async fn messaging_logic_incoming(
                 .send(Some(GroupEvent::GroupRecall(GroupRecallEvent {
                     group_uin: recall.group_uin,
                     author_uin: handle
-                        .uid2uin(&recall.author_uid, Some(recall.group_uin))
-                        .await
-                        .unwrap_or_default(),
+                        .uid2uin_fast(&recall.author_uid, Some(recall.group_uin))
+                        .await,
                     operator_uin: if let Some(uid) = recall.operator_uid.as_ref() {
-                        handle
-                            .uid2uin(uid, Some(recall.group_uin))
-                            .await
-                            .unwrap_or_default()
+                        handle.uid2uin_fast(uid, Some(recall.group_uin)).await
                     } else {
                         0
                     },
@@ -517,13 +504,11 @@ async fn messaging_logic_incoming(
                         group_invitation_request::GroupInvitationRequestEvent {
                             group_uin: invite.group_uin,
                             target_uin: handle
-                                .resolve_stranger_uid2uin(&invite.target_uid)
-                                .await
-                                .unwrap_or_default(),
+                                .resolve_stranger_uid2uin_fast(&invite.target_uid)
+                                .await,
                             invitor_uin: handle
-                                .uid2uin(&invite.invitor_uid, Some(invite.group_uin))
-                                .await
-                                .unwrap_or_default(),
+                                .uid2uin_fast(&invite.invitor_uid, Some(invite.group_uin))
+                                .await,
                         },
                     )))
             {
@@ -539,10 +524,7 @@ async fn messaging_logic_incoming(
                     .friend
                     .send(Some(FriendEvent::FriendRecallEvent(
                         friend_recall::FriendRecallEvent {
-                            friend_uin: handle
-                                .uid2uin(&recall.from_uid, None)
-                                .await
-                                .unwrap_or_default(),
+                            friend_uin: handle.uid2uin_fast(&recall.from_uid, None).await,
                             client_sequence: recall.client_sequence,
                             time: recall.time,
                             random: recall.random,
@@ -565,10 +547,7 @@ async fn messaging_logic_incoming(
                             Some(_) => ChatType::Group,
                             None => ChatType::Friend,
                         },
-                        uin: handle
-                            .uid2uin(&pin.uid, pin.group_uin)
-                            .await
-                            .unwrap_or_default(),
+                        uin: handle.uid2uin_fast(&pin.uid, pin.group_uin).await,
                         is_pin: pin.is_pin,
                     },
                 )))
@@ -601,10 +580,7 @@ async fn messaging_logic_incoming(
                 .friend
                 .send(Some(FriendEvent::FriendNewEvent(
                     friend_new::FriendNewEvent {
-                        from_uin: handle
-                            .uid2uin(&friend_new.from_uid, None)
-                            .await
-                            .unwrap_or_default(),
+                        from_uin: handle.uid2uin_fast(&friend_new.from_uid, None).await,
                         from_nickname: friend_new.from_nickname.to_owned(),
                         msg: friend_new.msg.to_owned(),
                     },
@@ -622,7 +598,7 @@ async fn messaging_logic_incoming(
                     .friend
                     .send(Some(FriendEvent::FriendRenameEvent(
                         friend_rename::FriendRenameEvent {
-                            uin: handle.uid2uin(&rename.uid, None).await.unwrap_or_default(),
+                            uin: handle.uid2uin_fast(&rename.uid, None).await,
                             nickname: rename.nickname.to_owned(),
                         },
                     )))
@@ -639,10 +615,7 @@ async fn messaging_logic_incoming(
                     .friend
                     .send(Some(FriendEvent::FriendRequestEvent(
                         friend_request::FriendRequestEvent {
-                            source_uin: handle
-                                .uid2uin(&request.source_uid, None)
-                                .await
-                                .unwrap_or_default(),
+                            source_uin: handle.uid2uin_fast(&request.source_uid, None).await,
                             message: request.message.to_owned(),
                             source: request.source.to_owned(),
                         },
@@ -809,9 +782,8 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
                 let download_result = match &chain.typ {
                     MessageType::Group(grp) => {
                         let uid = handle
-                            .uin2uid(chain.friend_uin, Some(grp.group_uin))
-                            .await
-                            .unwrap_or_default();
+                            .uin2uid_fast(chain.friend_uin, Some(grp.group_uin))
+                            .await;
                         match handle
                             .download_video(
                                 &uid,
