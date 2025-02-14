@@ -61,7 +61,9 @@ impl ClientEvent for FetchMembersEvent {
                         .unwrap_or_else(|| OidbSvcTrpcTcp0xFe7Level::default().level),
                     member_card: card,
                     member_name: member.member_name,
-                    special_title: member.special_title,
+                    special_title: member
+                        .special_title
+                        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned()),
                     join_time: to_dt(member.join_timestamp, "Invalid join timestamp")?,
                     last_msg_time: to_dt(
                         member.last_msg_timestamp,

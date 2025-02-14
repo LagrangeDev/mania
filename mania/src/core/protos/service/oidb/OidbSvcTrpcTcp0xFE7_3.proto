@@ -43,7 +43,7 @@ message OidbSvcTrpcTcp0xFE7Member {
   string MemberName = 10;
   OidbSvcTrpcTcp0xFE7Card MemberCard = 11;
   optional OidbSvcTrpcTcp0xFE7Level Level = 12;
-  optional string SpecialTitle = 17;
+  optional bytes SpecialTitle = 17;
   uint32 JoinTimestamp = 100;
   uint32 LastMsgTimestamp = 101;
   optional uint32 ShutUpTimestamp = 102;
