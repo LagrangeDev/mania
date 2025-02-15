@@ -6,6 +6,7 @@ use crate::core::event::message::image_group_download::ImageGroupDownloadEvent;
 use crate::core::event::message::multi_msg_download::MultiMsgDownloadEvent;
 use crate::core::event::message::record_c2c_download::RecordC2CDownloadEvent;
 use crate::core::event::message::record_group_download::RecordGroupDownloadEvent;
+use crate::core::event::message::send_message::SendMessageEvent;
 use crate::core::event::message::video_c2c_download::VideoC2CDownloadEvent;
 use crate::core::event::message::video_group_download::VideoGroupDownloadEvent;
 use crate::core::event::system::fetch_filtered_group_request::FetchFilteredGroupRequestsEvent;
@@ -319,5 +320,12 @@ impl BusinessHandle {
         .await;
 
         Ok(requests)
+    }
+
+    pub async fn send_message(self: &Arc<Self>, message: MessageChain) -> ManiaResult<()> {
+        let mut send_event = dda!(SendMessageEvent { chain: message });
+        let res = self.send_event(&mut send_event).await?;
+        tracing::info!("Send message: {:?}", res);
+        Ok(())
     }
 }

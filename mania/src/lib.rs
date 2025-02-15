@@ -16,6 +16,7 @@ pub use crate::core::error::{ManiaError, ManiaResult};
 pub use crate::core::key_store::KeyStore;
 use crate::core::session::Session;
 use crate::core::sign::{SignProvider, default_sign_provider};
+use crate::entity::bot_group_member::FetchGroupMemberStrategy;
 use std::env;
 use std::sync::Arc;
 
@@ -37,6 +38,10 @@ pub struct ClientConfig {
     pub highway_concurrency: usize,
     /// Cache mode for the client
     pub cache_mode: CacheMode,
+    /// The strategy for fetching `BotGroupMember`
+    /// Setting it to `Simple` can avoid fetching all group members at the cost of losing some fields
+    /// See `BotGroupMember` for more information
+    pub fetch_group_member_strategy: FetchGroupMemberStrategy,
 }
 
 impl Default for ClientConfig {
@@ -49,7 +54,8 @@ impl Default for ClientConfig {
             sign_provider: None,
             highway_chuck_size: 1024 * 1024,
             highway_concurrency: 4,
-            cache_mode: CacheMode::Full,
+            cache_mode: CacheMode::Half,
+            fetch_group_member_strategy: FetchGroupMemberStrategy::Simple,
         }
     }
 }
@@ -72,6 +78,7 @@ impl Client {
             app_info,
             device,
             key_store,
+            config: config.clone(),
             sign_provider: sign_provider.unwrap_or_else(|| {
                 default_sign_provider(
                     config.protocol,

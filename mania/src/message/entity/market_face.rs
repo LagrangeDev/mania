@@ -1,6 +1,7 @@
 use super::prelude::*;
 use std::fmt::Debug;
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct MarketFaceEntity {
     pub emoji_id: String,
@@ -26,7 +27,7 @@ impl Display for MarketFaceEntity {
 }
 
 impl MessageEntity for MarketFaceEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         todo!()
     }
 

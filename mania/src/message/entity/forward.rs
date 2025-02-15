@@ -1,5 +1,6 @@
 use super::prelude::*;
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct ForwardEntity {
     pub time: DateTime<Utc>,
@@ -29,7 +30,7 @@ impl Display for ForwardEntity {
 }
 
 impl MessageEntity for ForwardEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         let pb_reserve = dda!(Preserve {
             message_id: self.message_id.0,
             sender_uid: self.uid.clone(),

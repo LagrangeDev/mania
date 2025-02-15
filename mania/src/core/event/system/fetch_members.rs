@@ -60,19 +60,19 @@ impl ClientEvent for FetchMembersEvent {
                         .map(|l| l.level)
                         .unwrap_or_else(|| OidbSvcTrpcTcp0xFe7Level::default().level),
                     member_card: card,
-                    member_name: member.member_name,
+                    member_name: Some(member.member_name),
                     special_title: member
                         .special_title
                         .map(|bytes| String::from_utf8_lossy(&bytes).into_owned()),
-                    join_time: to_dt(member.join_timestamp, "Invalid join timestamp")?,
-                    last_msg_time: to_dt(
+                    join_time: Some(to_dt(member.join_timestamp, "Invalid join timestamp")?),
+                    last_msg_time: Some(to_dt(
                         member.last_msg_timestamp,
                         "Invalid last message timestamp",
-                    )?,
-                    shut_up_timestamp: to_dt(
+                    )?),
+                    shut_up_timestamp: Some(to_dt(
                         member.shut_up_timestamp.unwrap_or(0),
                         "Invalid shut up timestamp",
-                    )?,
+                    )?),
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;

@@ -6,6 +6,7 @@ use crate::core::event::system::fetch_members::FetchMembersEvent;
 use crate::entity::bot_friend::{BotFriend, BotFriendGroup};
 use crate::entity::bot_group_member::BotGroupMember;
 use crate::{ManiaError, ManiaResult, dda};
+use dashmap::DashMap;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -236,6 +237,7 @@ impl BusinessHandle {
             .await?;
         res.ok_or_else(|| ManiaError::GenericError(Cow::from("Friend not found")))
     }
+
     async fn iter_fetch_group<T, F>(
         self: &Arc<Self>,
         group_uin: u32,
@@ -321,5 +323,81 @@ impl BusinessHandle {
             })
             .await?;
         res.ok_or_else(|| ManiaError::GenericError(Cow::from("Member not found")))
+    }
+
+    // TODO: Optimize performance in no-cache mode
+    pub async fn fetch_maybe_cached_group_members<F>(
+        self: &Arc<Self>,
+        group_uin: u32,
+        process_fn: F,
+        refresh_cache: bool,
+    ) -> ManiaResult<Vec<BotGroupMember>>
+    where
+        F: Fn(&DashMap<u32, Vec<BotGroupMember>>) -> Vec<BotGroupMember>,
+    {
+        if self.cache.cache_mode != CacheMode::None {
+            if refresh_cache {
+                self.refresh_group_members_cache(group_uin).await?;
+            }
+            if !self
+                .cache
+                .cached_group_members
+                .as_ref()
+                .unwrap()
+                .contains_key(&group_uin)
+            {
+                self.refresh_group_members_cache(group_uin).await?;
+            }
+            Ok(process_fn(
+                self.cache.cached_group_members.as_ref().unwrap(),
+            ))
+        } else {
+            let group_members: DashMap<u32, Vec<BotGroupMember>> = DashMap::new();
+            self.iter_fetch_group(group_uin, |event| {
+                group_members.insert(group_uin, event.group_members.to_owned());
+                Ok(None::<()>)
+            })
+            .await?;
+            Ok(process_fn(&group_members))
+        }
+    }
+
+    // TODO: Optimize performance in no-cache mode
+    pub async fn fetch_maybe_cached_friends<F>(
+        self: &Arc<Self>,
+        maybe_friend_uin: Option<u32>,
+        process_fn: F,
+        refresh_cache: bool,
+    ) -> ManiaResult<Vec<BotFriend>>
+    where
+        F: Fn(&DashMap<u32, BotFriend>) -> Vec<BotFriend>,
+    {
+        if self.cache.cache_mode != CacheMode::None {
+            if refresh_cache {
+                self.refresh_friends_cache().await?;
+            }
+            // TODO: Optimize performance
+            if maybe_friend_uin.is_some()
+                && !self
+                    .cache
+                    .cached_friends
+                    .as_ref()
+                    .unwrap()
+                    .contains_key(&maybe_friend_uin.unwrap())
+            {
+                self.refresh_friends_cache().await?;
+            }
+            Ok(process_fn(self.cache.cached_friends.as_ref().unwrap()))
+        } else {
+            let friends: DashMap<u32, BotFriend> = DashMap::new();
+            self.iter_fetch_friends(|event| {
+                for friend in event.friends.iter_mut() {
+                    friends.insert(friend.uin, friend.to_owned());
+                }
+                Ok(None::<()>)
+            })
+            .await?;
+            Ok(process_fn(&friends))
+        }
     }
 }

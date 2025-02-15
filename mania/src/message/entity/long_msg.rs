@@ -1,6 +1,7 @@
 use super::prelude::*;
 use crate::message::chain::MessageChain;
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct LongMsgEntity {
     pub res_id: String,
@@ -24,7 +25,7 @@ impl Display for LongMsgEntity {
 }
 
 impl MessageEntity for LongMsgEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         todo!()
     }
 

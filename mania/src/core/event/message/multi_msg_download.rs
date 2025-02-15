@@ -35,7 +35,7 @@ impl ClientEvent for MultiMsgDownloadEvent {
         Ok(BinaryPacket(packet.encode_to_vec().into()))
     }
 
-    fn parse(packet: Bytes, _: &Context) -> CEParseResult {
+    fn parse(packet: Bytes, ctx: &Context) -> CEParseResult {
         let packet = RecvLongMsgResp::decode(packet)?;
         let inflate = packet
             .result
@@ -55,7 +55,7 @@ impl ClientEvent for MultiMsgDownloadEvent {
             .ok_or_else(|| EventError::OtherError("Failed to find action_data".to_string()))?
             .msg_body
             .into_iter()
-            .map(MessagePacker::parse_fake_chain)
+            .map(|body| MessagePacker::parse_fake_chain(body, ctx))
             .collect::<Result<Vec<MessageChain>, String>>()
             .map_err(EventError::OtherError)?;
         Ok(ClientResult::single(Box::new(dda!(

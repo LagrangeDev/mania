@@ -155,17 +155,23 @@ impl ClientEvent for PushMessageEvent {
             | PkgType::TempMessage
             | PkgType::PrivateRecordMessage => {
                 chain = Some(
-                    MessagePacker::parse_chain(packet.message.ok_or_else(|| {
-                        EventError::OtherError("PushMsgBody is None".to_string())
-                    })?)
+                    MessagePacker::parse_chain(
+                        packet.message.ok_or_else(|| {
+                            EventError::OtherError("PushMsgBody is None".to_string())
+                        })?,
+                        ctx,
+                    )
                     .map_err(|e| EventError::OtherError(format!("parse_chain failed: {}", e)))?,
                 );
             }
             PkgType::PrivateFileMessage => {
                 chain = Some(
-                    MessagePacker::parse_private_file(packet.message.ok_or_else(|| {
-                        EventError::OtherError("PushMsgBody is None".to_string())
-                    })?)
+                    MessagePacker::parse_private_file(
+                        packet.message.ok_or_else(|| {
+                            EventError::OtherError("PushMsgBody is None".to_string())
+                        })?,
+                        ctx,
+                    )
                     .map_err(|e| {
                         EventError::OtherError(format!("parse_file_chain failed: {}", e))
                     })?,

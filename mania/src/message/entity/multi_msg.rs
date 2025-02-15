@@ -2,6 +2,7 @@ use super::prelude::*;
 use crate::message::chain::MessageChain;
 use serde::{Deserialize, Serialize};
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct MultiMsgEntity {
     pub res_id: String,
@@ -156,7 +157,7 @@ impl Display for MultiMsgEntity {
 }
 
 impl MessageEntity for MultiMsgEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         todo!()
     }
 

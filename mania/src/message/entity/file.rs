@@ -18,6 +18,7 @@ pub enum FileUnique {
     C2C(FileC2CUnique),
 }
 
+#[pack_content(true)]
 #[derive(Default)]
 pub struct FileEntity {
     pub file_size: u64,
@@ -50,11 +51,7 @@ impl Display for FileEntity {
 }
 
 impl MessageEntity for FileEntity {
-    fn pack_element(&self) -> Vec<Elem> {
-        todo!()
-    }
-
-    fn pack_content(&self) -> Option<Bytes> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         todo!()
     }
 
@@ -78,5 +75,11 @@ impl MessageEntity for FileEntity {
             }
             _ => None,
         }
+    }
+}
+
+impl MessageContentImpl for FileEntity {
+    fn pack_content(&self) -> Option<Bytes> {
+        todo!()
     }
 }

@@ -1,3 +1,5 @@
+pub mod extra_general_flags;
+pub mod extra_info;
 pub mod face;
 pub mod file;
 pub mod forward;
@@ -13,6 +15,8 @@ pub mod text;
 pub mod video;
 pub mod xml;
 
+pub use extra_general_flags::ExtraGeneralFlagsEntity as ExtraGeneralFlags;
+pub use extra_info::ExtraInfoEntity as ExtraInfo;
 pub use face::FaceEntity as Face;
 pub use file::FileEntity as File;
 pub use forward::ForwardEntity as Forward;
@@ -32,11 +36,16 @@ use crate::core::protos::message::Elem;
 use bytes::Bytes;
 use std::fmt::{Debug, Display};
 
-pub trait MessageEntity: Debug + Display {
-    fn pack_element(&self) -> Vec<Elem>;
-    fn pack_content(&self) -> Option<Bytes> {
-        None
-    }
+pub trait MessageContentImplChecker {
+    fn need_pack(&self) -> bool;
+}
+
+pub trait MessageContentImpl: MessageContentImplChecker {
+    fn pack_content(&self) -> Option<Bytes>;
+}
+
+pub trait MessageEntity: Debug + Display + MessageContentImpl {
+    fn pack_element(&self, self_uid: &str) -> Vec<Elem>;
     fn unpack_element(elem: &Elem) -> Option<Self>
     where
         Self: Sized;
@@ -58,6 +67,8 @@ pub enum Entity {
     Video(video::VideoEntity), // FIXME: clippy warn: at least 800 bytes
     Xml(xml::XmlEntity),
     LongMsg(long_msg::LongMsgEntity), // FIXME: clippy warn: at least 344 bytes
+    ExtraInfo(extra_info::ExtraInfoEntity),
+    ExtraGeneralFlags(extra_general_flags::ExtraGeneralFlagsEntity),
 }
 
 macro_rules! impl_entity_show {
@@ -86,10 +97,17 @@ macro_rules! impl_entity_show {
 macro_rules! impl_entity_pack {
     ( $( $variant:ident ),* $(,)? ) => {
         impl Entity {
-            pub fn pack_element(&self) -> Vec<Elem> {
+            pub fn need_pack(&self) -> bool {
                 match self {
                     $(
-                        Entity::$variant(inner) => inner.pack_element(),
+                        Entity::$variant(inner) => inner.need_pack(),
+                    )*
+                }
+            }
+            pub fn pack_element(&self, self_uid: &str) -> Vec<Elem> {
+                match self {
+                    $(
+                        Entity::$variant(inner) => inner.pack_element(self_uid),
                     )*
                 }
             }
@@ -104,7 +122,7 @@ macro_rules! impl_entity_pack {
     }
 }
 
-macro_rules! impl_entity_unpack {
+macro_rules! impl_common_entity_unpack {
     ( $( $variant:ident ),* $(,)? ) => {
         impl Entity {
             pub fn unpack_element(elem: &Elem) -> Option<Self> {
@@ -119,25 +137,65 @@ macro_rules! impl_entity_unpack {
     }
 }
 
-macro_rules! impl_entity_all {
+macro_rules! impl_extra_entity_unpack {
+    ( $( $variant:ident ),* $(,)? ) => {
+        impl Entity {
+            pub fn unpack_extra_element(elem: &Elem) -> Option<Self> {
+                $(
+                    if let Some(inner) = <$crate::message::entity::$variant as MessageEntity>::unpack_element(elem) {
+                        return Some(Entity::$variant(inner));
+                    }
+                )*
+                None
+            }
+        }
+    }
+}
+
+macro_rules! impl_show_pack_all {
     ( $( $variant:ident ),* $(,)? ) => {
         impl_entity_show!( $( $variant ),* );
         impl_entity_pack!( $( $variant ),* );
-        impl_entity_unpack!( $( $variant ),* );
     };
 }
 
-impl_entity_all!(
+impl_show_pack_all!(
+    Text,
+    Json,
+    Image,
+    Face,
+    Forward,
+    MarketFace,
+    LightApp,
+    MultiMsg,
+    Mention,
+    File,
+    Record,
+    Video,
+    Xml,
+    LongMsg,
+    ExtraInfo,
+    ExtraGeneralFlags
+);
+
+impl_common_entity_unpack!(
     Text, Json, Image, Face, Forward, MarketFace, LightApp, MultiMsg, Mention, File, Record, Video,
     Xml, LongMsg
 );
+
+impl_extra_entity_unpack!(ExtraInfo, ExtraGeneralFlags);
 
 impl Entity {
     pub fn from_elems(elems: &[Elem]) -> Vec<Self> {
         elems.iter().filter_map(Entity::unpack_element).collect()
     }
-    pub fn to_elems(&self) -> Vec<Elem> {
-        self.pack_element().into_iter().collect()
+
+    pub fn to_elems(&self, self_uid: &str) -> Vec<Elem> {
+        self.pack_element(self_uid).into_iter().collect()
+    }
+
+    pub fn need_pack_content(elems: &[Self]) -> bool {
+        elems.iter().any(|e| e.need_pack())
     }
 }
 
@@ -145,10 +203,11 @@ mod prelude {
     pub use crate::core::protos::message::*;
     pub use crate::dda;
     pub use crate::message::chain::{ClientSequence, MessageId};
-    pub use crate::message::entity::MessageEntity;
+    pub use crate::message::entity::{MessageContentImpl, MessageEntity};
     pub use crate::utility::compress::*;
     pub use bytes::Bytes;
     pub use chrono::{DateTime, Utc};
+    pub use mania_macros::pack_content;
     pub use prost::Message;
     pub use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
     pub use std::io::{Read, Write};

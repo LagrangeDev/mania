@@ -34,7 +34,7 @@
 |          |         |                                |         | LightApp      |   🟢    | ~~Voice Call~~    |   🔴    | GroupInvite         |   🟢    |
 |          |         |                                |         | LongMsg       | 🟡[^1]  | Client Key        |   🔴    | GroupRequestJoin    |   🟢    |
 |          |         |                                |         | Markdown      |   🔴    | Cookies           |   🔴    | FriendRequest       |   🟢    |
-|          |         |                                |         | MarketFace    | 🟡[^1]  | Send Message      |   🔴    | ~~FriendTyping~~    |   🔴    |
+|          |         |                                |         | MarketFace    | 🟡[^1]  | Send Message      |   🟡    | ~~FriendTyping~~    |   🔴    |
 |          |         |                                |         | Mention       |   🟢    |                   |         | ~~FriendVoiceCall~~ |   🔴    |
 |          |         |                                |         | MultiMsg      | 🟡[^1]  |                   |         |                     |         |
 |          |         |                                |         | Poke          |   🔴    |                   |         |                     |         |

@@ -1,6 +1,7 @@
 use super::prelude::*;
 use std::fmt::Debug;
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct MentionEntity {
     pub uin: u32,
@@ -26,7 +27,7 @@ impl Display for MentionEntity {
 }
 
 impl MessageEntity for MentionEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         let pb_reserve = MentionExtra {
             r#type: Some(if self.uin == 0 { 1 } else { 2 }),
             uin: Some(self.uin),

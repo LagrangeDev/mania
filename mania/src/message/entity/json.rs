@@ -1,6 +1,7 @@
 use super::prelude::*;
 use std::iter::once;
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct JsonEntity {
     pub json: String,
@@ -20,7 +21,7 @@ impl Display for JsonEntity {
 }
 
 impl MessageEntity for JsonEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         vec![
             dda!(Elem {
                 text: Some(dda!(Text {

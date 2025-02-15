@@ -109,11 +109,11 @@ impl MessageChain {
         matches!(self.typ, MessageType::Group(_))
     }
 
-    pub(crate) fn friend(friend_uin: u32, friend_uid: String, self_uid: String) -> Self {
+    pub(crate) fn friend(friend_uin: u32, friend_uid: &str, self_uid: &str) -> Self {
         dda!(Self {
             typ: MessageType::Friend(FriendMessageUniqueElem::default()),
-            self_uid: self_uid,
-            uid: friend_uid,
+            self_uid: self_uid.to_string(),
+            uid: friend_uid.to_string(),
             friend_uin,
         })
     }

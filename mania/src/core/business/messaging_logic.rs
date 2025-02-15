@@ -1,6 +1,7 @@
 use crate::core::business::LogicRegistry;
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::message::push_msg::PushMessageEvent;
+use crate::core::event::message::send_message::SendMessageEvent;
 use crate::core::event::notify::bot_sys_rename::BotSysRenameEvent;
 use crate::core::event::notify::friend_sys_new::FriendSysNewEvent;
 use crate::core::event::notify::friend_sys_poke::FriendSysPokeEvent;
@@ -25,6 +26,7 @@ use crate::core::event::notify::group_sys_request_join::GroupSysRequestJoinEvent
 use crate::core::event::notify::group_sys_special_title::GroupSysSpecialTitleEvent;
 use crate::core::event::notify::group_sys_todo::GroupSysTodoEvent;
 use crate::core::event::prelude::*;
+use crate::entity::bot_group_member::FetchGroupMemberStrategy;
 use crate::event::friend::friend_poke::FriendPokeEvent;
 use crate::event::friend::{
     FriendEvent, friend_message, friend_new, friend_recall, friend_rename, friend_request,
@@ -47,6 +49,7 @@ use mania_macros::handle_event;
 use std::sync::Arc;
 
 #[handle_event(
+    SendMessageEvent,
     PushMessageEvent,
     GroupSysRequestJoinEvent,
     GroupSysInviteEvent,
@@ -94,7 +97,7 @@ async fn messaging_logic_incoming(
         if let Some(msg) = event.as_any_mut().downcast_mut::<PushMessageEvent>() {
             if let Some(mut chain) = msg.chain.take() {
                 resolve_incoming_chain(&mut chain, handle.clone()).await;
-                // TODO: await ResolveChainMetadata(push.Chain);
+                resolve_chain_metadata(&mut chain, handle.clone()).await;
                 // TODO: MessageFilter.Filter(push.Chain);
                 // TODO?: sb tx! Collection.Invoker.PostEvent(new GroupInvitationEvent(groupUin, chain.FriendUin, sequence));
                 match &chain.typ {
@@ -844,7 +847,90 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
 
 async fn messaging_logic_outgoing(
     event: &mut dyn ServerEvent,
-    _: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle>,
 ) -> &dyn ServerEvent {
+    match event {
+        _ if let Some(send) = event.as_any_mut().downcast_mut::<SendMessageEvent>() => {
+            resolve_chain_metadata(&mut send.chain, handle.clone()).await;
+            resolve_outgoing_chain(&mut send.chain, handle.clone()).await;
+            // TODO: await Collection.Highway.UploadResources(send.Chain);
+        }
+        _ => {}
+    }
     event
+}
+
+async fn resolve_outgoing_chain(_: &mut MessageChain, _: Arc<BusinessHandle>) {}
+
+// TODO: return result!!!
+async fn resolve_chain_metadata(
+    chain: &mut MessageChain,
+    handle: Arc<BusinessHandle>,
+) -> &mut MessageChain {
+    match chain.typ {
+        MessageType::Group(ref mut grp)
+            if handle.context.config.fetch_group_member_strategy
+                == FetchGroupMemberStrategy::Full =>
+        {
+            let members = handle
+                .fetch_maybe_cached_group_members(
+                    grp.group_uin,
+                    |mm| {
+                        mm.get(&grp.group_uin)
+                            .map(|entry| entry.value().clone())
+                            .unwrap_or_else(|| {
+                                tracing::warn!(
+                                    "No group members found for group: {}",
+                                    grp.group_uin
+                                );
+                                Vec::new()
+                            })
+                    },
+                    false,
+                )
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::error!("Failed to fetch group members: {:?}", e);
+                    Vec::new()
+                });
+            let lookup_uin = if chain.friend_uin == 0 {
+                **handle.context.key_store.uin.load()
+            } else {
+                chain.friend_uin
+            };
+            grp.group_member_info = members.into_iter().find(|member| member.uin == lookup_uin);
+            if chain.uid.is_empty()
+                && let Some(member) = &grp.group_member_info
+            {
+                chain.uid = member.uid.clone();
+            }
+            chain
+        }
+
+        // TODO: optimization
+        MessageType::Friend(ref mut friend_elem) => {
+            let friends = handle
+                .fetch_maybe_cached_friends(
+                    Some(chain.friend_uin),
+                    |fm| fm.iter().map(|entry| entry.value().clone()).collect(),
+                    false,
+                )
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::error!("Failed to fetch friends: {:?}", e);
+                    Vec::new()
+                });
+            if let Some(friend) = friends
+                .into_iter()
+                .find(|friend| friend.uin == chain.friend_uin)
+            {
+                friend_elem.friend_info = Some(friend.clone());
+                if chain.uid.is_empty() {
+                    chain.uid = friend.uid.clone();
+                }
+            }
+            chain
+        }
+        _ => chain,
+    }
 }

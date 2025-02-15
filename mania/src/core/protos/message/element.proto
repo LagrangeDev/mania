@@ -127,7 +127,7 @@ message ExtraInfo {
   int32 Flags = 4;
   int32 GroupMask = 5;
   int32 MsgTailId = 6;
-  bytes SenderTitle = 7;
+  optional bytes SenderTitle = 7;
   bytes ApnsTips = 8;
   uint64 Uin = 9;
   int32 MsgStateFlag = 10;
@@ -160,7 +160,16 @@ message GeneralFlags {
   int32 BubbleSubId = 16;
   uint64 PendantId = 17;
   bytes RpIndex = 18;
-  bytes PbReserve = 19;
+  GeneralFlagsReserve PbReserve = 19;
+}
+
+message GeneralFlagsReserve {
+  GeneralFlagsReserveLevelPermission LevelPermission = 65;
+}
+
+message GeneralFlagsReserveLevelPermission {
+  optional uint32 Permission = 1;
+  optional uint32 NewLevel = 2;
 }
 
 message GroupFile {

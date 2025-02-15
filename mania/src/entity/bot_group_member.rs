@@ -1,6 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FetchGroupMemberStrategy {
+    Simple,
+    Full,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 #[repr(u32)]
 pub enum GroupMemberPermission {
@@ -30,11 +36,12 @@ pub struct BotGroupMember {
     pub permission: GroupMemberPermission,
     pub group_level: u32,
     pub member_card: Option<String>,
-    pub member_name: String,
     pub special_title: Option<String>,
-    pub join_time: DateTime<Utc>,
-    pub last_msg_time: DateTime<Utc>,
-    pub shut_up_timestamp: DateTime<Utc>,
+    /// Below fields only available when `FetchGroupMemberStrategy::Full` is set
+    pub member_name: Option<String>,
+    pub join_time: Option<DateTime<Utc>>,
+    pub last_msg_time: Option<DateTime<Utc>>,
+    pub shut_up_timestamp: Option<DateTime<Utc>>,
 }
 
 impl BotGroupMember {

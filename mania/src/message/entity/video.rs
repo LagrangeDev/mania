@@ -170,15 +170,16 @@ const DEFAULT_THUMB: [u8; 2643] = [
     0x0F, 0x00, 0x00,
 ];
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct VideoEntity {
-    pub file_name: String = String::new(),
-    pub video_hash: String = String::new(),
+    pub file_name: String,
+    pub video_hash: String,
     pub height: i32,
     pub width: i32,
     pub video_size: i32,
     pub video_length: i32,
-    pub video_url: String = String::new(),
+    pub video_url: String,
     // TODO: stream (video, thumb)
     // TODO: maybe we can support video preview pic?
     pub(crate) node: Option<IndexNode>, // for download, 2025/02/08
@@ -204,7 +205,7 @@ impl Display for VideoEntity {
 }
 
 impl MessageEntity for VideoEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         let common = self.msg_info.as_ref().map_or_else(
             || {
                 MsgInfo {

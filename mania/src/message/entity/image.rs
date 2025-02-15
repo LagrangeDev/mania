@@ -1,6 +1,7 @@
 use super::prelude::*;
 use crate::core::protos::service::oidb::MsgInfo;
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct ImageEntity {
     pub height: u32,
@@ -52,7 +53,7 @@ impl Display for ImageEntity {
 }
 
 impl MessageEntity for ImageEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         let is_group = self.msg_info.as_ref().is_some_and(|info| {
             !info.msg_info_body.is_empty()
                 && info.msg_info_body[0]

@@ -1,5 +1,6 @@
 use super::prelude::*;
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct TextEntity {
     pub text: String,
@@ -18,7 +19,7 @@ impl Display for TextEntity {
 }
 
 impl MessageEntity for TextEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         vec![dda!(Elem {
             text: Some(dda!(Text {
                 str: Some(self.text.clone()),

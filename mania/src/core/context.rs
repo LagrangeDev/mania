@@ -1,3 +1,4 @@
+use crate::ClientConfig;
 use crate::core::crypto::consts::ECDH_256_PEER_LOGIN_KEY;
 use crate::core::crypto::{Ecdh, P256};
 use crate::core::key_store::KeyStore;
@@ -5,6 +6,7 @@ use crate::core::session::Session;
 use crate::core::sign::SignProvider;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::{fs, io};
 use uuid::Uuid;
 
@@ -22,6 +24,7 @@ pub struct Context {
     pub(crate) sign_provider: Box<dyn SignProvider>,
     pub(crate) crypto: Crypto,
     pub(crate) session: Session,
+    pub(crate) config: Arc<ClientConfig>,
 }
 
 pub struct Crypto {

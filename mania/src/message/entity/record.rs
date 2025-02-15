@@ -1,10 +1,10 @@
 use super::prelude::*;
 use crate::core::protos::service::oidb::MsgInfo;
-
+#[pack_content(false)]
 #[derive(Default)]
 pub struct RecordEntity {
     pub audio_length: u32,
-    pub audio_md5: Bytes = Bytes::new(),
+    pub audio_md5: Bytes,
     pub audio_name: String,
     pub audio_url: String,
     // TODO: stream
@@ -27,7 +27,7 @@ impl Display for RecordEntity {
 }
 
 impl MessageEntity for RecordEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         let common = self.msg_info.as_ref().map_or_else(
             || {
                 MsgInfo {

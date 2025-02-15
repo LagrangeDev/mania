@@ -1,10 +1,11 @@
 use super::prelude::*;
 use std::iter::once;
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct XmlEntity {
     pub xml: String,
-    pub service_id: i32 = 35,
+    pub service_id: i32,
 }
 
 impl Debug for XmlEntity {
@@ -20,7 +21,7 @@ impl Display for XmlEntity {
 }
 
 impl MessageEntity for XmlEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         vec![dda!(Elem {
             rich_msg: Some(dda!(RichMsg {
                 service_id: Some(self.service_id),

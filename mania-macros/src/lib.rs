@@ -4,11 +4,57 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::{
-    Data, DeriveInput, Fields, ItemFn, ItemStruct, LitInt, LitStr, Path, Token,
+    Data, DeriveInput, Fields, ItemFn, ItemStruct, LitBool, LitInt, LitStr, Path, Token,
     parse::{Parse, ParseStream},
     parse_macro_input,
     punctuated::Punctuated,
 };
+
+struct PackContentArgs {
+    need_pack: LitBool,
+}
+
+impl Parse for PackContentArgs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let need_pack = input.parse()?;
+        Ok(Self { need_pack })
+    }
+}
+
+#[proc_macro_attribute]
+pub fn pack_content(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as PackContentArgs);
+    let input_struct = parse_macro_input!(item as ItemStruct);
+    let ident = &input_struct.ident;
+    let expend = match args.need_pack.value {
+        true => {
+            quote! {
+                #input_struct
+                impl crate::message::entity::MessageContentImplChecker for #ident {
+                    fn need_pack(&self) -> bool {
+                        true
+                    }
+                }
+            }
+        }
+        false => {
+            quote! {
+                #input_struct
+                impl crate::message::entity::MessageContentImplChecker for #ident {
+                    fn need_pack(&self) -> bool {
+                        true
+                    }
+                }
+                impl crate::message::entity::MessageContentImpl for #ident {
+                    fn pack_content(&self) -> Option<bytes::Bytes> {
+                        None
+                    }
+                }
+            }
+        }
+    };
+    expend.into()
+}
 
 #[proc_macro_attribute]
 pub fn command(attr: TokenStream, item: TokenStream) -> TokenStream {

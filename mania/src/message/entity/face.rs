@@ -1,6 +1,7 @@
 use super::prelude::*;
 use crate::entity::sys_face::SysFaceEntry;
 
+#[pack_content(false)]
 #[derive(Default)]
 pub struct FaceEntity {
     pub face_id: u16,
@@ -22,7 +23,7 @@ impl Display for FaceEntity {
 }
 
 impl MessageEntity for FaceEntity {
-    fn pack_element(&self) -> Vec<Elem> {
+    fn pack_element(&self, _: &str) -> Vec<Elem> {
         todo!()
     }
 
