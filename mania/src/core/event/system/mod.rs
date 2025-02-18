@@ -2,6 +2,7 @@ pub mod alive;
 pub mod fetch_filtered_group_request;
 pub mod fetch_friend;
 pub mod fetch_group_requests;
+pub mod fetch_highway_ticket;
 pub mod fetch_members;
 pub mod fetch_rkey;
 pub mod fetch_user_info;

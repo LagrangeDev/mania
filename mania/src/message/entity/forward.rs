@@ -30,7 +30,7 @@ impl Display for ForwardEntity {
 }
 
 impl MessageEntity for ForwardEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         let pb_reserve = dda!(Preserve {
             message_id: self.message_id.0,
             sender_uid: self.uid.clone(),

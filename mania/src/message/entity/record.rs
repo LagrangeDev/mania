@@ -27,7 +27,7 @@ impl Display for RecordEntity {
 }
 
 impl MessageEntity for RecordEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         let common = self.msg_info.as_ref().map_or_else(
             || {
                 MsgInfo {

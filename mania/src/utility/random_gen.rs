@@ -15,4 +15,8 @@ impl RandomGenerator {
     pub fn rand_u32() -> u32 {
         Self::random_num(0, u32::MAX)
     }
+
+    pub fn rand_u64() -> u64 {
+        Self::random_num(0, u64::MAX as u32) as u64
+    }
 }

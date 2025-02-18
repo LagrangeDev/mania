@@ -25,7 +25,7 @@ impl Display for LongMsgEntity {
 }
 
 impl MessageEntity for LongMsgEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         todo!()
     }
 

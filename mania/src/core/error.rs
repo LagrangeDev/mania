@@ -14,6 +14,9 @@ pub enum ManiaError {
 
     #[error("An mania internal business error occurred: {0}")]
     InternalBusinessError(#[from] crate::core::business::BusinessError),
+
+    #[error("An mania internal highway error occurred: {0}")]
+    HighWayError(#[from] crate::core::highway::HighwayError),
 }
 
 pub type ManiaResult<T> = Result<T, ManiaError>;

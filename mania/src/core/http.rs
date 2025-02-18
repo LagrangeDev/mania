@@ -1,5 +1,6 @@
 use reqwest::Client;
 use reqwest::Error;
+use reqwest::header::HeaderMap;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -37,16 +38,17 @@ impl HttpClient {
         response.text().await
     }
 
+    // FIXME: headers
     pub async fn post_binary_async(
         &self,
         url: &str,
         payload: &[u8],
-        content_type: &str,
+        headers: Option<HeaderMap>,
     ) -> Result<Vec<u8>, Error> {
         let response = self
             .client
             .post(url)
-            .header("Content-Type", content_type)
+            .headers(headers.unwrap_or_default())
             .body(payload.to_vec())
             .send()
             .await?;

@@ -64,12 +64,13 @@ impl BusinessHandle {
                     e
                 )))
             })?;
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert(
+                reqwest::header::CONTENT_TYPE,
+                reqwest::header::HeaderValue::from_static("application/json"),
+            );
             let response = http::client()
-                .post_binary_async(
-                    "https://ntlogin.qq.com/qr/getFace",
-                    &payload,
-                    "application/json",
-                )
+                .post_binary_async("https://ntlogin.qq.com/qr/getFace", &payload, Some(headers))
                 .await
                 .map_err(|e| {
                     ManiaError::GenericError(Cow::from(format!(

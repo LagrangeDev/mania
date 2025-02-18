@@ -6,6 +6,7 @@ pub mod crypto;
 pub mod entity;
 pub mod error;
 pub mod event;
+pub mod highway;
 pub mod http;
 pub mod key_store;
 pub mod operation;

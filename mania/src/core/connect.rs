@@ -1,7 +1,8 @@
+use crate::core::ping::ping;
 use std::io::Result;
 use std::net::SocketAddr;
-
-use crate::core::ping::ping;
+use std::time::Duration;
+use tokio::net::TcpStream;
 
 /// Find the optimum server to connect to.
 pub async fn optimum_server(request_msf: bool, ipv6: bool) -> Result<SocketAddr> {
@@ -32,4 +33,12 @@ async fn resolve_dns(ipv6: bool) -> Result<Vec<SocketAddr>> {
     };
     let host = tokio::net::lookup_host(host).await?;
     Ok(host.collect())
+}
+
+pub async fn tcp_connect_timeout(addr: SocketAddr, timeout: Duration) -> Result<TcpStream> {
+    let conn = tokio::net::TcpStream::connect(addr);
+    tokio::time::timeout(timeout, conn)
+        .await
+        .map_err(tokio::io::Error::from)
+        .flatten()
 }

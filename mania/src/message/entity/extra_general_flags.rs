@@ -15,7 +15,7 @@ impl Display for ExtraGeneralFlagsEntity {
 }
 
 impl MessageEntity for ExtraGeneralFlagsEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         unreachable!("Cannot pack CommonElemExtraEntity")
     }
 

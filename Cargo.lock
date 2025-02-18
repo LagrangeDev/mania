@@ -1246,9 +1246,11 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sha1",
  "surge-ping",
  "thiserror 2.0.11",
  "tokio",
+ "tokio-util",
  "tracing",
  "uuid",
 ]
@@ -2087,6 +2089,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "sha1"
+version = "0.11.0-pre.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9540978cef7a8498211c1b1c14e5ce920fe5bd524ea84f4a3d72d4602515ae93"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest 0.11.0-pre.9",
 ]
 
 [[package]]

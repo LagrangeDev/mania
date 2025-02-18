@@ -18,7 +18,7 @@ impl TlvSer for T106 {
         Box::new(Self {
             app_id: ctx.app_info.app_id,
             app_client_version: ctx.app_info.app_client_version as i32,
-            uin: ctx.key_store.uin.load().as_ref().to_owned() as i32,
+            uin: **ctx.key_store.uin.load() as i32,
             password_md5: ctx.key_store.password_md5.load().as_ref().to_owned(),
             guid: hex::encode(ctx.device.uuid),
             tgtgt_key: ctx.session.stub.tgtgt_key.load().as_ref().to_owned(),

@@ -32,6 +32,7 @@ pub use text::TextEntity as Text;
 pub use video::VideoEntity as Video;
 pub use xml::XmlEntity as Xml;
 
+use crate::Context;
 use crate::core::protos::message::Elem;
 use bytes::Bytes;
 use std::fmt::{Debug, Display};
@@ -45,7 +46,7 @@ pub trait MessageContentImpl: MessageContentImplChecker {
 }
 
 pub trait MessageEntity: Debug + Display + MessageContentImpl {
-    fn pack_element(&self, self_uid: &str) -> Vec<Elem>;
+    fn pack_element(&self, ctx: &Context) -> Vec<Elem>;
     fn unpack_element(elem: &Elem) -> Option<Self>
     where
         Self: Sized;
@@ -104,10 +105,10 @@ macro_rules! impl_entity_pack {
                     )*
                 }
             }
-            pub fn pack_element(&self, self_uid: &str) -> Vec<Elem> {
+            pub fn pack_element(&self, ctx: &Context) -> Vec<Elem> {
                 match self {
                     $(
-                        Entity::$variant(inner) => inner.pack_element(self_uid),
+                        Entity::$variant(inner) => inner.pack_element(ctx),
                     )*
                 }
             }
@@ -190,8 +191,8 @@ impl Entity {
         elems.iter().filter_map(Entity::unpack_element).collect()
     }
 
-    pub fn to_elems(&self, self_uid: &str) -> Vec<Elem> {
-        self.pack_element(self_uid).into_iter().collect()
+    pub fn to_elems(&self, ctx: &Context) -> Vec<Elem> {
+        self.pack_element(ctx).into_iter().collect()
     }
 
     pub fn need_pack_content(elems: &[Self]) -> bool {
@@ -200,6 +201,8 @@ impl Entity {
 }
 
 mod prelude {
+    pub use crate::Context;
+    pub use crate::core::highway::AsyncStream;
     pub use crate::core::protos::message::*;
     pub use crate::dda;
     pub use crate::message::chain::{ClientSequence, MessageId};

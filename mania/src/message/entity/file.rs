@@ -51,7 +51,7 @@ impl Display for FileEntity {
 }
 
 impl MessageEntity for FileEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         todo!()
     }
 

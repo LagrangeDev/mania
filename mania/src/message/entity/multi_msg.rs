@@ -157,7 +157,7 @@ impl Display for MultiMsgEntity {
 }
 
 impl MessageEntity for MultiMsgEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         todo!()
     }
 

@@ -1,6 +1,7 @@
 use crate::core::http;
 use crate::core::sign::{SignProvider, SignResult};
 use bytes::Bytes;
+use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
@@ -46,8 +47,10 @@ impl SignProvider for LinuxSignProvider {
                 };
                 let response = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
+                        let mut headers = HeaderMap::new();
+                        headers.insert("Content-Type", "application/json".parse().unwrap());
                         http::client()
-                            .post_binary_async(url.as_str(), &payload, "application/json")
+                            .post_binary_async(url.as_str(), &payload, Some(headers))
                             .await
                     })
                 });

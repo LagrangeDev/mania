@@ -21,7 +21,7 @@ impl Display for XmlEntity {
 }
 
 impl MessageEntity for XmlEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         vec![dda!(Elem {
             rich_msg: Some(dda!(RichMsg {
                 service_id: Some(self.service_id),

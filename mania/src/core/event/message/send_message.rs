@@ -21,15 +21,7 @@ pub struct MessageResult {
 
 impl ClientEvent for SendMessageEvent {
     fn build(&self, ctx: &Context) -> CEBuildResult {
-        let packet = MessagePacker::build(
-            &self.chain,
-            &ctx.key_store
-                .uid
-                .load()
-                .as_ref()
-                .map(|arc| arc.as_ref().clone())
-                .unwrap_or_default(),
-        );
+        let packet = MessagePacker::build(&self.chain, ctx);
         Ok(BinaryPacket(packet.encode_to_vec().into()))
     }
 

@@ -23,7 +23,7 @@ impl Display for FaceEntity {
 }
 
 impl MessageEntity for FaceEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         todo!()
     }
 

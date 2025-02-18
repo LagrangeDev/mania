@@ -205,7 +205,7 @@ impl Display for VideoEntity {
 }
 
 impl MessageEntity for VideoEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         let common = self.msg_info.as_ref().map_or_else(
             || {
                 MsgInfo {

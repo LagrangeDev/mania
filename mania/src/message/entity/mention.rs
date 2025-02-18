@@ -27,7 +27,7 @@ impl Display for MentionEntity {
 }
 
 impl MessageEntity for MentionEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         let pb_reserve = MentionExtra {
             r#type: Some(if self.uin == 0 { 1 } else { 2 }),
             uin: Some(self.uin),

@@ -23,7 +23,7 @@ impl Display for LightAppEntity {
 }
 
 impl MessageEntity for LightAppEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         vec![dda!(Elem {
             light_app_elem: Some(dda!(LightAppElem {
                 data: once(0x01)

@@ -27,7 +27,7 @@ impl Display for MarketFaceEntity {
 }
 
 impl MessageEntity for MarketFaceEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         todo!()
     }
 

@@ -6,11 +6,11 @@ use crate::core::protos::service::oidb::MsgInfo;
 pub struct ImageEntity {
     pub height: u32,
     pub width: u32,
-    pub file_path: String,
+    pub file_path: Option<String>,
     pub md5: Bytes,
     pub size: u32,
     pub url: String,
-    // TODO: lazy stream
+    pub(crate) image_stream: Option<AsyncStream>,
     pub(crate) msg_info: Option<MsgInfo>,
     pub(crate) not_online_image: NotOnlineImage,
     pub(crate) custom_face: CustomFace,
@@ -35,11 +35,10 @@ impl Debug for ImageEntity {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(
             f,
-            "[Image: {}x{}] {} {} {} {}",
+            "[Image: {}x{}] {} {} {}",
             self.width,
             self.height,
             self.to_preview_text(),
-            self.file_path,
             self.size,
             self.url
         )
@@ -53,7 +52,7 @@ impl Display for ImageEntity {
 }
 
 impl MessageEntity for ImageEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         let is_group = self.msg_info.as_ref().is_some_and(|info| {
             !info.msg_info_body.is_empty()
                 && info.msg_info_body[0]
@@ -103,12 +102,12 @@ impl MessageEntity for ImageEntity {
                 return Some(dda!(ImageEntity {
                     height: index.info.as_ref()?.height,
                     width: index.info.as_ref()?.width,
-                    file_path: index.info.as_ref()?.file_name.clone(),
+                    file_path: Some(index.info.as_ref()?.file_name.clone()),
                     md5: Bytes::from(hex::decode(&index.info.as_ref()?.file_hash).ok()?),
                     size: index.info.as_ref()?.file_size,
                     msg_info: Some(extra.clone()),
                     sub_type: ext_biz_info.pic.as_ref()?.biz_type,
-                    is_group: ext_biz_info.pic.as_ref()?.ext_data.is_some(),
+                    is_group: ext_biz_info.pic.as_ref()?.bytes_pb_reserve_troop.is_some(), // TODO: check this
                     summary: if ext_biz_info.pic.as_ref()?.text_summary.is_empty() {
                         Some("[图片]".to_string())
                     } else {
@@ -132,7 +131,7 @@ impl MessageEntity for ImageEntity {
             return Some(dda!(ImageEntity {
                 height: image.pic_height,
                 width: image.pic_width,
-                file_path: image.file_path.clone(),
+                file_path: Some(image.file_path.clone()),
                 md5: Bytes::from(image.pic_md5.clone()),
                 size: image.file_len,
                 url,
@@ -157,7 +156,7 @@ impl MessageEntity for ImageEntity {
             return Some(dda!(ImageEntity {
                 height: face.height as u32,
                 width: face.width as u32,
-                file_path: face.file_path.clone(),
+                file_path: Some(face.file_path.clone()),
                 md5: Bytes::from(face.md5.clone()),
                 size: face.size,
                 url,

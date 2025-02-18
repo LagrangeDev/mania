@@ -17,6 +17,7 @@ use crate::core::connect::optimum_server;
 use crate::core::context::Context;
 use crate::core::event::prelude::*;
 use crate::core::event::{CEParse, resolve_event};
+use crate::core::highway::Highway;
 use crate::core::packet::SsoPacket;
 use crate::core::socket::{self, PacketReceiver, PacketSender};
 use crate::event::{EventDispatcher, EventListener};
@@ -125,6 +126,7 @@ impl Business {
             cache: Arc::new(Cache::new(config.cache_mode)), // TODO: construct from context
             event_dispatcher,
             event_listener,
+            highway: Arc::new(Highway::default()),
         });
 
         Ok(Self {
@@ -212,7 +214,7 @@ pub struct BusinessHandle {
     pub(crate) cache: Arc<Cache>,
     pub(crate) event_dispatcher: EventDispatcher,
     pub event_listener: EventListener,
-    // TODO: highway
+    pub(crate) highway: Arc<Highway>,
 }
 
 impl BusinessHandle {

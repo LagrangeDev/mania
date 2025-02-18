@@ -19,7 +19,7 @@ impl Display for TextEntity {
 }
 
 impl MessageEntity for TextEntity {
-    fn pack_element(&self, _: &str) -> Vec<Elem> {
+    fn pack_element(&self, _: &Context) -> Vec<Elem> {
         vec![dda!(Elem {
             text: Some(dda!(Text {
                 str: Some(self.text.clone()),

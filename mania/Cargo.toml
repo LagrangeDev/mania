@@ -42,6 +42,8 @@ rand_chacha = "0.3.1"
 num_enum = "0.7.3"
 quick-xml = { version = "0.37.2", features = ["serialize"] }
 regex = "1.11.1"
+tokio-util = "0.7.13"
+sha1 = "0.11.0-pre.4"
 
 [build-dependencies]
 prost-build = "0.13.4"

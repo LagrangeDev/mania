@@ -19,13 +19,13 @@ pub(crate) struct MessagePacker;
 
 impl MessagePacker {
     #[allow(clippy::let_and_return)] // FIXME: remove this
-    pub(crate) fn build(chain: &MessageChain, self_uid: &str) -> Message {
-        let base = MessagePacker::build_packet_base(chain, self_uid);
+    pub(crate) fn build(chain: &MessageChain, ctx: &Context) -> Message {
+        let base = MessagePacker::build_packet_base(chain, ctx);
         // TODO: BuildAdditional(chain, message);
         base
     }
 
-    fn build_packet_base(chain: &MessageChain, self_uid: &str) -> Message {
+    fn build_packet_base(chain: &MessageChain, ctx: &Context) -> Message {
         dda!(Message {
             routing_head: Some(dda!(RoutingHead {
                 c2c: match (&chain.typ, Entity::need_pack_content(&chain.entities)) {
@@ -59,7 +59,7 @@ impl MessagePacker {
                     elems: chain
                         .entities
                         .iter()
-                        .flat_map(|entity| entity.pack_element(self_uid))
+                        .flat_map(|entity| entity.pack_element(ctx))
                         .collect(),
                 })),
                 msg_content: chain

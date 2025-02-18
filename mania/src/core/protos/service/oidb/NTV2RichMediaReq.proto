@@ -179,16 +179,35 @@ message VideoExtBizInfo {
 message PicExtBizInfo {
   uint32 BizType = 1;
   string TextSummary = 2;
-  bytes BytesPbReserveC2c = 11;
-  PicExtData ExtData = 12;
+  BytesPbReserveC2c BytesPbReserveC2c = 11;
+  BytesPbReserveTroop BytesPbReserveTroop = 12;
   uint32 FromScene = 1001;
   uint32 ToScene = 1002;
   uint32 OldFileId = 1003;
 }
 
-message PicExtData {
-  uint32 SubType = 1;
+message BytesPbReserveC2c {
+  uint32 subType = 1;
+  uint32 field3 = 3;
+  uint32 field4 = 4;
+  string field8 = 8;  // maybe summary?
+  uint32 field10 = 10;
+  string field12 = 12;
+  string field18 = 18;
+  string field19 = 19;
+  bytes field20 = 20;
+}
+
+message BytesPbReserveTroop {
+  uint32 subType = 1;
+  uint32 field3 = 3;
+  uint32 field4 = 4;
   string TextSummary = 9;
+  uint32 field10 = 10;
+  string field12 = 12;
+  string field18 = 18;
+  string field19 = 19;
+  bytes field21 = 21;
 }
 
 message DownloadSafeReq {
