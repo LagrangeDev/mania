@@ -1,5 +1,7 @@
 use super::prelude::*;
+use crate::core::highway::AsyncPureStream;
 use crate::core::protos::service::oidb::MsgInfo;
+use std::sync::Arc;
 
 #[pack_content(false)]
 #[derive(Default)]
@@ -27,6 +29,17 @@ impl ImageEntity {
                 1 => "[动画表情]".to_string(),
                 _ => "[图片]".to_string(),
             },
+        }
+    }
+
+    pub(crate) async fn resolve_stream(&self) -> Option<AsyncStream> {
+        if let Some(file_path) = &self.file_path {
+            let file = tokio::fs::File::open(file_path).await.ok()?;
+            Some(Arc::new(tokio::sync::Mutex::new(
+                Box::new(file) as AsyncPureStream
+            )))
+        } else {
+            self.image_stream.clone()
         }
     }
 }

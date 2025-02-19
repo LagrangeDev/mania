@@ -1,11 +1,12 @@
 use crate::core::business::BusinessHandle;
 use crate::core::event::downcast_major_event;
+use crate::core::event::message::image_c2c_upload::{ImageC2CUploadArgs, ImageC2CUploadEvent};
 use crate::core::event::message::image_group_upload::{
     ImageGroupUploadArgs, ImageGroupUploadEvent,
 };
 use crate::core::event::system::fetch_highway_ticket::FetchHighwayTicketEvent;
 use crate::core::highway::hw_client::HighwayClient;
-use crate::core::highway::{AsyncPureStream, AsyncStream, oidb_ipv4s_to_highway_ipv4s};
+use crate::core::highway::{AsyncStream, oidb_ipv4s_to_highway_ipv4s};
 use crate::core::protos::service::highway::{
     NtHighwayHash, NtHighwayNetwork, Ntv2RichMediaHighwayExt,
 };
@@ -51,9 +52,9 @@ impl BusinessHandle {
 
     async fn resolve_image(
         self: &Arc<Self>,
-        stream_locker: AsyncStream,
+        stream_ctx: AsyncStream,
     ) -> ManiaResult<((ImageFormat, u32, u32), Bytes, Bytes)> {
-        let (iv, sha1_bytes, md5_bytes) = mut_stream_ctx(&stream_locker, |s| {
+        let (iv, sha1_bytes, md5_bytes) = mut_stream_ctx(&stream_ctx, |s| {
             Box::pin(async move {
                 let mut sha1_hasher = Sha1::new();
                 let mut md5_hasher = Md5::new();
@@ -82,19 +83,10 @@ impl BusinessHandle {
         image: &mut ImageEntity,
     ) -> ManiaResult<()> {
         self.prepare_highway().await?;
-        let stream = match (&image.file_path, &image.image_stream, &mut image.size) {
-            (Some(file_path), _, size) => {
-                let file = tokio::fs::File::open(file_path).await?;
-                *size = file.metadata().await?.len() as u32;
-                Arc::new(tokio::sync::Mutex::new(Box::new(file) as AsyncPureStream))
-            }
-            (_, Some(stream), _) => stream.clone(),
-            _ => {
-                return Err(ManiaError::GenericError(Cow::from(
-                    "No image stream or file path",
-                )));
-            }
-        };
+        let stream = image
+            .resolve_stream()
+            .await
+            .ok_or(ManiaError::GenericError(Cow::from("No image stream found")))?;
 
         let (iv, sha1, md5) = self.resolve_image(stream.clone()).await?;
         let mut req = dda!(ImageGroupUploadEvent {
@@ -171,10 +163,102 @@ impl BusinessHandle {
             .await?;
             tracing::debug!("Successfully uploaded group image!");
         } else {
-            tracing::debug!("No u_key in response, skip upload!");
+            tracing::debug!("No u_key in upload_group_image response, skip upload!");
         }
         image.msg_info = Some(res.res.msg_info.to_owned());
         image.custom_face = res.res.custom_face.to_owned();
+        Ok(())
+    }
+
+    pub async fn upload_c2c_image(
+        self: &Arc<Self>,
+        target_uid: &str,
+        image: &mut ImageEntity,
+    ) -> ManiaResult<()> {
+        self.prepare_highway().await?;
+        let stream = image
+            .resolve_stream()
+            .await
+            .ok_or(ManiaError::GenericError(Cow::from("No image stream found")))?;
+        let (iv, sha1, md5) = self.resolve_image(stream.clone()).await?;
+        let mut req = dda!(ImageC2CUploadEvent {
+            req: ImageC2CUploadArgs {
+                uid: target_uid.to_string(),
+                size: image.size,
+                name: image.file_path.clone().unwrap_or_else(|| format!(
+                    "{}.{}",
+                    hex::encode(&sha1),
+                    iv.0
+                )),
+                md5,
+                sha1,
+                pic_type: iv.0 as u32,
+                sub_type: image.sub_type,
+                summary: image.summary.clone().unwrap_or("[图片]".to_string()),
+                width: iv.1,
+                height: iv.2,
+            },
+        });
+        let res = self.send_event(&mut req).await?;
+        let res: &ImageC2CUploadEvent =
+            downcast_major_event(&res).ok_or(ManiaError::InternalEventDowncastError)?;
+        if res.res.u_key.as_ref().is_some() {
+            tracing::debug!(
+                "uploadC2CImageReq get upload u_key: {}, need upload!",
+                res.res.u_key.as_ref().unwrap()
+            );
+            let size = image.size;
+            let chunk_size = self.context.config.highway_chuck_size;
+            let msg_info_body = res.res.msg_info.msg_info_body.to_owned();
+            let index_node = msg_info_body
+                .first()
+                .ok_or(ManiaError::GenericError(Cow::from(
+                    "No index node in response",
+                )))?
+                .index
+                .as_ref()
+                .ok_or(ManiaError::GenericError(Cow::from("No index in response")))?;
+            let info = index_node
+                .info
+                .as_ref()
+                .ok_or(ManiaError::GenericError(Cow::from("No info in response")))?;
+            let sha1 = hex::decode(&info.file_sha1).map_err(|e| {
+                ManiaError::GenericError(Cow::from(format!("Hex decode error: {:?}", e)))
+            })?;
+            let md5 = hex::decode(&info.file_hash).map_err(|e| {
+                ManiaError::GenericError(Cow::from(format!("Hex decode error: {:?}", e)))
+            })?;
+            let extend = Ntv2RichMediaHighwayExt {
+                file_uuid: index_node.file_uuid.to_owned(),
+                u_key: res.res.u_key.to_owned().unwrap(),
+                network: Some(NtHighwayNetwork {
+                    i_pv4s: oidb_ipv4s_to_highway_ipv4s(&res.res.ipv4s),
+                }),
+                msg_info_body: msg_info_body.to_owned(),
+                block_size: chunk_size as u32,
+                hash: Some({
+                    NtHighwayHash {
+                        file_sha1: vec![sha1],
+                    }
+                }),
+            }
+            .encode_to_vec();
+            let client = self.highway.client.load();
+            mut_stream_ctx(&stream, |s| {
+                Box::pin(async move {
+                    client
+                        .upload(1003, s, size, Bytes::from(md5), Bytes::from(extend))
+                        .await?;
+                    Ok::<(), ManiaError>(())
+                })
+            })
+            .await?;
+            tracing::debug!("Successfully uploaded c2c image!");
+        } else {
+            tracing::debug!("No u_key in upload_c2c_image response, skip upload!");
+        }
+        image.msg_info = Some(res.res.msg_info.to_owned());
+        image.not_online_image = res.res.not_online_image.to_owned();
         Ok(())
     }
 }
