@@ -32,9 +32,11 @@ impl ImageEntity {
         }
     }
 
-    pub(crate) async fn resolve_stream(&self) -> Option<AsyncStream> {
+    pub(crate) async fn resolve_stream(&mut self) -> Option<AsyncStream> {
         if let Some(file_path) = &self.file_path {
             let file = tokio::fs::File::open(file_path).await.ok()?;
+            let size = file.metadata().await.ok()?.len() as u32;
+            self.size = size;
             Some(Arc::new(tokio::sync::Mutex::new(
                 Box::new(file) as AsyncPureStream
             )))
