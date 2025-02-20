@@ -80,7 +80,7 @@ impl StreamSha1 {
             let hash = self.hasher.hash();
             self.digests_stream.push(hash);
             self.offset = 0;
-            self.update(&data[range..]);
+            self.update(&data[range..]);  // TODO: avoid recursion
         }
     }
 
