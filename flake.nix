@@ -102,17 +102,65 @@
           };
         };
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-        checkTypo =
+        typoCheck =
           pkgs.runCommandNoCCLocal "check-typo"
             {
               src = ./.;
-              nativeBuildInputs = with pkgs; [ typos ];
+              nativeBuildInputs = with pkgs; [
+                typos
+              ];
             }
             ''
               mkdir -p $out
 
-              cd $src && typos -c $src/typos.toml
+              cd $src
+              typos --config ./typos.toml
             '';
+        fmtCheck =
+          let
+            restFmtCheck =
+              pkgs.runCommandNoCCLocal "check-fmt"
+                {
+                  src = ./.;
+                  nativeBuildInputs = with pkgs; [
+                    taplo
+                    nixfmt-rfc-style
+                    deno
+                    just
+                    shfmt
+                  ];
+                }
+                ''
+                  mkdir -p $out
+
+                  cd $src
+                  # just
+                  echo '==> just format check'
+                  just --unstable --fmt --check
+                  # markdown
+                  echo '==> markdown format check'
+                  find . -type f -regextype egrep -regex '^.*\.(md|MD)$' -exec deno fmt --check --ext md {} +
+                  # toml
+                  echo '==> toml format check'
+                  find . -type f -regextype egrep -regex '^.*\.toml$' -exec taplo format --check {} +
+                  # yaml
+                  echo '==> yaml format check'
+                  find . -type f -regextype egrep -regex '^.*\.yml$' -exec deno fmt --check --ext yml {} +
+                  # nix
+                  echo '==> nix format check'
+                  find . -type f -regextype egrep -regex '^.*\.nix$' -exec nixfmt --check {} +
+                  # sh
+                  echo '==> sh format check'
+                  cd ./scripts && find . -type f -executable -exec shfmt -p -s -d -i 2 -ci -sr -kp -fn '{}' +
+                '';
+          in
+          pkgs.symlinkJoin {
+            name = "fmtCheck";
+            paths = [
+              restFmtCheck
+              (craneLib.cargoFmt commonArgs)
+            ];
+          };
       in
       {
         packages = {
@@ -134,7 +182,7 @@
         };
         checks = {
           inherit (self.packages."${system}") mania;
-          typo = checkTypo;
+          typo = typoCheck;
           audit = craneLib.cargoAudit (
             commonArgs
             // {
@@ -148,7 +196,7 @@
               cargoClippyExtraArgs = "--all-targets -- --deny warnings";
             }
           );
-          fmt = craneLib.cargoFmt commonArgs;
+          fmt = fmtCheck;
           doc = craneLib.cargoDoc (
             commonArgs
             // {
@@ -169,6 +217,12 @@
             cargo-flamegraph
             cargo-tarpaulin
             lldb
+
+            taplo
+            nixfmt-rfc-style
+            deno
+            just
+            shfmt
           ];
           shellHook = '''';
         };
