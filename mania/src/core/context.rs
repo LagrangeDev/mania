@@ -1,6 +1,6 @@
 use crate::ClientConfig;
 use crate::core::crypto::consts::ECDH_256_PEER_LOGIN_KEY;
-use crate::core::crypto::{Ecdh, P256};
+use crate::core::crypto::ecdh::{Ecdh, P256};
 use crate::core::key_store::KeyStore;
 use crate::core::session::Session;
 use crate::core::sign::SignProvider;

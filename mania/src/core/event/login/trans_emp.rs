@@ -1,4 +1,4 @@
-use crate::core::crypto::Ecdh;
+use crate::core::crypto::ecdh::Ecdh;
 use crate::core::event::prelude::*;
 use crate::core::tlv::*;
 use chrono::Utc;
