@@ -1,5 +1,7 @@
 use super::prelude::*;
+use crate::core::highway::AsyncPureStream;
 use crate::core::protos::service::oidb::MsgInfo;
+use std::sync::Arc;
 #[pack_content(false)]
 #[derive(Default)]
 pub struct RecordEntity {
@@ -7,11 +9,28 @@ pub struct RecordEntity {
     pub audio_md5: Bytes,
     pub audio_name: String,
     pub audio_url: String,
-    // TODO: stream
+    pub file_path: Option<String>,
+    pub file_size: u32,
+    pub audio_stream: Option<AsyncStream>,
     pub(crate) audio_uuid: Option<String>,
     pub(crate) file_sha1: Option<String>,
     pub(crate) msg_info: Option<MsgInfo>,
     pub(crate) compat: Option<RichText>,
+}
+
+impl RecordEntity {
+    pub(crate) async fn resolve_stream(&mut self) -> Option<AsyncStream> {
+        if let Some(file_path) = &self.file_path {
+            let file = tokio::fs::File::open(file_path).await.ok()?;
+            let size = file.metadata().await.ok()?.len() as u32;
+            self.file_size = size;
+            Some(Arc::new(tokio::sync::Mutex::new(
+                Box::new(file) as AsyncPureStream
+            )))
+        } else {
+            self.audio_stream.clone()
+        }
+    }
 }
 
 impl Debug for RecordEntity {

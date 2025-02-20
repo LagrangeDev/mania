@@ -10,4 +10,6 @@ pub mod record_c2c_download;
 pub mod record_group_download;
 pub mod send_message;
 pub mod video_c2c_download;
+pub mod video_c2c_upload;
 pub mod video_group_download;
+pub mod video_group_upload;

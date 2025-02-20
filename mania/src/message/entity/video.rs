@@ -1,5 +1,8 @@
 use super::prelude::*;
+use crate::core::highway::AsyncPureStream;
 use crate::core::protos::service::oidb::{IndexNode, MsgInfo};
+use std::io::Cursor;
+use std::sync::Arc;
 
 const DEFAULT_THUMB: [u8; 2643] = [
     0x1F, 0x8B, 0x08, 0x08, 0x0B, 0x68, 0xA6, 0x67, 0x02, 0xFF, 0x6F, 0x75, 0x74, 0x2E, 0x62, 0x69,
@@ -179,13 +182,63 @@ pub struct VideoEntity {
     pub width: i32,
     pub video_size: i32,
     pub video_length: i32,
+    pub video_thumb_size: i32,
+    pub video_thumb_height: i32,
+    pub video_thumb_width: i32,
     pub video_url: String,
-    // TODO: stream (video, thumb)
-    // TODO: maybe we can support video preview pic?
+    pub video_path: Option<String>,
+    pub video_stream: Option<AsyncStream>,
+    pub video_thumb_path: Option<String>,
+    pub video_thumb_stream: Option<AsyncStream>,
     pub(crate) node: Option<IndexNode>, // for download, 2025/02/08
     pub(crate) video_uuid: Option<String>,
     pub(crate) msg_info: Option<MsgInfo>,
     pub(crate) compat: Option<VideoFile>,
+}
+
+impl VideoEntity {
+    pub(crate) async fn resolve_stream(&mut self) -> (Option<AsyncStream>, Option<AsyncStream>) {
+        let load_stream = |path: String| async move {
+            let file = tokio::fs::File::open(path).await.ok()?;
+            let metadata = file.metadata().await.ok()?;
+            let size = metadata.len() as i32;
+            let stream = Arc::new(tokio::sync::Mutex::new(Box::new(file) as AsyncPureStream));
+            Some((stream, size))
+        };
+
+        let video_stream = if let Some(video_path) = self.video_path.as_ref() {
+            if let Some((stream, size)) = load_stream(video_path.clone()).await {
+                self.video_size = size;
+                Some(stream)
+            } else {
+                None
+            }
+        } else {
+            self.video_stream.clone()
+        };
+
+        let video_thumb_stream = if let Some(thumb_path) = self.video_thumb_path.as_ref() {
+            if let Some((stream, size)) = load_stream(thumb_path.clone()).await {
+                self.video_thumb_size = size;
+                Some(stream)
+            } else {
+                None
+            }
+        } else {
+            match self.video_thumb_stream.as_ref() {
+                Some(stream) => Some(stream.clone()),
+                None => {
+                    let cursor = Cursor::new(DEFAULT_THUMB.to_vec());
+                    let stream =
+                        Arc::new(tokio::sync::Mutex::new(Box::new(cursor) as AsyncPureStream));
+                    self.video_thumb_size = DEFAULT_THUMB.len() as i32;
+                    Some(stream)
+                }
+            }
+        };
+
+        (video_stream, video_thumb_stream)
+    }
 }
 
 impl Debug for VideoEntity {
@@ -207,12 +260,7 @@ impl Display for VideoEntity {
 impl MessageEntity for VideoEntity {
     fn pack_element(&self, _: &Context) -> Vec<Elem> {
         let common = self.msg_info.as_ref().map_or_else(
-            || {
-                MsgInfo {
-                    ..Default::default()
-                }
-                .encode_to_vec()
-            },
+            || MsgInfo::default().encode_to_vec(),
             |msg_info| msg_info.encode_to_vec(),
         );
         vec![dda!(Elem {

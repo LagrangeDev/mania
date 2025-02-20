@@ -39,11 +39,16 @@ impl Decoder for HighwayFrameCodec {
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if src.len() < 1 + 4 + 4 + 1 {
+            tracing::trace!("Not enough data for frame (stage 1)!");
             return Ok(None);
         }
         let start = src.get_u8();
         let head_length = src.get_u32() as usize;
         let body_length = src.get_u32() as usize;
+        if src.len() < head_length + body_length + 1 {
+            tracing::trace!("Not enough data for frame (stage 2)!");
+            return Ok(None);
+        }
         let head = src.split_to(head_length);
         let body = src.split_to(body_length);
         let end = src.get_u8();

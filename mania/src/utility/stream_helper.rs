@@ -5,8 +5,8 @@ use tokio::sync::Mutex;
 
 pub async fn mut_stream_ctx<T, IR, E, F>(lock: &Mutex<T>, f: F) -> Result<IR, E>
 where
-    T: Send + 'static,
-    F: for<'a> FnOnce(&'a mut T) -> Pin<Box<dyn Future<Output = Result<IR, E>> + Send + 'a>>,
+    T: Send + Sync + 'static,
+    F: for<'a> FnOnce(&'a mut T) -> Pin<Box<dyn Future<Output = Result<IR, E>> + Send + Sync + 'a>>,
 {
     let mut guard = lock.lock().await;
     f(&mut *guard).await

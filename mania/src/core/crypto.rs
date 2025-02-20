@@ -2,7 +2,7 @@ use md5::{Digest, Md5};
 use p256::{EncodedPoint, PublicKey, ecdh::EphemeralSecret};
 
 pub mod consts;
-mod stream_sha1;
+pub mod stream_sha1;
 pub mod tea;
 
 /// The original macro that @wybxc originally wrote (b81f75b7) was perfect.

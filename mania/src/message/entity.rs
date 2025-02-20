@@ -33,9 +33,11 @@ pub use video::VideoEntity as Video;
 pub use xml::XmlEntity as Xml;
 
 use crate::Context;
+use crate::core::highway::{AsyncPureStream, AsyncStream};
 use crate::core::protos::message::Elem;
 use bytes::Bytes;
 use std::fmt::{Debug, Display};
+use std::sync::Arc;
 
 pub trait MessageContentImplChecker {
     fn need_pack(&self) -> bool;
@@ -50,6 +52,21 @@ pub trait MessageEntity: Debug + Display + MessageContentImpl {
     fn unpack_element(elem: &Elem) -> Option<Self>
     where
         Self: Sized;
+}
+
+impl dyn MessageEntity {
+    async fn resolve_stream(file_path: &Option<String>) -> Option<(AsyncStream, u32)> {
+        if let Some(file_path) = file_path {
+            let file = tokio::fs::File::open(file_path).await.ok()?;
+            let size = file.metadata().await.ok()?.len() as u32;
+            Some((
+                Arc::new(tokio::sync::Mutex::new(Box::new(file) as AsyncPureStream)),
+                size,
+            ))
+        } else {
+            None
+        }
+    }
 }
 
 #[allow(clippy::large_enum_variant)] // FIXME: do we need refactoring?

@@ -46,6 +46,8 @@ pub enum HighwayError {
     IoError(#[from] io::Error),
     #[error("Upload error! code={0}")]
     UploadError(u32),
+    #[error("Hex decode error!")]
+    HexError(#[from] hex::FromHexError),
     #[error("An error occurred in highway: {0}")]
     OtherError(Cow<'static, str>),
 }

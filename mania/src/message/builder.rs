@@ -4,6 +4,7 @@ use crate::message::chain::MessageChain;
 use crate::message::entity::Entity;
 use crate::message::entity::image::ImageEntity;
 use crate::message::entity::text::TextEntity;
+use crate::message::entity::video::VideoEntity;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -49,6 +50,60 @@ impl MessageChainBuilder {
                 Box::new(image_stream) as AsyncPureStream
             ))),
             size,
+        })));
+        self
+    }
+
+    pub fn video(&mut self, video_path: &str, video_length: i32) -> &mut Self {
+        self.chains.entities.push(Entity::Video(dda!(VideoEntity {
+            video_path: Some(video_path.to_string()),
+            video_length,
+        })));
+        self
+    }
+
+    pub fn video_with_thumb(
+        &mut self,
+        video_path: &str,
+        video_length: i32,
+        thumb_path: &str,
+    ) -> &mut Self {
+        self.chains.entities.push(Entity::Video(dda!(VideoEntity {
+            video_path: Some(video_path.to_string()),
+            video_length,
+            video_thumb_path: Some(thumb_path.to_string()),
+        })));
+        self
+    }
+
+    pub fn video_stream(
+        &mut self,
+        video_stream: impl AsyncPureStreamTrait + 'static,
+        video_length: i32,
+    ) -> &mut Self {
+        self.chains.entities.push(Entity::Video(dda!(VideoEntity {
+            video_stream: Some(Arc::new(Mutex::new(
+                Box::new(video_stream) as AsyncPureStream
+            ))),
+            video_length
+        })));
+        self
+    }
+
+    pub fn video_stream_with_thumb(
+        &mut self,
+        video_stream: impl AsyncPureStreamTrait + 'static,
+        video_length: i32,
+        thumb_stream: impl AsyncPureStreamTrait + 'static,
+    ) -> &mut Self {
+        self.chains.entities.push(Entity::Video(dda!(VideoEntity {
+            video_stream: Some(Arc::new(Mutex::new(
+                Box::new(video_stream) as AsyncPureStream
+            ))),
+            video_thumb_stream: Some(Arc::new(Mutex::new(
+                Box::new(thumb_stream) as AsyncPureStream
+            ))),
+            video_length
         })));
         self
     }
