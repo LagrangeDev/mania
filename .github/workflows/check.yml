@@ -136,6 +136,7 @@ jobs:
       - name: Check test
         run: |
           nix build .#checks.x86_64-linux.audit 2>&1
+
   check-typo:
     runs-on: ubuntu-latest
     needs: build-nixpkg
@@ -154,6 +155,7 @@ jobs:
       - name: Check typo
         run: |
           nix build .#checks.x86_64-linux.typo 2>&1
+
   check-devshell:
     runs-on: ubuntu-latest
     needs: build-nixpkg

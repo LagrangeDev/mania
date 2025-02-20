@@ -2,15 +2,15 @@ default:
     @just --list
 
 info:
-    @echo JUST PATH: {{ just_executable() }}
-    @echo GIT PATH: {{ require('git') }}
-    @echo CARGO PATH: {{ require('cargo') }}
-    @echo GREP PATH: {{ require('grep') }}
-    @echo XARGS PATH: {{ require('xargs') }}
-    @echo TYPOS PATH: {{ require('typos') }}
-    @echo DENO PATH: {{ require('deno') }}
-    @echo TAPLO PATH: {{ require('taplo') }}
-    @echo SHFMT PATH: {{ require('shfmt') }}
+    @echo JUST PATH: `which just`
+    @echo GIT PATH: `which git`
+    @echo CARGO PATH: `which cargo`
+    @echo GREP PATH: `which grep`
+    @echo XARGS PATH: `which xargs`
+    @echo TYPOS PATH: `which typos`
+    @echo DENO PATH: `which deno`
+    @echo TAPLO PATH: `which taplo`
+    @echo SHFMT PATH: `which shfmt`
 
 check: info typoCheck fmtCheck clippyCheck buildCheck docCheck testCheck
 
