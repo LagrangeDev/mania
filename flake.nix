@@ -89,8 +89,14 @@
           inherit (craneLib.crateNameFromCargoToml { cargoToml = ./Cargo.toml; }) version;
           src = filteredSource;
           strictDeps = true;
-          depsBuildBuild = with pkgs; [ protobuf ];
-          nativeBuildInputs = with pkgs; [ libclang.lib ];
+          depsBuildBuild = with pkgs; [
+            protobuf
+            pkg-config
+          ];
+          nativeBuildInputs = with pkgs; [
+            libclang.lib
+            openssl.dev
+          ];
           doCheck = false;
           meta = {
             mainProgram = "mania";
@@ -196,6 +202,7 @@
           packages = with pkgs; [
             # deps
             protobuf
+            pkg-config
 
             # dev
             rust-analyzer
