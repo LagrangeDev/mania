@@ -73,27 +73,29 @@
         stdenv = if pkgs.stdenv.isLinux then pkgs.stdenv else pkgs.clangStdenv;
         rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+        env =
+          let
+            inherit (pkgs) lib libclang;
+            version = lib.getVersion libclang;
+            majorVersion = lib.versions.major version;
+          in
+          {
+            BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${libclang.lib}/lib/clang/${majorVersion}/include";
+            LIBCLANG_PATH = lib.makeLibraryPath [ libclang.lib ];
+          };
         commonArgs = {
-          inherit stdenv;
+          inherit stdenv env;
           inherit (craneLib.crateNameFromCargoToml { cargoToml = ./mania/Cargo.toml; }) pname;
           inherit (craneLib.crateNameFromCargoToml { cargoToml = ./Cargo.toml; }) version;
           src = filteredSource;
           strictDeps = true;
-          nativeBuildInputs = [
-            pkgs.protobuf
-            pkgs.libclang.lib
-            pkgs.llvmPackages.libcxxClang
-            pkgs.clang
-          ];
+          depsBuildBuild = with pkgs; [ protobuf ];
+          nativeBuildInputs = with pkgs; [ libclang.lib ];
           doCheck = false;
           meta = {
             mainProgram = "mania";
             homepage = "https://github.com/LagrangeDev/mania";
             license = pkgs.lib.licenses.gpl3Only;
-          };
-          env = {
-            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-            BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libcxxClang}/lib/clang/${pkgs.lib.getVersion pkgs.clang}/include";
           };
         };
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
@@ -189,13 +191,19 @@
           test = craneLib.cargoTest (commonArgs // { inherit cargoArtifacts; });
         };
         devShells.default = pkgs.mkShell {
+          inherit env;
           inputsFrom = builtins.attrValues self.checks."${system}";
           packages = with pkgs; [
+            # deps
+            protobuf
+
+            # dev
             rust-analyzer
             cargo-flamegraph
             cargo-tarpaulin
             lldb
 
+            # fmt
             taplo
             nixfmt-rfc-style
             deno
