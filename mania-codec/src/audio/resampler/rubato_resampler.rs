@@ -32,22 +32,23 @@ impl AudioResampler<f32, i16> for RubatoResampler<i16> {
             (pcm_in.len() as f64 * sr_out as f64 / sr_in as f64) as usize + 1024,
         );
         // TODO: channel
-        let mut resampler = rubato::FftFixedInOut::<f32>::new(sr_in, sr_out, 1024, 1).unwrap();
+        let mut resampler = rubato::FftFixedInOut::<f32>::new(sr_in, sr_out, 1024, 1)?;
         let mut output_buffer = resampler.output_buffer_allocate(true);
         let mut pos_in = 0;
 
         while pos_in + resampler.input_frames_next() < pcm_in.len() {
-            let (in_len, out_len) = resampler
-                .process_into_buffer(&[&pcm_in[pos_in..]], &mut output_buffer, None)
-                .unwrap();
+            let (in_len, out_len) =
+                resampler.process_into_buffer(&[&pcm_in[pos_in..]], &mut output_buffer, None)?;
             pos_in += in_len;
             pcm_out.extend_from_slice(&output_buffer[0][..out_len]);
         }
 
         if pos_in < pcm_in.len() {
-            let (_, out_len) = resampler
-                .process_partial_into_buffer(Some(&[&pcm_in[pos_in..]]), &mut output_buffer, None)
-                .unwrap();
+            let (_, out_len) = resampler.process_partial_into_buffer(
+                Some(&[&pcm_in[pos_in..]]),
+                &mut output_buffer,
+                None,
+            )?;
             pcm_out.extend_from_slice(&output_buffer[0][..out_len]);
         }
 

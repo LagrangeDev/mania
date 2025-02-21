@@ -92,9 +92,7 @@ impl<T: DecodeSample> AudioDecoder<T> for SymphoniaDecoder<T> {
         let hint = Hint::new();
         let meta_opts: MetadataOptions = Default::default();
         let fmt_opts: FormatOptions = Default::default();
-        let probed = symphonia::default::get_probe()
-            .format(&hint, mss, &fmt_opts, &meta_opts)
-            .unwrap();
+        let probed = symphonia::default::get_probe().format(&hint, mss, &fmt_opts, &meta_opts)?;
         let mut format = probed.format;
         let track = format
             .tracks()
@@ -114,7 +112,7 @@ impl<T: DecodeSample> AudioDecoder<T> for SymphoniaDecoder<T> {
             if packet.track_id() != track_id {
                 continue;
             }
-            match decoder.decode(&packet).unwrap() {
+            match decoder.decode(&packet)? {
                 AudioBufferRef::F32(data) => conv(&mut pcm_data, data),
                 AudioBufferRef::U8(data) => conv(&mut pcm_data, data),
                 AudioBufferRef::U16(data) => conv(&mut pcm_data, data),

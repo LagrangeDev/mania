@@ -4,7 +4,12 @@ use crate::audio::{AudioResampleStream, ResampleSample};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum AudioCodecResamplerError {}
+pub enum AudioCodecResamplerError {
+    #[error("Rubato resampler error: {0}")]
+    RubatoResampleError(#[from] rubato::ResampleError),
+    #[error("Rubato resampler construction error: {0}")]
+    RubatoResamplerConstructionError(#[from] rubato::ResamplerConstructionError),
+}
 
 pub trait AudioResampler<T: ResampleSample, U: ResampleSample> {
     fn resample(
