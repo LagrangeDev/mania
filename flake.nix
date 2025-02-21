@@ -35,9 +35,7 @@
       system:
       let
         overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs {
-          inherit system overlays;
-        };
+        pkgs = import nixpkgs { inherit system overlays; };
         filteredSource =
           let
             pathsToIgnore = [
@@ -77,18 +75,8 @@
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
         commonArgs = {
           inherit stdenv;
-          inherit
-            (craneLib.crateNameFromCargoToml {
-              cargoToml = ./mania/Cargo.toml;
-            })
-            pname
-            ;
-          inherit
-            (craneLib.crateNameFromCargoToml {
-              cargoToml = ./Cargo.toml;
-            })
-            version
-            ;
+          inherit (craneLib.crateNameFromCargoToml { cargoToml = ./mania/Cargo.toml; }) pname;
+          inherit (craneLib.crateNameFromCargoToml { cargoToml = ./Cargo.toml; }) version;
           src = filteredSource;
           strictDeps = true;
           nativeBuildInputs = [
@@ -104,8 +92,8 @@
             license = pkgs.lib.licenses.gpl3Only;
           };
           env = {
-           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-           BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libcxxClang}/lib/clang/${pkgs.lib.getVersion pkgs.clang}/include";
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libcxxClang}/lib/clang/${pkgs.lib.getVersion pkgs.clang}/include";
           };
         };
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
@@ -113,9 +101,7 @@
           pkgs.runCommandNoCCLocal "check-typo"
             {
               src = ./.;
-              nativeBuildInputs = with pkgs; [
-                typos
-              ];
+              nativeBuildInputs = with pkgs; [ typos ];
             }
             ''
               mkdir -p $out
@@ -190,12 +176,7 @@
         checks = {
           inherit (self.packages."${system}") mania;
           typo = typoCheck;
-          audit = craneLib.cargoAudit (
-            commonArgs
-            // {
-              inherit advisory-db;
-            }
-          );
+          audit = craneLib.cargoAudit (commonArgs // { inherit advisory-db; });
           clippy = craneLib.cargoClippy (
             commonArgs
             // {
@@ -204,18 +185,8 @@
             }
           );
           fmt = fmtCheck;
-          doc = craneLib.cargoDoc (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-            }
-          );
-          test = craneLib.cargoTest (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-            }
-          );
+          doc = craneLib.cargoDoc (commonArgs // { inherit cargoArtifacts; });
+          test = craneLib.cargoTest (commonArgs // { inherit cargoArtifacts; });
         };
         devShells.default = pkgs.mkShell {
           inputsFrom = builtins.attrValues self.checks."${system}";
@@ -236,8 +207,6 @@
       }
     )
     // {
-      overlays.default = final: prev: {
-        inherit (self.packages."${final.system}") mania;
-      };
+      overlays.default = final: prev: { inherit (self.packages."${final.system}") mania; };
     };
 }
