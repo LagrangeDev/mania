@@ -93,12 +93,19 @@
           strictDeps = true;
           nativeBuildInputs = [
             pkgs.protobuf
+            pkgs.libclang.lib
+            pkgs.llvmPackages.libcxxClang
+            pkgs.clang
           ];
           doCheck = false;
           meta = {
             mainProgram = "mania";
             homepage = "https://github.com/LagrangeDev/mania";
             license = pkgs.lib.licenses.gpl3Only;
+          };
+          env = {
+           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+           BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libcxxClang}/lib/clang/${pkgs.lib.getVersion pkgs.clang}/include";
           };
         };
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
