@@ -1,0 +1,7 @@
+[advisories]
+ignore = []
+severity_threshold = "critical"
+
+[target]
+arch = ["x86_64"]
+os = ["linux", "windows"]
