@@ -5,27 +5,40 @@ use crate::core::event::message::image_c2c_upload::{ImageC2CUploadArgs, ImageC2C
 use crate::core::event::message::image_group_upload::{
     ImageGroupUploadArgs, ImageGroupUploadEvent,
 };
+use crate::core::event::message::record_c2c_upload::{RecordC2CUploadArgs, RecordC2CUploadEvent};
+use crate::core::event::message::record_group_upload::{
+    RecordGroupUploadArgs, RecordGroupUploadEvent,
+};
 use crate::core::event::message::video_c2c_upload::{VideoC2CUploadArgs, VideoC2CUploadEvent};
 use crate::core::event::message::video_group_upload::{
     VideoGroupUploadArgs, VideoGroupUploadEvent,
 };
 use crate::core::event::system::fetch_highway_ticket::FetchHighwayTicketEvent;
 use crate::core::highway::hw_client::HighwayClient;
-use crate::core::highway::{AsyncStream, HighwayError, oidb_ipv4s_to_highway_ipv4s};
+use crate::core::highway::{
+    AsyncPureStream, AsyncStream, HighwayError, oidb_ipv4s_to_highway_ipv4s,
+};
 use crate::core::protos::service::highway::{
     NtHighwayHash, NtHighwayNetwork, Ntv2RichMediaHighwayExt,
 };
 use crate::message::entity::image::ImageEntity;
+use crate::message::entity::record::RecordEntity;
 use crate::message::entity::video::VideoEntity;
 use crate::utility::image_resolver::{ImageFormat, resolve_image_metadata};
 use crate::utility::stream_helper::{mut_stream_ctx, stream_pipeline};
 use crate::{ManiaError, ManiaResult, dda};
 use bytes::Bytes;
+use mania_codec::audio::AudioRwStream;
+use mania_codec::audio::decoder::symphonia_decoder::SymphoniaDecoder;
+use mania_codec::audio::encoder::silk_encoder::SilkEncoder;
+use mania_codec::audio::resampler::rubato_resampler::RubatoResampler;
 use md5::Md5;
 use prost::Message;
 use sha1::{Digest, Sha1};
 use std::borrow::Cow;
+use std::io::Cursor;
 use std::sync::Arc;
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 impl BusinessHandle {
     async fn fetch_sig_session(self: &Arc<Self>) -> ManiaResult<Bytes> {
@@ -587,6 +600,262 @@ impl BusinessHandle {
         }
         video.msg_info = Some(res.res.msg_info.to_owned());
         video.compat = Some(res.res.video_file.to_owned());
+        Ok(())
+    }
+
+    async fn resolve_audio(
+        self: &Arc<Self>,
+        stream_ctx: AsyncStream,
+    ) -> ManiaResult<(AsyncPureStream, u32, f64, Bytes, Bytes)> {
+        let (silk_stream, stream_len, time, sha1_bytes, md5_bytes) =
+            mut_stream_ctx(&stream_ctx, |s| {
+                Box::pin(async move {
+                    // TODO: Explore some possible optimization methods
+                    // TODO: such as manually implementing cloning for our stream.
+                    let mut data = Vec::new();
+                    s.read_to_end(&mut data).await?;
+                    s.seek(std::io::SeekFrom::Start(0)).await?;
+                    let cursor = Cursor::new(data);
+                    // TODO: If the input stream is already silk, skip the conversion.
+                    let task = tokio::task::spawn_blocking(|| {
+                        tracing::debug!("Start audio processing");
+                        let pipeline = AudioRwStream::new(Box::new(cursor))
+                            .decode(SymphoniaDecoder::<f32>::new())
+                            .map_err(|e| {
+                                ManiaError::GenericError(Cow::from(format!(
+                                    "Decode error: {:?}",
+                                    e
+                                )))
+                            })?
+                            .resample(RubatoResampler::<i16>::new(48000))
+                            .map_err(|e| {
+                                ManiaError::GenericError(Cow::from(format!(
+                                    "Resample error: {:?}",
+                                    e
+                                )))
+                            })?
+                            .encode(SilkEncoder::new(30000))
+                            .map_err(|e| {
+                                ManiaError::GenericError(Cow::from(format!(
+                                    "Encode error: {:?}",
+                                    e
+                                )))
+                            })?;
+                        tracing::debug!("Audio processing finished");
+                        let output = pipeline.stream;
+                        Ok::<Vec<u8>, ManiaError>(output)
+                    });
+                    let res = task.await.map_err(|e| {
+                        ManiaError::GenericError(Cow::from(format!("Blocking error: {:?}", e)))
+                    })??;
+                    let get_ten_silk_time = |data: &[u8]| -> f64 {
+                        let mut i = 10;
+                        std::iter::from_fn(|| {
+                            (i + 2 <= data.len()).then(|| {
+                                let block_len = u16::from_le_bytes([data[i], data[i + 1]]);
+                                i += 2 + block_len as usize;
+                            })
+                        })
+                        .count() as f64
+                            * 0.02
+                    };
+                    let stream_len = res.len();
+                    let time = get_ten_silk_time(&res);
+                    let mut silk_pure_stream = Box::new(Cursor::new(res)) as AsyncPureStream;
+                    let mut sha1_hasher = Sha1::new();
+                    let mut md5_hasher = Md5::new();
+                    stream_pipeline(&mut silk_pure_stream, |chunk| {
+                        sha1_hasher.update(chunk);
+                        md5_hasher.update(chunk);
+                    })
+                    .await?;
+                    let sha1_bytes = Bytes::from(sha1_hasher.finalize().to_vec());
+                    let md5_bytes = Bytes::from(md5_hasher.finalize().to_vec());
+                    Ok::<(AsyncPureStream, u32, f64, Bytes, Bytes), ManiaError>((
+                        silk_pure_stream,
+                        stream_len as u32,
+                        time,
+                        sha1_bytes,
+                        md5_bytes,
+                    ))
+                })
+            })
+            .await?;
+        Ok((silk_stream, stream_len, time, sha1_bytes, md5_bytes))
+    }
+
+    pub async fn upload_group_record(
+        self: &Arc<Self>,
+        group_uin: u32,
+        record: &mut RecordEntity,
+    ) -> ManiaResult<()> {
+        self.prepare_highway().await?;
+        let stream = record
+            .resolve_stream()
+            .await
+            .ok_or(ManiaError::GenericError(Cow::from(
+                "No record stream found",
+            )))?;
+        // TODO: here we need transform audio stream to mp3
+        // TODO: Is it better to use a temporary stream, or write the stream back (more semantic?)
+        let (mut silk_stream, size, time, sha1, md5) = self.resolve_audio(stream.clone()).await?;
+        record.audio_length = time as u32;
+        let mut req = dda!(RecordGroupUploadEvent {
+            req: RecordGroupUploadArgs {
+                group_uin,
+                size,
+                length: time as u32,
+                name: record
+                    .file_path
+                    .clone()
+                    .unwrap_or_else(|| format!("{}.amr", hex::encode(&md5))),
+                md5,
+                sha1,
+            },
+        });
+        let req = self.send_event(&mut req).await?;
+        let res: &RecordGroupUploadEvent =
+            downcast_major_event(&req).ok_or(ManiaError::InternalEventDowncastError)?;
+        if res.res.u_key.as_ref().is_some() {
+            tracing::debug!(
+                "uploadGroupRecordReq get upload u_key: {}, need upload!",
+                res.res.u_key.as_ref().unwrap()
+            );
+            let chunk_size = self.context.config.highway_chuck_size;
+            let msg_info_body = res.res.msg_info.msg_info_body.to_owned();
+            let index_node = msg_info_body
+                .first()
+                .ok_or(ManiaError::GenericError(Cow::from(
+                    "No index node in response",
+                )))?
+                .index
+                .as_ref()
+                .ok_or(ManiaError::GenericError(Cow::from("No index in response")))?;
+            let info = index_node
+                .info
+                .as_ref()
+                .ok_or(ManiaError::GenericError(Cow::from("No info in response")))?;
+            let sha1 = hex::decode(&info.file_sha1).map_err(HighwayError::HexError)?;
+            let md5 = hex::decode(&info.file_hash).map_err(HighwayError::HexError)?;
+            let extend = Ntv2RichMediaHighwayExt {
+                file_uuid: index_node.file_uuid.to_owned(),
+                u_key: res.res.u_key.to_owned().unwrap(),
+                network: Some(NtHighwayNetwork {
+                    i_pv4s: oidb_ipv4s_to_highway_ipv4s(&res.res.ipv4s),
+                }),
+                msg_info_body: msg_info_body.to_owned(),
+                block_size: chunk_size as u32,
+                hash: Some({
+                    NtHighwayHash {
+                        file_sha1: vec![sha1],
+                    }
+                }),
+            }
+            .encode_to_vec();
+            let client = self.highway.client.load();
+            client
+                .upload(
+                    1008,
+                    &mut silk_stream,
+                    size,
+                    Bytes::from(md5),
+                    Bytes::from(extend),
+                )
+                .await?;
+            tracing::debug!("Successfully uploaded group record!");
+        } else {
+            tracing::debug!("No u_key in upload_group_record response, skip upload!");
+        }
+        record.msg_info = Some(res.res.msg_info.to_owned());
+        record.compat = Some(res.res.rich_text.to_owned());
+        Ok(())
+    }
+
+    pub async fn upload_c2c_record(
+        self: &Arc<Self>,
+        target_uid: &str,
+        record: &mut RecordEntity,
+    ) -> ManiaResult<()> {
+        self.prepare_highway().await?;
+        let stream = record
+            .resolve_stream()
+            .await
+            .ok_or(ManiaError::GenericError(Cow::from(
+                "No record stream found",
+            )))?;
+        // TODO: here we need transform audio stream to mp3
+        // TODO: Is it better to use a temporary stream, or write the stream back (more semantic?)
+        let (mut silk_stream, size, time, sha1, md5) = self.resolve_audio(stream.clone()).await?;
+        record.audio_length = time as u32;
+        tracing::debug!("Audio length: {}", record.audio_length);
+        let mut req = dda!(RecordC2CUploadEvent {
+            req: RecordC2CUploadArgs {
+                uid: target_uid.to_string(),
+                size,
+                length: record.audio_length,
+                name: record
+                    .file_path
+                    .clone()
+                    .unwrap_or_else(|| format!("{}.mp3", hex::encode(&sha1))),
+                md5,
+                sha1,
+            }
+        });
+        let req = self.send_event(&mut req).await?;
+        let res: &RecordC2CUploadEvent =
+            downcast_major_event(&req).ok_or(ManiaError::InternalEventDowncastError)?;
+        if res.res.u_key.as_ref().is_some() {
+            tracing::debug!(
+                "uploadC2CRecordReq get upload u_key: {}, need upload!",
+                res.res.u_key.as_ref().unwrap()
+            );
+            let chunk_size = self.context.config.highway_chuck_size;
+            let msg_info_body = res.res.msg_info.msg_info_body.to_owned();
+            let index_node = msg_info_body
+                .first()
+                .ok_or(ManiaError::GenericError(Cow::from(
+                    "No index node in response",
+                )))?
+                .index
+                .as_ref()
+                .ok_or(ManiaError::GenericError(Cow::from("No index in response")))?;
+            let info = index_node
+                .info
+                .as_ref()
+                .ok_or(ManiaError::GenericError(Cow::from("No info in response")))?;
+            let sha1 = hex::decode(&info.file_sha1).map_err(HighwayError::HexError)?;
+            let md5 = hex::decode(&info.file_hash).map_err(HighwayError::HexError)?;
+            let extend = Ntv2RichMediaHighwayExt {
+                file_uuid: index_node.file_uuid.to_owned(),
+                u_key: res.res.u_key.to_owned().unwrap(),
+                network: Some(NtHighwayNetwork {
+                    i_pv4s: oidb_ipv4s_to_highway_ipv4s(&res.res.ipv4s),
+                }),
+                msg_info_body: msg_info_body.to_owned(),
+                block_size: chunk_size as u32,
+                hash: Some({
+                    NtHighwayHash {
+                        file_sha1: vec![sha1],
+                    }
+                }),
+            }
+            .encode_to_vec();
+            let client = self.highway.client.load();
+            client
+                .upload(
+                    1007,
+                    &mut silk_stream,
+                    size,
+                    Bytes::from(md5),
+                    Bytes::from(extend),
+                )
+                .await?;
+            tracing::debug!("Successfully uploaded c2c record!");
+        } else {
+            tracing::debug!("No u_key in upload_c2c_record response, skip upload!");
+        }
+        record.msg_info = Some(res.res.msg_info.to_owned());
+        record.compat = Some(res.res.rich_text.to_owned());
         Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use crate::core::business::LogicRegistry;
+use crate::core::business::{BusinessError, LogicRegistry};
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::message::push_msg::PushMessageEvent;
 use crate::core::event::message::send_message::SendMessageEvent;
@@ -79,11 +79,11 @@ async fn messaging_logic(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
     flow: LogicFlow,
-) -> &dyn ServerEvent {
+) -> Result<&dyn ServerEvent, BusinessError> {
     tracing::trace!("[{}] Handling event: {:?}", flow, event);
     match flow {
-        LogicFlow::InComing => messaging_logic_incoming(event, handle).await,
-        LogicFlow::OutGoing => messaging_logic_outgoing(event, handle).await,
+        LogicFlow::InComing => Ok(messaging_logic_incoming(event, handle).await),
+        LogicFlow::OutGoing => Ok(messaging_logic_outgoing(event, handle).await?),
     }
 }
 
@@ -848,19 +848,64 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
 async fn messaging_logic_outgoing(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
-) -> &dyn ServerEvent {
+) -> Result<&dyn ServerEvent, BusinessError> {
     match event {
         _ if let Some(send) = event.as_any_mut().downcast_mut::<SendMessageEvent>() => {
             resolve_chain_metadata(&mut send.chain, handle.clone()).await;
-            resolve_outgoing_chain(&mut send.chain, handle.clone()).await;
+            resolve_outgoing_chain(&mut send.chain, handle.clone()).await?;
             // TODO: await Collection.Highway.UploadResources(send.Chain);
         }
         _ => {}
     }
-    event
+    Ok(event)
 }
 
-async fn resolve_outgoing_chain(_: &mut MessageChain, _: Arc<BusinessHandle>) {}
+// TODO: error handling
+async fn resolve_outgoing_chain(
+    chain: &mut MessageChain,
+    handle: Arc<BusinessHandle>,
+) -> Result<(), BusinessError> {
+    let entities: &mut Vec<Entity> = chain.entities.as_mut();
+    for entity in entities {
+        match entity {
+            Entity::Image(image) => match &chain.typ {
+                MessageType::Group(grp) => handle
+                    .upload_group_image(grp.group_uin, image)
+                    .await
+                    .map_err(|e| BusinessError::GenericError(e.to_string()))?,
+                MessageType::Friend(_) | MessageType::Temp => handle
+                    .upload_c2c_image(&chain.uid, image)
+                    .await
+                    .map_err(|e| BusinessError::GenericError(e.to_string()))?,
+                _ => {}
+            },
+            Entity::Video(video) => match &chain.typ {
+                MessageType::Group(grp) => handle
+                    .upload_group_video(grp.group_uin, video)
+                    .await
+                    .map_err(|e| BusinessError::GenericError(e.to_string()))?,
+                MessageType::Friend(_) | MessageType::Temp => handle
+                    .upload_c2c_video(&chain.uid, video)
+                    .await
+                    .map_err(|e| BusinessError::GenericError(e.to_string()))?,
+                _ => {}
+            },
+            Entity::Record(record) => match &chain.typ {
+                MessageType::Group(grp) => handle
+                    .upload_group_record(grp.group_uin, record)
+                    .await
+                    .map_err(|e| BusinessError::GenericError(e.to_string()))?,
+                MessageType::Friend(_) | MessageType::Temp => handle
+                    .upload_c2c_record(&chain.uid, record)
+                    .await
+                    .map_err(|e| BusinessError::GenericError(e.to_string()))?,
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+    Ok(())
+}
 
 // TODO: return result!!!
 async fn resolve_chain_metadata(

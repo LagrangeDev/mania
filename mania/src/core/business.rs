@@ -63,7 +63,9 @@ type LogicHandleFn = for<'a> fn(
     &'a mut dyn ServerEvent,
     Arc<BusinessHandle>,
     LogicFlow,
-) -> Pin<Box<dyn Future<Output = &'a dyn ServerEvent> + Send + 'a>>;
+) -> Pin<
+    Box<dyn Future<Output = Result<&'a dyn ServerEvent, BusinessError>> + Send + 'a>,
+>;
 
 pub struct LogicRegistry {
     pub event_type_id_fn: fn() -> TypeId,
@@ -93,17 +95,17 @@ pub async fn dispatch_logic(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
     flow: LogicFlow,
-) -> &dyn ServerEvent {
+) -> Result<&dyn ServerEvent, BusinessError> {
     let tid = event.as_any().type_id();
     if let Some(fns) = LOGIC_MAP.get(&tid) {
         tracing::trace!("[{}] Found {} handlers for {:?}.", flow, fns.len(), event);
         for handle_fn in fns.iter() {
-            handle_fn(event, handle.to_owned(), flow).await;
+            handle_fn(event, handle.to_owned(), flow).await?;
         }
     } else {
         tracing::trace!("[{}] No handler found for {:?}", flow, event);
     }
-    event
+    Ok(event)
 }
 
 pub struct Business {
@@ -241,10 +243,10 @@ impl BusinessHandle {
         let result: BusinessResult<CEParse> = async {
             let (mut major_event, mut extra_events) = resolve_event(packet, &self.context).await?;
             let svc = self.clone();
-            dispatch_logic(major_event.as_mut(), svc.clone(), LogicFlow::InComing).await;
+            dispatch_logic(major_event.as_mut(), svc.clone(), LogicFlow::InComing).await?;
             if let Some(ref mut events) = extra_events {
                 for event in events.iter_mut() {
-                    dispatch_logic(event.as_mut(), svc.clone(), LogicFlow::InComing).await;
+                    dispatch_logic(event.as_mut(), svc.clone(), LogicFlow::InComing).await?;
                 }
             }
             Ok((major_event, extra_events))
@@ -289,7 +291,7 @@ impl BusinessHandle {
             self.clone(),
             LogicFlow::OutGoing,
         )
-        .await;
+        .await?;
         // MultiMsgUploadEvent -> Lagrange.Core.Internal.Context.Logic.Implementation.MessagingLogic.Outgoing
         let packet = self.build_sso_packet(event);
         let events = self.send_packet(packet?).await?;

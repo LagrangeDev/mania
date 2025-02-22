@@ -48,6 +48,8 @@ pub enum HighwayError {
     UploadError(u32),
     #[error("Hex decode error!")]
     HexError(#[from] hex::FromHexError),
+    #[error("Audio codec error: {0}")]
+    AudioCodecError(#[from] mania_codec::audio::AudioCodecError),
     #[error("An error occurred in highway: {0}")]
     OtherError(Cow<'static, str>),
 }

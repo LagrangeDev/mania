@@ -1,4 +1,4 @@
-use crate::core::business::LogicRegistry;
+use crate::core::business::{BusinessError, LogicRegistry};
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::notify::group_sys_decrease::GroupSysDecreaseEvent;
 use crate::core::event::notify::group_sys_increase::GroupSysIncreaseEvent;
@@ -11,10 +11,10 @@ async fn caching_logic(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
     flow: LogicFlow,
-) -> &dyn ServerEvent {
+) -> Result<&dyn ServerEvent, BusinessError> {
     match flow {
-        LogicFlow::InComing => caching_logic_incoming(event, handle).await,
-        LogicFlow::OutGoing => event,
+        LogicFlow::InComing => Ok(caching_logic_incoming(event, handle).await),
+        LogicFlow::OutGoing => Ok(event),
     }
 }
 

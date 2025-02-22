@@ -48,12 +48,7 @@ impl Display for RecordEntity {
 impl MessageEntity for RecordEntity {
     fn pack_element(&self, _: &Context) -> Vec<Elem> {
         let common = self.msg_info.as_ref().map_or_else(
-            || {
-                MsgInfo {
-                    ..Default::default()
-                }
-                .encode_to_vec()
-            },
+            || MsgInfo::default().encode_to_vec(),
             |msg_info| msg_info.encode_to_vec(),
         );
         vec![dda!(Elem {

@@ -188,8 +188,8 @@ impl HighwayClient {
             .await
         {
             Ok(_) => Ok(()),
-            Err(_) => {
-                tracing::warn!("Tcp upload failed, fallback to http upload...");
+            Err(e) => {
+                tracing::warn!("Tcp upload failed: {:?} fallback to http upload...", e);
                 self.http_upload(cmd, data, size, md5, ext_info).await
             }
         }

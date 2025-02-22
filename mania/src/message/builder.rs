@@ -3,6 +3,7 @@ use crate::dda;
 use crate::message::chain::MessageChain;
 use crate::message::entity::Entity;
 use crate::message::entity::image::ImageEntity;
+use crate::message::entity::record::RecordEntity;
 use crate::message::entity::text::TextEntity;
 use crate::message::entity::video::VideoEntity;
 use std::sync::Arc;
@@ -104,6 +105,25 @@ impl MessageChainBuilder {
                 Box::new(thumb_stream) as AsyncPureStream
             ))),
             video_length
+        })));
+        self
+    }
+
+    pub fn record(&mut self, record_path: &str) -> &mut Self {
+        self.chains.entities.push(Entity::Record(dda!(RecordEntity {
+            file_path: Some(record_path.to_string()),
+        })));
+        self
+    }
+
+    pub fn record_stream(
+        &mut self,
+        record_stream: impl AsyncPureStreamTrait + 'static,
+    ) -> &mut Self {
+        self.chains.entities.push(Entity::Record(dda!(RecordEntity {
+            audio_stream: Some(Arc::new(Mutex::new(
+                Box::new(record_stream) as AsyncPureStream
+            ))),
         })));
         self
     }

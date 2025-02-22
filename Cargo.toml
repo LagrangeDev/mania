@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["mania", "mania-macros", "examples", "mania-codec"]
+members = ["mania", "mania-macros", "mania-codec", "examples"]
 
 [workspace.package]
 version = "0.0.1"

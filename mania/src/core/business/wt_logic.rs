@@ -1,4 +1,4 @@
-use crate::core::business::LogicRegistry;
+use crate::core::business::{BusinessError, LogicRegistry};
 use crate::core::business::{BusinessHandle, LogicFlow};
 use crate::core::event::prelude::*;
 use crate::core::event::system::kick_nt::KickNTEvent;
@@ -12,10 +12,10 @@ async fn messaging_logic(
     event: &mut dyn ServerEvent,
     handle: Arc<BusinessHandle>,
     flow: LogicFlow,
-) -> &dyn ServerEvent {
+) -> Result<&dyn ServerEvent, BusinessError> {
     match flow {
-        LogicFlow::InComing => messaging_logic_incoming(event, handle).await,
-        LogicFlow::OutGoing => event,
+        LogicFlow::InComing => Ok(messaging_logic_incoming(event, handle).await),
+        LogicFlow::OutGoing => Ok(event),
     }
 }
 

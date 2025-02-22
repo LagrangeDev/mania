@@ -222,7 +222,7 @@ pub fn handle_event(attr: TokenStream, item: TokenStream) -> TokenStream {
                 event: &'a mut dyn crate::core::event::ServerEvent,
                 handle: std::sync::Arc<crate::core::business::BusinessHandle>,
                 flow: crate::core::business::LogicFlow,
-            ) -> std::pin::Pin<Box<dyn std::future::Future<Output = &'a dyn ServerEvent> + Send + 'a>> {
+            ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<&'a dyn ServerEvent, crate::core::business::BusinessError>> + Send + 'a>> {
                 Box::pin(#fn_name(event, handle, flow))
             }
 

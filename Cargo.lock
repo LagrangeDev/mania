@@ -1346,6 +1346,7 @@ dependencies = [
  "hex",
  "inventory",
  "log",
+ "mania-codec",
  "mania-macros",
  "md-5",
  "num_enum",

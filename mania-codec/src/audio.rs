@@ -2,6 +2,7 @@ use crate::audio::decoder::{AudioCodecDecoderError, AudioDecoder};
 use crate::audio::encoder::{AudioCodecEncoderError, AudioEncoder};
 use crate::audio::resampler::{AudioCodecResamplerError, AudioResampler};
 use num_traits::FromPrimitive;
+use std::io;
 use std::io::{Read, Seek};
 use std::marker::PhantomData;
 use symphonia::core::conv::{FromSample, IntoSample};
@@ -68,10 +69,21 @@ impl RSStream for std::fs::File {
     }
 }
 
+impl<T: AsRef<[u8]> + Send + Sync> RSStream for io::Cursor<T> {
+    fn is_seekable(&self) -> bool {
+        true
+    }
+    fn byte_len(&self) -> Option<u64> {
+        let inner = self.get_ref();
+        Some(inner.as_ref().len() as u64)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AudioInfo<T: Sample> {
     pub sample_rate: u32,
     pub channels: u16,
+    pub time: u32,
     _phantom: PhantomData<T>,
 }
 
@@ -80,6 +92,7 @@ impl<T: Sample> AudioInfo<T> {
         Self {
             sample_rate,
             channels,
+            time: 0,
             _phantom: PhantomData,
         }
     }
