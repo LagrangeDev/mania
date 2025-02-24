@@ -6,7 +6,9 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum AudioCodecDecoderError {
     #[error("Symphonia decoder error: {0}")]
-    SymphoniaError(#[from] symphonia::core::errors::Error),
+    SymphoniaKnownError(#[from] symphonia::core::errors::Error),
+    #[error("Unknown Symphonia decoder error: {0}")]
+    SymphoniaUnknownError(String),
 }
 
 pub trait AudioDecoder<T: DecodeSample> {

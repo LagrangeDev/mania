@@ -2,12 +2,12 @@ use crate::audio::decoder::{AudioCodecDecoderError, AudioDecoder};
 use crate::audio::{AudioInfo, AudioResampleStream, AudioRwStream, DecodeSample, RSStream};
 use std::io::{Read, Seek, SeekFrom};
 use std::marker::PhantomData;
-use symphonia::core::audio::{AudioBufferRef, Signal};
-use symphonia::core::codecs::CODEC_TYPE_NULL;
-use symphonia::core::formats::FormatOptions;
+use symphonia::core::audio::{Audio, GenericAudioBufferRef};
+use symphonia::core::codecs::audio::AudioDecoderOptions;
+use symphonia::core::formats::probe::Hint;
+use symphonia::core::formats::{FormatOptions, TrackType};
 use symphonia::core::io::{MediaSource, MediaSourceStream};
 use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
 
 struct RSStreamAdapter {
     inner: Box<dyn RSStream>,
@@ -66,12 +66,17 @@ impl<T: DecodeSample> Default for SymphoniaDecoder<T> {
 }
 
 // FIXME: It is now just a rigid conversion to mono (in the form of [0])!
-fn conv<S, T>(samples: &mut Vec<S>, data: std::borrow::Cow<symphonia::core::audio::AudioBuffer<T>>)
+fn conv<S, T>(samples: &mut Vec<S>, data: &symphonia::core::audio::AudioBuffer<T>)
 where
-    T: symphonia::core::sample::Sample,
-    S: symphonia::core::conv::FromSample<T>,
+    T: symphonia::core::audio::sample::Sample,
+    S: symphonia::core::audio::conv::FromSample<T>,
 {
-    samples.extend(data.chan(0).iter().map(|v| S::from_sample(*v)));
+    samples.extend(
+        data.plane(0)
+            .unwrap_or(&[]) // TODO: avoid unwrap_or (?
+            .iter()
+            .map(|v| S::from_sample(*v)),
+    );
 }
 
 // ref: https://github.com/kyutai-labs/hibiki/blob/main/hibiki-rs/src/audio_io.rs
@@ -90,22 +95,43 @@ impl<T: DecodeSample> AudioDecoder<T> for SymphoniaDecoder<T> {
         };
         let mss = MediaSourceStream::new(Box::new(adapter), Default::default());
         let hint = Hint::new();
-        let meta_opts: MetadataOptions = Default::default();
         let fmt_opts: FormatOptions = Default::default();
-        let probed = symphonia::default::get_probe().format(&hint, mss, &fmt_opts, &meta_opts)?;
-        let mut format = probed.format;
-        let track = format
-            .tracks()
-            .iter()
-            .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
-            .expect("no supported audio tracks");
-        let mut decoder = symphonia::default::get_codecs()
-            .make(&track.codec_params, &Default::default())
-            .expect("unsupported codec");
+        let meta_opts: MetadataOptions = Default::default();
+        let dec_opts: AudioDecoderOptions = Default::default();
+        let mut format = symphonia::default::get_probe().probe(&hint, mss, fmt_opts, meta_opts)?;
+        let track = format.default_track(TrackType::Audio).ok_or(
+            AudioCodecDecoderError::SymphoniaUnknownError("no audio track".to_string()),
+        )?;
+        let mut decoder = symphonia::default::get_codecs().make_audio_decoder(
+            track
+                .codec_params
+                .as_ref()
+                .ok_or(AudioCodecDecoderError::SymphoniaUnknownError(
+                    "codec parameters missing".to_string(),
+                ))?
+                .audio()
+                .ok_or(AudioCodecDecoderError::SymphoniaUnknownError(
+                    "audio parameters missing".to_string(),
+                ))?,
+            &dec_opts,
+        )?;
         let track_id = track.id;
-        let sample_rate = track.codec_params.sample_rate.unwrap_or(0);
+        let sample_rate = track
+            .codec_params
+            .as_ref()
+            .ok_or(AudioCodecDecoderError::SymphoniaUnknownError(
+                "codec parameters missing".to_string(),
+            ))?
+            .audio()
+            .ok_or(AudioCodecDecoderError::SymphoniaUnknownError(
+                "audio parameters missing".to_string(),
+            ))?
+            .sample_rate
+            .ok_or(AudioCodecDecoderError::SymphoniaUnknownError(
+                "sample rate missing".to_string(),
+            ))?;
         let mut pcm_data = Vec::new();
-        while let Ok(packet) = format.next_packet() {
+        while let Ok(Some(packet)) = format.next_packet() {
             while !format.metadata().is_latest() {
                 format.metadata().pop();
             }
@@ -113,16 +139,17 @@ impl<T: DecodeSample> AudioDecoder<T> for SymphoniaDecoder<T> {
                 continue;
             }
             match decoder.decode(&packet)? {
-                AudioBufferRef::F32(data) => conv(&mut pcm_data, data),
-                AudioBufferRef::U8(data) => conv(&mut pcm_data, data),
-                AudioBufferRef::U16(data) => conv(&mut pcm_data, data),
-                AudioBufferRef::U24(data) => conv(&mut pcm_data, data),
-                AudioBufferRef::U32(data) => conv(&mut pcm_data, data),
-                AudioBufferRef::S8(data) => conv(&mut pcm_data, data),
-                AudioBufferRef::S16(data) => conv(&mut pcm_data, data),
-                AudioBufferRef::S24(data) => conv(&mut pcm_data, data),
-                AudioBufferRef::S32(data) => conv(&mut pcm_data, data),
-                AudioBufferRef::F64(data) => conv(&mut pcm_data, data),
+                // TODO: samples.resize(audio_buf.samples_interleaved(), f32::MID);
+                GenericAudioBufferRef::F32(data) => conv(&mut pcm_data, data),
+                GenericAudioBufferRef::U8(data) => conv(&mut pcm_data, data),
+                GenericAudioBufferRef::U16(data) => conv(&mut pcm_data, data),
+                GenericAudioBufferRef::U24(data) => conv(&mut pcm_data, data),
+                GenericAudioBufferRef::U32(data) => conv(&mut pcm_data, data),
+                GenericAudioBufferRef::S8(data) => conv(&mut pcm_data, data),
+                GenericAudioBufferRef::S16(data) => conv(&mut pcm_data, data),
+                GenericAudioBufferRef::S24(data) => conv(&mut pcm_data, data),
+                GenericAudioBufferRef::S32(data) => conv(&mut pcm_data, data),
+                GenericAudioBufferRef::F64(data) => conv(&mut pcm_data, data),
             }
         }
         Ok(AudioResampleStream {

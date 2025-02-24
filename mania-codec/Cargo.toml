@@ -8,7 +8,9 @@ license-file.workspace = true
 num-traits = "0.2.19"
 rubato = "0.16.1"
 silk-sys = "0.1.0"
-symphonia = { version = "0.5.4", features = ["all"] }
+symphonia = { git = "https://github.com/pdeljanov/Symphonia.git", branch = "dev-0.6", features = [
+  "all",
+] }
 thiserror.workspace = true
 num_enum.workspace = true
 bytes.workspace = true

@@ -5,8 +5,8 @@ use num_traits::FromPrimitive;
 use std::io;
 use std::io::{Read, Seek};
 use std::marker::PhantomData;
-use symphonia::core::conv::{FromSample, IntoSample};
-use symphonia::core::sample::{i24, u24};
+use symphonia::core::audio::conv::{FromSample, IntoSample};
+use symphonia::core::audio::sample::{i24, u24};
 use thiserror::Error;
 
 pub mod decoder;
