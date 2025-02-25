@@ -44,7 +44,7 @@
               ".github"
               ".gitignore"
               "rust-toolchain.toml"
-              "README.MD"
+              "README.md"
               "flake.nix"
               "flake.lock"
               "target"
@@ -140,7 +140,7 @@
                   just --unstable --fmt --check
                   # markdown
                   echo '==> markdown format check'
-                  find . -type f -regextype egrep -regex '^.*\.(md|MD)$' -exec deno fmt --check --ext md {} +
+                  find . -type f -regextype egrep -regex '^.*\.md$' -exec deno fmt --check --ext md {} +
                   # toml
                   echo '==> toml format check'
                   find . -type f -regextype egrep -regex '^.*\.toml$' -exec taplo format --check {} +

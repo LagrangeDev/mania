@@ -46,10 +46,10 @@ justFmt:
     just --unstable --fmt
 
 mdFmtCheck:
-    git ls-files | grep -E '^.*\.(md|MD)$' | xargs deno fmt --check --ext md
+    git ls-files | grep -E '^.*\.md$' | xargs deno fmt --check --ext md
 
 mdFmt:
-    git ls-files | grep -E '^.*\.(md|MD)$' | xargs deno fmt --ext md
+    git ls-files | grep -E '^.*\.md$' | xargs deno fmt --ext md
 
 ymlFmtCheck:
     git ls-files | grep -E '^.*\.yml$' | xargs deno fmt --check --ext yml

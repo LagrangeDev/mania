@@ -6,6 +6,7 @@ members = ["mania", "mania-macros", "mania-codec", "examples"]
 version = "0.0.1"
 edition = "2024"
 license-file = "LICENCE"
+readme = "README.md"
 
 [workspace.dependencies]
 md-5 = "0.11.0-pre.4"
