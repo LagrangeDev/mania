@@ -16,7 +16,7 @@ dashmap = "6.1.0"
 flate2 = "1.0.35"
 generic-array = "1.2.0"
 phf = { version = "0.11.3", features = ["macros"] }
-prost = "0.13.4"
+prost = "0.13.5"
 rand = "0.8.5"
 serde = { version = "1.0.217", features = ["derive"] }
 surge-ping = "0.8.1"
