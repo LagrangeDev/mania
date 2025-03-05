@@ -2,15 +2,15 @@ default:
     @just --list
 
 info:
-    @echo JUST PATH: `which just`
-    @echo GIT PATH: `which git`
-    @echo CARGO PATH: `which cargo`
-    @echo GREP PATH: `which grep`
-    @echo XARGS PATH: `which xargs`
-    @echo TYPOS PATH: `which typos`
-    @echo DENO PATH: `which deno`
-    @echo TAPLO PATH: `which taplo`
-    @echo SHFMT PATH: `which shfmt`
+    @echo JUST PATH: {{ just_executable() }}
+    @echo GIT PATH: {{ require(if os_family() == "windows" { "git.exe" } else { "git" }) }}
+    @echo CARGO PATH: {{ require(if os_family() == "windows" { "cargo.exe" } else { "cargo" }) }}
+    @echo GREP PATH: {{ require(if os_family() == "windows" { "grep.exe" } else { "grep" }) }}
+    @echo XARGS PATH: {{ require(if os_family() == "windows" { "xargs.exe" } else { "xargs" }) }}
+    @echo TYPOS PATH: {{ require(if os_family() == "windows" { "typos.exe" } else { "typos" }) }}
+    @echo DENO PATH: {{ require(if os_family() == "windows" { "deno.exe" } else { "deno" }) }}
+    @echo TAPLO PATH: {{ require(if os_family() == "windows" { "taplo.exe" } else { "taplo" }) }}
+    @echo SHFMT PATH: {{ require(if os_family() == "windows" { "shfmt.exe" } else { "shfmt" }) }}
 
 check: info typoCheck fmtCheck clippyCheck buildCheck docCheck testCheck
 
