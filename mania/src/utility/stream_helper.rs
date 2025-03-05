@@ -1,7 +1,10 @@
 use std::pin::Pin;
-use tokio::io;
-use tokio::io::{AsyncRead, AsyncReadExt};
-use tokio::sync::Mutex;
+
+use tokio::{
+    io,
+    io::{AsyncRead, AsyncReadExt},
+    sync::Mutex,
+};
 
 pub async fn mut_stream_ctx<T, IR, E, F>(lock: &Mutex<T>, f: F) -> Result<IR, E>
 where

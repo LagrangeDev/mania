@@ -1,5 +1,4 @@
-use crate::core::entity::group_sys_enum::GroupEssenceSetFlag;
-use crate::core::event::prelude::*;
+use crate::core::{entity::group_sys_enum::GroupEssenceSetFlag, event::prelude::*};
 #[derive(Debug, DummyEvent, Default)]
 pub struct GroupSysEssenceEvent {
     pub group_uin: u32,

@@ -1,6 +1,7 @@
+use std::fmt::Display;
+
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use num_enum::TryFromPrimitive;
-use std::fmt::Display;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, SeekFrom};
 

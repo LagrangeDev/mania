@@ -1,5 +1,6 @@
-use crate::core::entity::group_sys_enum::GroupMemberIncreaseEventType;
 pub use mania_macros::ManiaEvent;
+
+use crate::core::entity::group_sys_enum::GroupMemberIncreaseEventType;
 
 #[derive(ManiaEvent)]
 pub struct GroupMemberIncreaseEvent {

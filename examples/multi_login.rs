@@ -1,8 +1,9 @@
-use mania::event::group::GroupEvent;
-use mania::message::builder::MessageChainBuilder;
-use mania::{Client, ClientConfig, DeviceInfo, KeyStore};
-use std::fs;
-use std::io::stdout;
+use std::{fs, io::stdout};
+
+use mania::{
+    Client, ClientConfig, DeviceInfo, KeyStore, event::group::GroupEvent,
+    message::builder::MessageChainBuilder,
+};
 use tracing_subscriber::prelude::*;
 use uuid::Uuid;
 

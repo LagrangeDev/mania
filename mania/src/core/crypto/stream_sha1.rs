@@ -1,4 +1,5 @@
 use core::{mem, slice::from_ref};
+
 use digest::{
     array::Array,
     block_buffer::{BlockBuffer, Eager},

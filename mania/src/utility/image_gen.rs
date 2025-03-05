@@ -1,6 +1,7 @@
+use std::io::{Seek, Write};
+
 use image::{ImageBuffer, ImageFormat, ImageResult, Rgb};
 use noise::{NoiseFn, Perlin};
-use std::io::{Seek, Write};
 
 pub trait ImageOpWriteSeek: Write + Seek {}
 impl<T: Write + Seek> ImageOpWriteSeek for T {}

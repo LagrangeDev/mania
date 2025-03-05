@@ -1,7 +1,7 @@
-use super::prelude::*;
-use crate::core::highway::AsyncPureStream;
-use crate::core::protos::service::oidb::MsgInfo;
 use std::sync::Arc;
+
+use super::prelude::*;
+use crate::core::{highway::AsyncPureStream, protos::service::oidb::MsgInfo};
 #[pack_content(false)]
 #[derive(Default)]
 pub struct RecordEntity {

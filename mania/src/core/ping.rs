@@ -1,9 +1,11 @@
-use std::io::Result;
-use std::net::SocketAddr;
-use std::time::{Duration, Instant};
+use std::{
+    io::Result,
+    net::SocketAddr,
+    time::{Duration, Instant},
+};
+
 use surge_ping::{Client, Config, ICMP, PingIdentifier, PingSequence};
-use tokio::net::TcpStream;
-use tokio::task::JoinSet;
+use tokio::{net::TcpStream, task::JoinSet};
 
 /// Ping a list of addresses and return the latency.
 pub async fn ping(addrs: Vec<SocketAddr>, ipv6: bool) -> Result<Vec<(SocketAddr, Duration)>> {

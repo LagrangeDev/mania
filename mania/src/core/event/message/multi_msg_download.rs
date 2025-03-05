@@ -1,11 +1,16 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::message::{
-    LongMsgResult, LongMsgSettings, LongMsgUid, RecvLongMsgInfo, RecvLongMsgReq, RecvLongMsgResp,
-};
-use crate::message::chain::MessageChain;
-use crate::message::packer::MessagePacker;
-use crate::utility::compress::gzip;
 use mania_macros::{ServerEvent, command};
+
+use crate::{
+    core::{
+        event::prelude::*,
+        protos::message::{
+            LongMsgResult, LongMsgSettings, LongMsgUid, RecvLongMsgInfo, RecvLongMsgReq,
+            RecvLongMsgResp,
+        },
+    },
+    message::{chain::MessageChain, packer::MessagePacker},
+    utility::compress::gzip,
+};
 
 #[command("trpc.group.long_msg_interface.MsgService.SsoRecvLongMsg")]
 #[derive(Debug, ServerEvent, Default)]

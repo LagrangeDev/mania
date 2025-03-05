@@ -1,6 +1,8 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::service::oidb::{
-    ClientMeta, CommonHead, DownloadRKeyReq, MultiMediaReqHead, Ntv2RichMediaReq, SceneInfo,
+use crate::core::{
+    event::prelude::*,
+    protos::service::oidb::{
+        ClientMeta, CommonHead, DownloadRKeyReq, MultiMediaReqHead, Ntv2RichMediaReq, SceneInfo,
+    },
 };
 
 #[oidb_command(0x9067, 202)]

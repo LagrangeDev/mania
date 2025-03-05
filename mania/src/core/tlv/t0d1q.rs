@@ -1,5 +1,7 @@
-use crate::core::protos::tlv::{Ntos, TlvQrCodeD1, TlvQrCodeD1Resp};
-use crate::core::tlv::prelude::*;
+use crate::core::{
+    protos::tlv::{Ntos, TlvQrCodeD1, TlvQrCodeD1Resp},
+    tlv::prelude::*,
+};
 
 pub struct T0d1q {
     pub proto: TlvQrCodeD1,

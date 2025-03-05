@@ -1,12 +1,16 @@
-use std::io::Result;
-use std::net::SocketAddr;
-use std::sync::{Arc, Weak};
+use std::{
+    io::Result,
+    net::SocketAddr,
+    sync::{Arc, Weak},
+};
 
 use byteorder::{BigEndian, ByteOrder};
 use bytes::{Bytes, BytesMut};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::tcp::{OwnedReadHalf, OwnedWriteHalf},
+    sync::mpsc::{Receiver, Sender},
+};
 
 pub struct PacketSender {
     packets_tx: Sender<Vec<u8>>,

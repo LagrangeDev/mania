@@ -1,7 +1,8 @@
 pub mod silk_encoder;
 
-use crate::audio::{AudioEncodeStream, AudioResampleStream, EncodeSample, ResampleSample};
 use thiserror::Error;
+
+use crate::audio::{AudioEncodeStream, AudioResampleStream, EncodeSample, ResampleSample};
 
 #[derive(Debug, Error)]
 pub enum AudioCodecEncoderError {

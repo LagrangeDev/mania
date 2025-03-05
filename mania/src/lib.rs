@@ -10,17 +10,23 @@ pub mod event;
 pub mod message;
 pub mod utility;
 
-use crate::core::business::{Business, BusinessHandle};
-pub use crate::core::cache::CacheMode;
-use crate::core::context::Protocol;
-pub use crate::core::context::{AppInfo, Context, DeviceInfo};
-pub use crate::core::error::{ManiaError, ManiaResult};
-pub use crate::core::key_store::KeyStore;
-use crate::core::session::Session;
-use crate::core::sign::{SignProvider, default_sign_provider};
-use crate::entity::bot_group_member::FetchGroupMemberStrategy;
-use std::env;
-use std::sync::Arc;
+use std::{env, sync::Arc};
+
+pub use crate::core::{
+    cache::CacheMode,
+    context::{AppInfo, Context, DeviceInfo},
+    error::{ManiaError, ManiaResult},
+    key_store::KeyStore,
+};
+use crate::{
+    core::{
+        business::{Business, BusinessHandle},
+        context::Protocol,
+        session::Session,
+        sign::{SignProvider, default_sign_provider},
+    },
+    entity::bot_group_member::FetchGroupMemberStrategy,
+};
 
 /// Configuration for the client
 pub struct ClientConfig {

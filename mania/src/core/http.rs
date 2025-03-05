@@ -1,8 +1,6 @@
-use reqwest::Client;
-use reqwest::Error;
-use reqwest::header::HeaderMap;
-use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::{collections::HashMap, sync::OnceLock};
+
+use reqwest::{Client, Error, header::HeaderMap};
 
 pub struct HttpClient {
     client: Client,

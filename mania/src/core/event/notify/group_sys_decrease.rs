@@ -1,5 +1,4 @@
-use crate::core::entity::group_sys_enum::GroupMemberDecreaseEventType;
-use crate::core::event::prelude::*;
+use crate::core::{entity::group_sys_enum::GroupMemberDecreaseEventType, event::prelude::*};
 
 #[derive(Debug, DummyEvent, Default)]
 pub struct GroupSysDecreaseEvent {

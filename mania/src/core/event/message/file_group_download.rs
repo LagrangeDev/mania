@@ -1,6 +1,8 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::service::oidb::{
-    OidbSvcTrpcTcp0x6D6, OidbSvcTrpcTcp0x6D6Download, OidbSvcTrpcTcp0x6D6Response,
+use crate::core::{
+    event::prelude::*,
+    protos::service::oidb::{
+        OidbSvcTrpcTcp0x6D6, OidbSvcTrpcTcp0x6D6Download, OidbSvcTrpcTcp0x6D6Response,
+    },
 };
 
 #[oidb_command(0x6d6, 2)]

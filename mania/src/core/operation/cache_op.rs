@@ -1,15 +1,23 @@
-use crate::core::business::BusinessHandle;
-use crate::core::cache::CacheMode;
-use crate::core::event::downcast_mut_major_event;
-use crate::core::event::system::fetch_friend::FetchFriendsEvent;
-use crate::core::event::system::fetch_members::FetchMembersEvent;
-use crate::entity::bot_friend::{BotFriend, BotFriendGroup};
-use crate::entity::bot_group_member::BotGroupMember;
-use crate::{ManiaError, ManiaResult, dda};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
+
 use dashmap::DashMap;
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::sync::Arc;
+
+use crate::{
+    ManiaError, ManiaResult,
+    core::{
+        business::BusinessHandle,
+        cache::CacheMode,
+        event::{
+            downcast_mut_major_event,
+            system::{fetch_friend::FetchFriendsEvent, fetch_members::FetchMembersEvent},
+        },
+    },
+    dda,
+    entity::{
+        bot_friend::{BotFriend, BotFriendGroup},
+        bot_group_member::BotGroupMember,
+    },
+};
 
 impl BusinessHandle {
     pub async fn uin2uid(

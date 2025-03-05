@@ -1,7 +1,10 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::service::oidb::{
-    C2cUserInfo, ClientMeta, CommonHead, DownloadExt, DownloadReq, FileInfo, FileType, IndexNode,
-    MultiMediaReqHead, Ntv2RichMediaReq, Ntv2RichMediaResp, SceneInfo, VideoDownloadExt,
+use crate::core::{
+    event::prelude::*,
+    protos::service::oidb::{
+        C2cUserInfo, ClientMeta, CommonHead, DownloadExt, DownloadReq, FileInfo, FileType,
+        IndexNode, MultiMediaReqHead, Ntv2RichMediaReq, Ntv2RichMediaResp, SceneInfo,
+        VideoDownloadExt,
+    },
 };
 
 /// legacy: VideoDownloadEvent

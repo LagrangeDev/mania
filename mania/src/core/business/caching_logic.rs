@@ -1,10 +1,16 @@
-use crate::core::business::{BusinessError, LogicRegistry};
-use crate::core::business::{BusinessHandle, LogicFlow};
-use crate::core::event::notify::group_sys_decrease::GroupSysDecreaseEvent;
-use crate::core::event::notify::group_sys_increase::GroupSysIncreaseEvent;
-use crate::core::event::prelude::*;
-use mania_macros::handle_event;
 use std::sync::Arc;
+
+use mania_macros::handle_event;
+
+use crate::core::{
+    business::{BusinessError, BusinessHandle, LogicFlow, LogicRegistry},
+    event::{
+        notify::{
+            group_sys_decrease::GroupSysDecreaseEvent, group_sys_increase::GroupSysIncreaseEvent,
+        },
+        prelude::*,
+    },
+};
 
 #[handle_event(GroupSysIncreaseEvent, GroupSysDecreaseEvent)]
 async fn caching_logic(

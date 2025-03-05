@@ -1,7 +1,10 @@
+use std::sync::{
+    Arc,
+    atomic::{self, AtomicU16},
+};
+
 use arc_swap::{ArcSwap, ArcSwapOption};
 use bytes::Bytes;
-use std::sync::Arc;
-use std::sync::atomic::{self, AtomicU16};
 
 pub struct Session {
     pub stub: KeyCollection,

@@ -1,8 +1,7 @@
 pub mod gzip {
-    use flate2::Compression;
-    use flate2::read::GzDecoder;
-    use flate2::write::GzEncoder;
     use std::io::{Read, Write};
+
+    use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 
     pub fn compress(data: &[u8]) -> Vec<u8> {
         let mut compressed = Vec::new();
@@ -23,10 +22,9 @@ pub mod gzip {
 }
 
 pub mod zlib {
-    use flate2::Compression;
-    use flate2::read::ZlibDecoder;
-    use flate2::write::ZlibEncoder;
     use std::io::{Read, Write};
+
+    use flate2::{Compression, read::ZlibDecoder, write::ZlibEncoder};
 
     pub fn compress(data: &[u8]) -> Vec<u8> {
         let mut compressed = Vec::new();

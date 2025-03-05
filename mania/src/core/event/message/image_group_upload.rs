@@ -1,11 +1,17 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::message::CustomFace;
-use crate::core::protos::service::oidb::{
-    BytesPbReserveTroop, ClientMeta, CommonHead, ExtBizInfo, FileInfo, FileType, IPv4, MsgInfo,
-    MultiMediaReqHead, NtGroupInfo, Ntv2RichMediaReq, Ntv2RichMediaResp, PicExtBizInfo,
-    PttExtBizInfo, SceneInfo, UploadInfo, UploadReq, VideoExtBizInfo,
+use crate::{
+    core::{
+        event::prelude::*,
+        protos::{
+            message::CustomFace,
+            service::oidb::{
+                BytesPbReserveTroop, ClientMeta, CommonHead, ExtBizInfo, FileInfo, FileType, IPv4,
+                MsgInfo, MultiMediaReqHead, NtGroupInfo, Ntv2RichMediaReq, Ntv2RichMediaResp,
+                PicExtBizInfo, PttExtBizInfo, SceneInfo, UploadInfo, UploadReq, VideoExtBizInfo,
+            },
+        },
+    },
+    utility::random_gen::RandomGenerator,
 };
-use crate::utility::random_gen::RandomGenerator;
 
 #[derive(Debug, Default)]
 pub struct ImageGroupUploadArgs {

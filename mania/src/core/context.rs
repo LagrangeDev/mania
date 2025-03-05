@@ -1,13 +1,18 @@
-use crate::ClientConfig;
-use crate::core::crypto::ecdh::{ECDH_256_PEER_LOGIN_KEY, Ecdh, P256};
-use crate::core::key_store::KeyStore;
-use crate::core::session::Session;
-use crate::core::sign::SignProvider;
+use std::{fs, io, sync::Arc};
+
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::{fs, io};
 use uuid::Uuid;
+
+use crate::{
+    ClientConfig,
+    core::{
+        crypto::ecdh::{ECDH_256_PEER_LOGIN_KEY, Ecdh, P256},
+        key_store::KeyStore,
+        session::Session,
+        sign::SignProvider,
+    },
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum Protocol {

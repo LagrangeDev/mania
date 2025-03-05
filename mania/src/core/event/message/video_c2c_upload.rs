@@ -1,11 +1,17 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::message::VideoFile;
-use crate::core::protos::service::oidb::{
-    C2cUserInfo, ClientMeta, CommonHead, ExtBizInfo, FileInfo, FileType, IPv4, MsgInfo,
-    MultiMediaReqHead, Ntv2RichMediaReq, Ntv2RichMediaResp, PicExtBizInfo, PttExtBizInfo,
-    SceneInfo, SubFileInfo, UploadInfo, UploadReq, VideoExtBizInfo,
+use crate::{
+    core::{
+        event::prelude::*,
+        protos::{
+            message::VideoFile,
+            service::oidb::{
+                C2cUserInfo, ClientMeta, CommonHead, ExtBizInfo, FileInfo, FileType, IPv4, MsgInfo,
+                MultiMediaReqHead, Ntv2RichMediaReq, Ntv2RichMediaResp, PicExtBizInfo,
+                PttExtBizInfo, SceneInfo, SubFileInfo, UploadInfo, UploadReq, VideoExtBizInfo,
+            },
+        },
+    },
+    utility::random_gen::RandomGenerator,
 };
-use crate::utility::random_gen::RandomGenerator;
 
 #[derive(Debug, Default)]
 pub struct VideoC2CUploadArgs {

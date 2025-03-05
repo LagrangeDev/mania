@@ -1,5 +1,7 @@
-use crate::core::packet::{PREFIX_NONE, PREFIX_U8};
-use crate::core::tlv::prelude::*;
+use crate::core::{
+    packet::{PREFIX_NONE, PREFIX_U8},
+    tlv::prelude::*,
+};
 
 pub struct T11A {
     pub face_id: u16,

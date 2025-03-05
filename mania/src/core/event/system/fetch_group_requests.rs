@@ -1,6 +1,8 @@
-use crate::core::entity::fetch_group_requests::FetchGroupRequests;
-use crate::core::event::prelude::*;
-use crate::core::protos::service::oidb::{OidbSvcTrpcTcp0x10C0, OidbSvcTrpcTcp0x10C0Response};
+use crate::core::{
+    entity::fetch_group_requests::FetchGroupRequests,
+    event::prelude::*,
+    protos::service::oidb::{OidbSvcTrpcTcp0x10C0, OidbSvcTrpcTcp0x10C0Response},
+};
 
 #[oidb_command(0x10c0, 1)]
 #[derive(Debug, ServerEvent, Default)]

@@ -1,15 +1,20 @@
 pub mod hw_client;
 mod hw_frame_codec;
 
-use crate::core::highway::hw_client::HighwayClient;
-use crate::core::protos::service::highway::{NtHighwayDomain, NtHighwayIPv4};
-use crate::core::protos::service::oidb::IPv4;
+use std::{borrow::Cow, io, sync::Arc};
+
 use arc_swap::ArcSwap;
 use bytes::Bytes;
-use std::borrow::Cow;
-use std::{io, sync::Arc};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncSeek};
+
+use crate::core::{
+    highway::hw_client::HighwayClient,
+    protos::service::{
+        highway::{NtHighwayDomain, NtHighwayIPv4},
+        oidb::IPv4,
+    },
+};
 
 pub trait AsyncReadSeek: AsyncRead + AsyncSeek {}
 impl<T: AsyncRead + AsyncSeek> AsyncReadSeek for T {}

@@ -1,8 +1,8 @@
-use crate::core::crypto::tea;
 use digest::Digest;
 use md5::Md5;
-use p256::ecdh::EphemeralSecret;
-use p256::{EncodedPoint, PublicKey};
+use p256::{EncodedPoint, PublicKey, ecdh::EphemeralSecret};
+
+use crate::core::crypto::tea;
 
 pub const ECDH_256_PEER_LOGIN_KEY: [u8; 65] = [
     0x04, 0xEB, 0xCA, 0x94, 0xD7, 0x33, 0xE3, 0x99, 0xB2, 0xDB, 0x96, 0xEA, 0xCD, 0xD3, 0xF6, 0x9A,
@@ -88,8 +88,9 @@ impl Ecdh for P256 {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use rand::thread_rng;
+
+    use super::*;
     #[test]
     fn test_ecdh_p256() {
         let mut rng = thread_rng();

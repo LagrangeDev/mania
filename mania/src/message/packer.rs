@@ -1,19 +1,29 @@
-use crate::core::protos::message::{
-    C2c, ContentHead, FileExtra, Grp, Message, MessageBody, MessageControl, PushMsgBody, RichText,
-    RoutingHead, Trans0X211,
-};
-use crate::entity::bot_friend::BotFriend;
-use crate::entity::bot_group_member::{BotGroupMember, FetchGroupMemberStrategy};
-use crate::message::chain::{
-    ClientSequence, FriendMessageUniqueElem, GroupMessageUniqueElem, MessageChain, MessageId,
-    MessageType,
-};
-use crate::message::entity::Entity;
-use crate::message::entity::file::{FileC2CUnique, FileEntity, FileUnique};
-use crate::{Context, dda};
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use prost::Message as _;
+
+use crate::{
+    Context,
+    core::protos::message::{
+        C2c, ContentHead, FileExtra, Grp, Message, MessageBody, MessageControl, PushMsgBody,
+        RichText, RoutingHead, Trans0X211,
+    },
+    dda,
+    entity::{
+        bot_friend::BotFriend,
+        bot_group_member::{BotGroupMember, FetchGroupMemberStrategy},
+    },
+    message::{
+        chain::{
+            ClientSequence, FriendMessageUniqueElem, GroupMessageUniqueElem, MessageChain,
+            MessageId, MessageType,
+        },
+        entity::{
+            Entity,
+            file::{FileC2CUnique, FileEntity, FileUnique},
+        },
+    },
+};
 
 pub(crate) struct MessagePacker;
 
@@ -172,7 +182,7 @@ impl MessagePacker {
                 )
                 .ok_or("failed to parse timestamp")?,
                 sequence: content_head.sequence.unwrap_or_default(),
-                entities: entities,
+                entities,
             }));
         }
         Ok(dda!(MessageChain {
@@ -194,7 +204,7 @@ impl MessagePacker {
             )
             .ok_or("failed to parse timestamp")?,
             sequence: content_head.nt_msg_seq.unwrap_or_default(),
-            entities: entities,
+            entities,
         }))
     }
 

@@ -1,9 +1,13 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::service::oidb::{
-    OidbNumber, OidbSvcTrpcTcp0xFd41, OidbSvcTrpcTcp0xFd41body, OidbSvcTrpcTcp0xFd41response,
-    OidbSvcTrpcTcp0xFd41uin,
+use crate::{
+    core::{
+        event::prelude::*,
+        protos::service::oidb::{
+            OidbNumber, OidbSvcTrpcTcp0xFd41, OidbSvcTrpcTcp0xFd41body,
+            OidbSvcTrpcTcp0xFd41response, OidbSvcTrpcTcp0xFd41uin,
+        },
+    },
+    entity::bot_friend::{BotFriend, BotFriendGroup},
 };
-use crate::entity::bot_friend::{BotFriend, BotFriendGroup};
 
 #[oidb_command(0xfd4, 1)]
 #[derive(Debug, ServerEvent, Default)]

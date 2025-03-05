@@ -1,5 +1,4 @@
-use crate::core::protos::tlv::Tlv543;
-use crate::core::tlv::prelude::*;
+use crate::core::{protos::tlv::Tlv543, tlv::prelude::*};
 
 pub struct T543 {
     pub uid: String,

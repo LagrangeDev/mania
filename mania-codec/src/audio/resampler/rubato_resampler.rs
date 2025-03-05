@@ -1,8 +1,12 @@
-use crate::audio::resampler::{AudioCodecResamplerError, AudioResampler};
-use crate::audio::{AudioInfo, AudioResampleStream, ResampleSample};
+use std::marker::PhantomData;
+
 use num_traits::FromPrimitive;
 use rubato::Resampler;
-use std::marker::PhantomData;
+
+use crate::audio::{
+    AudioInfo, AudioResampleStream, ResampleSample,
+    resampler::{AudioCodecResamplerError, AudioResampler},
+};
 
 pub struct RubatoResampler<U: ResampleSample> {
     target_sample_rate: u32,

@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use anyhow::Result;
 use prost_build::Config;
-use std::path::Path;
 
 fn main() -> Result<()> {
     if Path::new("../.git").is_dir() {

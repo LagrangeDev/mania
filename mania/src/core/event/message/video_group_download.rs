@@ -1,8 +1,10 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::service::oidb::{
-    ClientMeta, CommonHead, DownloadExt, DownloadReq, FileInfo, FileType, IndexNode,
-    MultiMediaReqHead, NtGroupInfo, Ntv2RichMediaReq, Ntv2RichMediaResp, SceneInfo,
-    VideoDownloadExt,
+use crate::core::{
+    event::prelude::*,
+    protos::service::oidb::{
+        ClientMeta, CommonHead, DownloadExt, DownloadReq, FileInfo, FileType, IndexNode,
+        MultiMediaReqHead, NtGroupInfo, Ntv2RichMediaReq, Ntv2RichMediaResp, SceneInfo,
+        VideoDownloadExt,
+    },
 };
 
 #[oidb_command(0x11ea, 200)]

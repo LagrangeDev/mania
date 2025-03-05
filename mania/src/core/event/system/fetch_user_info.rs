@@ -1,12 +1,18 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::service::oidb::{
-    Avatar, Business, CustomStatus, OidbSvcTrpcTcp0xFe12, OidbSvcTrpcTcp0xFe12key,
-    OidbSvcTrpcTcp0xFe12response, OidbSvcTrpcTcp0xFe12responseBody,
-    OidbSvcTrpcTcp0xFe12responseProperty, OidbSvcTrpcTcp0xFe12uin, business_list,
-};
-use crate::entity::bot_user_info::{BotStatus, BotUserInfo, BusinessCustom, GenderInfo};
-use chrono::{DateTime, TimeZone, Utc};
 use std::time::{Duration, UNIX_EPOCH};
+
+use chrono::{DateTime, TimeZone, Utc};
+
+use crate::{
+    core::{
+        event::prelude::*,
+        protos::service::oidb::{
+            Avatar, Business, CustomStatus, OidbSvcTrpcTcp0xFe12, OidbSvcTrpcTcp0xFe12key,
+            OidbSvcTrpcTcp0xFe12response, OidbSvcTrpcTcp0xFe12responseBody,
+            OidbSvcTrpcTcp0xFe12responseProperty, OidbSvcTrpcTcp0xFe12uin, business_list,
+        },
+    },
+    entity::bot_user_info::{BotStatus, BotUserInfo, BusinessCustom, GenderInfo},
+};
 
 #[oidb_command(0xfe1, 2)]
 #[derive(Debug, ServerEvent, Default)]

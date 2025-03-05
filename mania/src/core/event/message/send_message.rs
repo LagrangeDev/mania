@@ -1,7 +1,7 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::action::SendMessageResponse;
-use crate::message::chain::MessageChain;
-use crate::message::packer::MessagePacker;
+use crate::{
+    core::{event::prelude::*, protos::action::SendMessageResponse},
+    message::{chain::MessageChain, packer::MessagePacker},
+};
 
 #[command("MessageSvc.PbSendMsg")]
 #[derive(Debug, ServerEvent, Default)]

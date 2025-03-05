@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 use super::prelude::*;
 use crate::message::chain::MessageChain;
-use serde::{Deserialize, Serialize};
 
 #[pack_content(false)]
 #[derive(Default)]

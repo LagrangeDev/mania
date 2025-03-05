@@ -1,6 +1,7 @@
+use std::sync::{Mutex, OnceLock};
+
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha12Rng;
-use std::sync::{Mutex, OnceLock};
 
 pub struct RandomGenerator;
 static RNG: OnceLock<Mutex<ChaCha12Rng>> = OnceLock::new();

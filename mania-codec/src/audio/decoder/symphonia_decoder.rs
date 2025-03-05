@@ -1,13 +1,20 @@
-use crate::audio::decoder::{AudioCodecDecoderError, AudioDecoder};
-use crate::audio::{AudioInfo, AudioResampleStream, AudioRwStream, DecodeSample, RSStream};
-use std::io::{Read, Seek, SeekFrom};
-use std::marker::PhantomData;
-use symphonia::core::audio::{Audio, GenericAudioBufferRef};
-use symphonia::core::codecs::audio::AudioDecoderOptions;
-use symphonia::core::formats::probe::Hint;
-use symphonia::core::formats::{FormatOptions, TrackType};
-use symphonia::core::io::{MediaSource, MediaSourceStream};
-use symphonia::core::meta::MetadataOptions;
+use std::{
+    io::{Read, Seek, SeekFrom},
+    marker::PhantomData,
+};
+
+use symphonia::core::{
+    audio::{Audio, GenericAudioBufferRef},
+    codecs::audio::AudioDecoderOptions,
+    formats::{FormatOptions, TrackType, probe::Hint},
+    io::{MediaSource, MediaSourceStream},
+    meta::MetadataOptions,
+};
+
+use crate::audio::{
+    AudioInfo, AudioResampleStream, AudioRwStream, DecodeSample, RSStream,
+    decoder::{AudioCodecDecoderError, AudioDecoder},
+};
 
 struct RSStreamAdapter {
     inner: Box<dyn RSStream>,

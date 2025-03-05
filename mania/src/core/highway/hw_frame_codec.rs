@@ -1,8 +1,9 @@
-use crate::core::highway::HighwayError;
-use crate::utility::extensions::HexString;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
 use std::fmt::Debug;
+
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
+
+use crate::{core::highway::HighwayError, utility::extensions::HexString};
 
 pub struct HighwayFrame {
     pub head: Bytes,

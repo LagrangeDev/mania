@@ -1,5 +1,6 @@
-use super::prelude::*;
 use std::iter::once;
+
+use super::prelude::*;
 
 #[pack_content(false)]
 #[derive(Default)]
@@ -48,7 +49,7 @@ impl MessageEntity for JsonEntity {
                 let template1 = rich_msg.template1.as_ref()?;
                 let data = zlib::decompress(&template1[1..])?;
                 let json = String::from_utf8(data).ok()?;
-                Some(dda!(JsonEntity { json: json }))
+                Some(dda!(JsonEntity { json }))
             }
             _ => None,
         }

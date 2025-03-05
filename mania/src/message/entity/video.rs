@@ -1,10 +1,15 @@
-use super::prelude::*;
-use crate::core::highway::AsyncPureStream;
-use crate::core::protos::service::oidb::{IndexNode, MsgInfo};
-use crate::utility::image_gen::gen_thumbnail;
+use std::{io::Cursor, sync::Arc};
+
 use image::ImageResult;
-use std::io::Cursor;
-use std::sync::Arc;
+
+use super::prelude::*;
+use crate::{
+    core::{
+        highway::AsyncPureStream,
+        protos::service::oidb::{IndexNode, MsgInfo},
+    },
+    utility::image_gen::gen_thumbnail,
+};
 
 #[pack_content(false)]
 #[derive(Default)]

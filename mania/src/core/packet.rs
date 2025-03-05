@@ -1,7 +1,4 @@
-use std::borrow::Cow;
-use std::cmp::PartialEq;
-use std::fmt::Debug;
-use std::sync::atomic::AtomicU32;
+use std::{borrow::Cow, cmp::PartialEq, fmt::Debug, sync::atomic::AtomicU32};
 
 use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
@@ -9,12 +6,18 @@ use prost::Message;
 use rand::Rng;
 use thiserror::Error;
 
-use crate::core::context::Context;
-use crate::core::crypto::tea;
-use crate::core::protos::service::oidb::{OidbLafter, OidbSvcTrpcTcpBase};
-use crate::core::protos::system::{NtDeviceSign, NtPacketUid, Sign};
-use crate::dda;
-use crate::utility::extensions::HexString;
+use crate::{
+    core::{
+        context::Context,
+        crypto::tea,
+        protos::{
+            service::oidb::{OidbLafter, OidbSvcTrpcTcpBase},
+            system::{NtDeviceSign, NtPacketUid, Sign},
+        },
+    },
+    dda,
+    utility::extensions::HexString,
+};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq)]

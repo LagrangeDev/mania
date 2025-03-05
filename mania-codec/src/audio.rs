@@ -1,13 +1,21 @@
-use crate::audio::decoder::{AudioCodecDecoderError, AudioDecoder};
-use crate::audio::encoder::{AudioCodecEncoderError, AudioEncoder};
-use crate::audio::resampler::{AudioCodecResamplerError, AudioResampler};
+use std::{
+    io,
+    io::{Read, Seek},
+    marker::PhantomData,
+};
+
 use num_traits::FromPrimitive;
-use std::io;
-use std::io::{Read, Seek};
-use std::marker::PhantomData;
-use symphonia::core::audio::conv::{FromSample, IntoSample};
-use symphonia::core::audio::sample::{i24, u24};
+use symphonia::core::audio::{
+    conv::{FromSample, IntoSample},
+    sample::{i24, u24},
+};
 use thiserror::Error;
+
+use crate::audio::{
+    decoder::{AudioCodecDecoderError, AudioDecoder},
+    encoder::{AudioCodecEncoderError, AudioEncoder},
+    resampler::{AudioCodecResamplerError, AudioResampler},
+};
 
 pub mod decoder;
 pub mod encoder;
@@ -153,12 +161,13 @@ pub struct AudioEncodeStream<T: EncodeSample> {
 
 #[cfg(test)]
 mod test {
+    use std::{fs::File, io::Write};
+
     use super::*;
-    use crate::audio::decoder::symphonia_decoder::SymphoniaDecoder;
-    use crate::audio::encoder::silk_encoder::SilkEncoder;
-    use crate::audio::resampler::rubato_resampler::RubatoResampler;
-    use std::fs::File;
-    use std::io::Write;
+    use crate::audio::{
+        decoder::symphonia_decoder::SymphoniaDecoder, encoder::silk_encoder::SilkEncoder,
+        resampler::rubato_resampler::RubatoResampler,
+    };
 
     #[test]
     fn test_pipeline() -> Result<(), AudioCodecError> {

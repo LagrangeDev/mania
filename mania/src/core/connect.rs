@@ -1,8 +1,8 @@
-use crate::core::ping::ping;
-use std::io::Result;
-use std::net::SocketAddr;
-use std::time::Duration;
+use std::{io::Result, net::SocketAddr, time::Duration};
+
 use tokio::net::TcpStream;
+
+use crate::core::ping::ping;
 
 /// Find the optimum server to connect to.
 pub async fn optimum_server(request_msf: bool, ipv6: bool) -> Result<SocketAddr> {

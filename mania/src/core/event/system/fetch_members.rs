@@ -1,10 +1,15 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::service::oidb::{
-    OidbSvcTrpcScp0xFe7Body, OidbSvcTrpcTcp0xFe7Level, OidbSvcTrpcTcp0xFe73,
-    OidbSvcTrpcTcp0xFe73response,
-};
-use crate::entity::bot_group_member::{BotGroupMember, GroupMemberPermission};
 use chrono::DateTime;
+
+use crate::{
+    core::{
+        event::prelude::*,
+        protos::service::oidb::{
+            OidbSvcTrpcScp0xFe7Body, OidbSvcTrpcTcp0xFe7Level, OidbSvcTrpcTcp0xFe73,
+            OidbSvcTrpcTcp0xFe73response,
+        },
+    },
+    entity::bot_group_member::{BotGroupMember, GroupMemberPermission},
+};
 
 #[oidb_command(0xfe7, 3)]
 #[derive(Debug, ServerEvent, Default)]

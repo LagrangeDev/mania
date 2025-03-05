@@ -1,5 +1,4 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::system::NtSsoHeartBeat;
+use crate::core::{event::prelude::*, protos::system::NtSsoHeartBeat};
 
 #[command("trpc.qq_new_tech.status_svc.StatusService.SsoHeartBeat")]
 #[derive(Debug, ServerEvent)]

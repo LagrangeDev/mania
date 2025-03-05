@@ -1,11 +1,14 @@
-use crate::core::business::{BusinessError, LogicRegistry};
-use crate::core::business::{BusinessHandle, LogicFlow};
-use crate::core::event::prelude::*;
-use crate::core::event::system::kick_nt::KickNTEvent;
-use crate::event::system::SystemEvent;
-use crate::event::system::bot_offline::BotOfflineEvent;
-use mania_macros::handle_event;
 use std::sync::Arc;
+
+use mania_macros::handle_event;
+
+use crate::{
+    core::{
+        business::{BusinessError, BusinessHandle, LogicFlow, LogicRegistry},
+        event::{prelude::*, system::kick_nt::KickNTEvent},
+    },
+    event::system::{SystemEvent, bot_offline::BotOfflineEvent},
+};
 
 #[handle_event(KickNTEvent)]
 async fn messaging_logic(

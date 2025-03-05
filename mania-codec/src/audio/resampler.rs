@@ -1,7 +1,8 @@
 pub mod rubato_resampler;
 
-use crate::audio::{AudioResampleStream, ResampleSample};
 use thiserror::Error;
+
+use crate::audio::{AudioResampleStream, ResampleSample};
 
 #[derive(Debug, Error)]
 pub enum AudioCodecResamplerError {

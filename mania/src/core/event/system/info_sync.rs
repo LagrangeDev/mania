@@ -1,10 +1,15 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::system::{
-    CurAppState, NormalConfig, OnlineBusinessInfo, OnlineDeviceInfo, RegisterInfo, SsoC2cInfoSync,
-    SsoC2cMsgCookie, SsoInfoSyncRequest, UnknownStructure,
-};
-use crate::utility::random_gen::RandomGenerator;
 use prost::Message;
+
+use crate::{
+    core::{
+        event::prelude::*,
+        protos::system::{
+            CurAppState, NormalConfig, OnlineBusinessInfo, OnlineDeviceInfo, RegisterInfo,
+            SsoC2cInfoSync, SsoC2cMsgCookie, SsoInfoSyncRequest, UnknownStructure,
+        },
+    },
+    utility::random_gen::RandomGenerator,
+};
 
 #[command("trpc.msg.register_proxy.RegisterProxy.SsoInfoSync")]
 #[derive(Debug, ServerEvent)]

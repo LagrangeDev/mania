@@ -1,7 +1,8 @@
 pub mod symphonia_decoder;
 
-use crate::audio::{AudioResampleStream, AudioRwStream, DecodeSample};
 use thiserror::Error;
+
+use crate::audio::{AudioResampleStream, AudioRwStream, DecodeSample};
 
 #[derive(Debug, Error)]
 pub enum AudioCodecDecoderError {

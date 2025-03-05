@@ -1,8 +1,8 @@
-use crate::core::context::Protocol;
-use crate::utility::extensions::HexString;
 use bytes::Bytes;
 use phf::{Set, phf_set};
 use serde::{Deserialize, Deserializer};
+
+use crate::{core::context::Protocol, utility::extensions::HexString};
 
 mod linux;
 

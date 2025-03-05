@@ -1,12 +1,18 @@
-use crate::audio::encoder::{AudioCodecEncoderError, AudioEncoder};
-use crate::audio::{AudioEncodeStream, AudioResampleStream, ResampleSample};
+use std::{
+    ffi::{c_int, c_void},
+    fmt,
+    marker::PhantomData,
+};
+
 use bytes::BufMut;
 use num_enum::TryFromPrimitive;
 use silk_sys::{SKP_Silk_SDK_Encode, SKP_Silk_SDK_Get_Encoder_Size, SKP_Silk_SDK_InitEncoder};
-use std::ffi::{c_int, c_void};
-use std::fmt;
-use std::marker::PhantomData;
 use thiserror::Error;
+
+use crate::audio::{
+    AudioEncodeStream, AudioResampleStream, ResampleSample,
+    encoder::{AudioCodecEncoderError, AudioEncoder},
+};
 
 #[repr(i32)]
 #[derive(Debug, Error, TryFromPrimitive)]

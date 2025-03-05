@@ -1,9 +1,14 @@
-use crate::core::http;
-use crate::core::sign::{SignProvider, SignResult};
-use crate::utility::extensions::HexString;
 use bytes::Bytes;
 use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    core::{
+        http,
+        sign::{SignProvider, SignResult},
+    },
+    utility::extensions::HexString,
+};
 
 #[derive(Serialize)]
 struct SignServerReq {

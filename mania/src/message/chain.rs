@@ -1,11 +1,14 @@
-use crate::core::protos::message::Elem;
-use crate::dda;
-use crate::entity::bot_friend::BotFriend;
-use crate::entity::bot_group_member::BotGroupMember;
-use crate::message::entity::Entity;
-use crate::utility::random_gen::RandomGenerator;
-use chrono::{DateTime, Utc};
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
+
+use chrono::{DateTime, Utc};
+
+use crate::{
+    core::protos::message::Elem,
+    dda,
+    entity::{bot_friend::BotFriend, bot_group_member::BotGroupMember},
+    message::entity::Entity,
+    utility::random_gen::RandomGenerator,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 enum MessageTag {

@@ -2,30 +2,30 @@ mod caching_logic;
 mod messaging_logic;
 mod wt_logic;
 
-use std::any::TypeId;
-use std::collections::HashMap;
-use std::fmt::Display;
-use std::future::Future;
-use std::net::SocketAddr;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    any::TypeId, collections::HashMap, fmt::Display, future::Future, net::SocketAddr, pin::Pin,
+    sync::Arc, time::Duration,
+};
 
-use crate::ClientConfig;
-pub use crate::core::cache::Cache;
-use crate::core::connect::optimum_server;
-use crate::core::context::Context;
-use crate::core::event::prelude::*;
-use crate::core::event::{CEParse, resolve_event};
-use crate::core::highway::Highway;
-use crate::core::packet::SsoPacket;
-use crate::core::socket::{self, PacketReceiver, PacketSender};
-use crate::event::{EventDispatcher, EventListener};
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use thiserror::Error;
 use tokio::sync::{Mutex, MutexGuard, oneshot};
+
+pub use crate::core::cache::Cache;
+use crate::{
+    ClientConfig,
+    core::{
+        connect::optimum_server,
+        context::Context,
+        event::{CEParse, prelude::*, resolve_event},
+        highway::Highway,
+        packet::SsoPacket,
+        socket::{self, PacketReceiver, PacketSender},
+    },
+    event::{EventDispatcher, EventListener},
+};
 
 #[derive(Debug, Error)]
 pub enum BusinessError {

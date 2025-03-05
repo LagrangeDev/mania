@@ -1,5 +1,6 @@
-use super::prelude::*;
 use std::fmt::Debug;
+
+use super::prelude::*;
 
 #[pack_content(false)]
 #[derive(Default)]

@@ -1,5 +1,7 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::action::{HttpConn, HttpConn0x6ff501, HttpConn0x6ff501response};
+use crate::core::{
+    event::prelude::*,
+    protos::action::{HttpConn, HttpConn0x6ff501, HttpConn0x6ff501response},
+};
 
 #[command("HttpConn.0x6ff_501")]
 #[derive(Debug, ServerEvent, Default)]

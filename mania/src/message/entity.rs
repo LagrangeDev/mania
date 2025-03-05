@@ -15,6 +15,12 @@ pub mod text;
 pub mod video;
 pub mod xml;
 
+use std::{
+    fmt::{Debug, Display},
+    sync::Arc,
+};
+
+use bytes::Bytes;
 pub use extra_general_flags::ExtraGeneralFlagsEntity as ExtraGeneralFlags;
 pub use extra_info::ExtraInfoEntity as ExtraInfo;
 pub use face::FaceEntity as Face;
@@ -32,12 +38,13 @@ pub use text::TextEntity as Text;
 pub use video::VideoEntity as Video;
 pub use xml::XmlEntity as Xml;
 
-use crate::Context;
-use crate::core::highway::{AsyncPureStream, AsyncStream};
-use crate::core::protos::message::Elem;
-use bytes::Bytes;
-use std::fmt::{Debug, Display};
-use std::sync::Arc;
+use crate::{
+    Context,
+    core::{
+        highway::{AsyncPureStream, AsyncStream},
+        protos::message::Elem,
+    },
+};
 
 pub trait MessageContentImplChecker {
     fn need_pack(&self) -> bool;
@@ -218,18 +225,24 @@ impl Entity {
 }
 
 mod prelude {
-    pub use crate::Context;
-    pub use crate::core::highway::AsyncStream;
-    pub use crate::core::protos::message::*;
-    pub use crate::dda;
-    pub use crate::message::chain::{ClientSequence, MessageId};
-    pub use crate::message::entity::{MessageContentImpl, MessageEntity};
-    pub use crate::utility::compress::*;
-    pub use crate::utility::extensions::HexString;
+    pub use std::{
+        fmt::{Debug, Display, Formatter, Result as FmtResult},
+        io::{Read, Write},
+    };
+
     pub use bytes::Bytes;
     pub use chrono::{DateTime, Utc};
     pub use mania_macros::pack_content;
     pub use prost::Message;
-    pub use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
-    pub use std::io::{Read, Write};
+
+    pub use crate::{
+        Context,
+        core::{highway::AsyncStream, protos::message::*},
+        dda,
+        message::{
+            chain::{ClientSequence, MessageId},
+            entity::{MessageContentImpl, MessageEntity},
+        },
+        utility::{compress::*, extensions::HexString},
+    };
 }

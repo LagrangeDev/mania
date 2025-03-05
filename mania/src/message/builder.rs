@@ -1,13 +1,17 @@
-use crate::core::highway::{AsyncPureStream, AsyncPureStreamTrait};
-use crate::dda;
-use crate::message::chain::MessageChain;
-use crate::message::entity::Entity;
-use crate::message::entity::image::ImageEntity;
-use crate::message::entity::record::RecordEntity;
-use crate::message::entity::text::TextEntity;
-use crate::message::entity::video::VideoEntity;
 use std::sync::Arc;
+
 use tokio::sync::Mutex;
+
+use crate::{
+    core::highway::{AsyncPureStream, AsyncPureStreamTrait},
+    dda,
+    message::{
+        chain::MessageChain,
+        entity::{
+            Entity, image::ImageEntity, record::RecordEntity, text::TextEntity, video::VideoEntity,
+        },
+    },
+};
 
 #[derive(Default)]
 pub struct MessageChainBuilder {

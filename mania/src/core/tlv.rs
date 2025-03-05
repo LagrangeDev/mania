@@ -4,8 +4,10 @@ use bytes::Bytes;
 use phf::{Map, phf_map};
 use thiserror::Error;
 
-use crate::core::context::Context;
-use crate::core::packet::{PacketBuilder, PacketReader};
+use crate::core::{
+    context::Context,
+    packet::{PacketBuilder, PacketReader},
+};
 
 pub mod t011q;
 pub mod t016a;
@@ -266,15 +268,19 @@ pub enum TlvError {
 }
 
 mod prelude {
-    pub use crate::core::context::Context;
-    pub use crate::core::context::ExtendUuid;
-    pub use crate::core::crypto::tea::tea_encrypt;
-    pub use crate::core::packet::{PacketBuilder, PacketReader};
-    pub use crate::core::tlv::{TlvDe, TlvError, TlvSer, serialize_tlv_set};
-    pub use crate::utility::extensions::HexString;
     pub use bytes::Bytes;
     pub use prost::Message;
     pub use uuid::Uuid;
+
+    pub use crate::{
+        core::{
+            context::{Context, ExtendUuid},
+            crypto::tea::tea_encrypt,
+            packet::{PacketBuilder, PacketReader},
+            tlv::{TlvDe, TlvError, TlvSer, serialize_tlv_set},
+        },
+        utility::extensions::HexString,
+    };
 
     impl PacketBuilder {
         pub(in crate::core::tlv) fn tlv(

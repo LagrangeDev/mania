@@ -1,6 +1,6 @@
-use crate::entity::bot_friend::BotFriend;
-use crate::entity::bot_group_member::BotGroupMember;
 use dashmap::DashMap;
+
+use crate::entity::{bot_friend::BotFriend, bot_group_member::BotGroupMember};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CacheMode {

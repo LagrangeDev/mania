@@ -1,25 +1,31 @@
-use crate::core::connect::tcp_connect_timeout;
-use crate::core::highway::hw_frame_codec::{HighwayFrame, HighwayFrameCodec};
-use crate::core::highway::{AsyncPureStream, HighwayError};
-use crate::core::http;
-use crate::core::protos::service::highway::{
-    DataHighwayHead, LoginSigHead, ReqDataHighwayHead, RespDataHighwayHead, SegHead,
-};
-use crate::dda;
-use crate::utility::extensions::HexString;
+use std::{borrow::Cow, fmt::Debug, net::ToSocketAddrs, time::Duration};
+
 use bytes::{Bytes, BytesMut};
-use futures::SinkExt;
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
 use md5::{Digest, Md5};
 use prost::Message;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use std::borrow::Cow;
-use std::fmt::Debug;
-use std::net::ToSocketAddrs;
-use std::time::Duration;
-use tokio::io;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt};
+use tokio::{
+    io,
+    io::{AsyncRead, AsyncReadExt, AsyncSeekExt},
+};
 use tokio_util::codec::{Decoder, Encoder, Framed};
+
+use crate::{
+    core::{
+        connect::tcp_connect_timeout,
+        highway::{
+            AsyncPureStream, HighwayError,
+            hw_frame_codec::{HighwayFrame, HighwayFrameCodec},
+        },
+        http,
+        protos::service::highway::{
+            DataHighwayHead, LoginSigHead, ReqDataHighwayHead, RespDataHighwayHead, SegHead,
+        },
+    },
+    dda,
+    utility::extensions::HexString,
+};
 
 pub struct HighwaySession {
     pub ticket: Bytes,

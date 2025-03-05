@@ -1,7 +1,6 @@
 // copy from https://github.com/zkonge/rtea
 use byteorder::{BigEndian, ByteOrder};
-pub use generic_array::GenericArray;
-pub use generic_array::typenum::U16;
+pub use generic_array::{GenericArray, typenum::U16};
 use rand::{RngCore, thread_rng};
 
 pub fn tea_encrypt(text: &[u8], key: &[u8]) -> Vec<u8> {

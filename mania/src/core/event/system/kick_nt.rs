@@ -1,5 +1,4 @@
-use crate::core::event::prelude::*;
-use crate::core::protos::system::ServiceKickNtResponse;
+use crate::core::{event::prelude::*, protos::system::ServiceKickNtResponse};
 
 #[command("trpc.qq_new_tech.status_svc.StatusService.KickNT")]
 #[derive(Debug, ServerEvent)]

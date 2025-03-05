@@ -1,26 +1,37 @@
-use crate::core::business::BusinessHandle;
-use crate::core::event::message::file_c2c_download::FileC2CDownloadEvent;
-use crate::core::event::message::file_group_download::FileGroupDownloadEvent;
-use crate::core::event::message::image_c2c_download::ImageC2CDownloadEvent;
-use crate::core::event::message::image_group_download::ImageGroupDownloadEvent;
-use crate::core::event::message::multi_msg_download::MultiMsgDownloadEvent;
-use crate::core::event::message::record_c2c_download::RecordC2CDownloadEvent;
-use crate::core::event::message::record_group_download::RecordGroupDownloadEvent;
-use crate::core::event::message::send_message::SendMessageEvent;
-use crate::core::event::message::video_c2c_download::VideoC2CDownloadEvent;
-use crate::core::event::message::video_group_download::VideoGroupDownloadEvent;
-use crate::core::event::system::fetch_filtered_group_request::FetchFilteredGroupRequestsEvent;
-use crate::core::event::system::fetch_group_requests::FetchGroupRequestsEvent;
-use crate::core::event::system::fetch_rkey::FetchRKeyEvent;
-use crate::core::event::system::fetch_user_info::FetchUserInfoEvent;
-use crate::core::event::{downcast_major_event, downcast_mut_major_event};
-use crate::core::protos::service::oidb::IndexNode;
-use crate::entity::bot_group_request::BotGroupRequest;
-use crate::message::chain::MessageChain;
-use crate::{ManiaError, ManiaResult, dda};
-use futures::future::join_all;
 use std::sync::Arc;
+
+use futures::future::join_all;
 use tokio::join;
+
+use crate::{
+    ManiaError, ManiaResult,
+    core::{
+        business::BusinessHandle,
+        event::{
+            downcast_major_event, downcast_mut_major_event,
+            message::{
+                file_c2c_download::FileC2CDownloadEvent,
+                file_group_download::FileGroupDownloadEvent,
+                image_c2c_download::ImageC2CDownloadEvent,
+                image_group_download::ImageGroupDownloadEvent,
+                multi_msg_download::MultiMsgDownloadEvent,
+                record_c2c_download::RecordC2CDownloadEvent,
+                record_group_download::RecordGroupDownloadEvent, send_message::SendMessageEvent,
+                video_c2c_download::VideoC2CDownloadEvent,
+                video_group_download::VideoGroupDownloadEvent,
+            },
+            system::{
+                fetch_filtered_group_request::FetchFilteredGroupRequestsEvent,
+                fetch_group_requests::FetchGroupRequestsEvent, fetch_rkey::FetchRKeyEvent,
+                fetch_user_info::FetchUserInfoEvent,
+            },
+        },
+        protos::service::oidb::IndexNode,
+    },
+    dda,
+    entity::bot_group_request::BotGroupRequest,
+    message::chain::MessageChain,
+};
 
 impl BusinessHandle {
     pub async fn fetch_rkey(self: &Arc<Self>) -> ManiaResult<()> {
