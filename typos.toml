@@ -1,5 +1,7 @@
 [files]
 ignore-hidden = false
+
 [default]
 check-filename = true
 check-file = true
+extend-ignore-words-re = ["typ"]
