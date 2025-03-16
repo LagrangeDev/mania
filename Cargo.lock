@@ -1594,23 +1594,20 @@ dependencies = [
  "bytes",
  "chrono",
  "dashmap",
- "digest 0.11.0-pre.9",
- "elliptic-curve",
  "flate2",
  "futures",
- "generic-array 1.2.0",
  "glob",
  "hex",
  "image",
  "inventory",
  "log",
  "mania-codec",
+ "mania-crypto",
  "mania-macros",
  "md-5",
  "noise",
  "num_enum",
  "once_cell",
- "p256",
  "phf",
  "prost",
  "prost-build",
@@ -1641,6 +1638,20 @@ dependencies = [
  "silk-sys",
  "symphonia",
  "thiserror 2.0.11",
+]
+
+[[package]]
+name = "mania-crypto"
+version = "0.0.1"
+dependencies = [
+ "byteorder",
+ "digest 0.11.0-pre.9",
+ "elliptic-curve",
+ "generic-array 1.2.0",
+ "md-5",
+ "p256",
+ "rand",
+ "sha1",
 ]
 
 [[package]]

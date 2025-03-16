@@ -1,5 +1,4 @@
 use crate::core::business::BusinessHandle;
-use crate::core::crypto::stream_sha1::StreamSha1;
 use crate::core::event::downcast_major_event;
 use crate::core::event::message::image_c2c_upload::{ImageC2CUploadArgs, ImageC2CUploadEvent};
 use crate::core::event::message::image_group_upload::{
@@ -33,6 +32,7 @@ use mania_codec::audio::AudioRwStream;
 use mania_codec::audio::decoder::symphonia_decoder::SymphoniaDecoder;
 use mania_codec::audio::encoder::silk_encoder::SilkEncoder;
 use mania_codec::audio::resampler::rubato_resampler::RubatoResampler;
+use mania_crypto::stream_sha1::StreamSha1;
 use md5::Md5;
 use prost::Message;
 use sha1::{Digest, Sha1};

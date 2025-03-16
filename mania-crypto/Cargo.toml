@@ -1,0 +1,16 @@
+[package]
+name = "mania-crypto"
+version.workspace = true
+edition.workspace = true
+license-file.workspace = true
+readme.workspace = true
+
+[dependencies]
+digest = "0.11.0-pre.9"
+md-5.workspace = true
+p256 = { version = "0.13.2", features = ["ecdh"] }
+byteorder.workspace = true
+sha1.workspace = true
+generic-array = "1.2.0"
+rand.workspace = true
+elliptic-curve = "0.13.8"

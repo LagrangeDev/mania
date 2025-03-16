@@ -1,4 +1,4 @@
-use crate::core::crypto::tea;
+use crate::tea;
 use digest::Digest;
 use md5::Md5;
 use p256::ecdh::EphemeralSecret;

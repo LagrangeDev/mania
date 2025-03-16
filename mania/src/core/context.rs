@@ -1,8 +1,8 @@
 use crate::ClientConfig;
-use crate::core::crypto::ecdh::{ECDH_256_PEER_LOGIN_KEY, Ecdh, P256};
 use crate::core::key_store::KeyStore;
 use crate::core::session::Session;
 use crate::core::sign::SignProvider;
+use mania_crypto::ecdh::{ECDH_256_PEER_LOGIN_KEY, Ecdh, P256};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

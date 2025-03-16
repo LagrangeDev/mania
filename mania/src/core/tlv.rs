@@ -268,11 +268,11 @@ pub enum TlvError {
 mod prelude {
     pub use crate::core::context::Context;
     pub use crate::core::context::ExtendUuid;
-    pub use crate::core::crypto::tea::tea_encrypt;
     pub use crate::core::packet::{PacketBuilder, PacketReader};
     pub use crate::core::tlv::{TlvDe, TlvError, TlvSer, serialize_tlv_set};
     pub use crate::utility::extensions::HexString;
     pub use bytes::Bytes;
+    pub use mania_crypto::tea::tea_encrypt;
     pub use prost::Message;
     pub use uuid::Uuid;
 

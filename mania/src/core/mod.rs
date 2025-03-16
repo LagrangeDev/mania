@@ -2,7 +2,6 @@ pub mod business;
 pub mod cache;
 pub mod connect;
 pub mod context;
-pub mod crypto;
 pub mod entity;
 pub mod error;
 pub mod event;
