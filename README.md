@@ -49,15 +49,14 @@
 
 ## Development
 
-Make sure to set up the Git hooks before contributing by moving the hook files under
-`scripts` directory to `.git/hooks`:
+Make sure to set up the Git hooks before contributing by moving the hook files
+under `scripts` directory to `.git/hooks`:
 
 ```bash
 mkdir -p .git/hooks
 cp scripts/pre-commit .git/hooks/pre-commit
 cp scripts/pre-push .git/hooks/pre-push
 ```
-
 
 ## References
 
