@@ -7,9 +7,9 @@ static RNG: OnceLock<Mutex<ChaCha12Rng>> = OnceLock::new();
 
 impl RandomGenerator {
     pub fn random_num(start: u32, end: u32) -> u32 {
-        let rng_mutex = RNG.get_or_init(|| Mutex::new(ChaCha12Rng::from_entropy()));
+        let rng_mutex = RNG.get_or_init(|| Mutex::new(ChaCha12Rng::seed_from_u64(0)));
         let mut rng = rng_mutex.lock().expect("Failed to lock RNG mutex");
-        rng.gen_range(start..=end)
+        rng.random_range(start..=end)
     }
 
     pub fn rand_u32() -> u32 {

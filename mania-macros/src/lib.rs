@@ -30,6 +30,7 @@ pub fn pack_content(attr: TokenStream, item: TokenStream) -> TokenStream {
         true => {
             quote! {
                 #input_struct
+                #[automatically_derived]
                 impl crate::message::entity::MessageContentImplChecker for #ident {
                     fn need_pack(&self) -> bool {
                         true
@@ -40,11 +41,13 @@ pub fn pack_content(attr: TokenStream, item: TokenStream) -> TokenStream {
         false => {
             quote! {
                 #input_struct
+                #[automatically_derived]
                 impl crate::message::entity::MessageContentImplChecker for #ident {
                     fn need_pack(&self) -> bool {
                         true
                     }
                 }
+                #[automatically_derived]
                 impl crate::message::entity::MessageContentImpl for #ident {
                     fn pack_content(&self) -> Option<bytes::Bytes> {
                         None
@@ -64,6 +67,7 @@ pub fn command(attr: TokenStream, item: TokenStream) -> TokenStream {
     let ident = &input_struct.ident;
     let expanded = quote! {
         #input_struct
+        #[automatically_derived]
         impl crate::core::event::CECommandMarker for #ident {
             const COMMAND: &'static str = #command_value;
         }
@@ -110,6 +114,7 @@ pub fn oidb_command(attr: TokenStream, item: TokenStream) -> TokenStream {
     let ident = &input_struct.ident;
     let expanded = quote! {
         #input_struct
+        #[automatically_derived]
         impl crate::core::event::CECommandMarker for #ident {
             const COMMAND: &'static str = #command_value;
         }
@@ -128,6 +133,7 @@ pub fn derive_server_event(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = input.ident;
     let expanded = quote! {
+        #[automatically_derived]
         impl crate::core::event::ServerEvent for #struct_name {
             fn as_any(&self) -> &dyn std::any::Any {
                 self
@@ -146,10 +152,12 @@ pub fn derive_dummy_event(input: TokenStream) -> TokenStream {
     let struct_name = &input.ident;
 
     let expanded = quote! {
+        #[automatically_derived]
         impl crate::core::event::CECommandMarker for #struct_name {
             const COMMAND: &'static str = "";
         }
 
+        #[automatically_derived]
         impl crate::core::event::ServerEvent for #struct_name {
             fn as_any(&self) -> &dyn std::any::Any {
                 self
@@ -159,6 +167,7 @@ pub fn derive_dummy_event(input: TokenStream) -> TokenStream {
             }
         }
 
+        #[automatically_derived]
         impl crate::core::event::ClientEvent for #struct_name {
             fn build(&self, _: &crate::core::context::Context) -> crate::core::event::CEBuildResult {
                 unreachable!("DummyEvent {} should not be parsed", stringify!(#struct_name));
@@ -200,9 +209,9 @@ pub fn handle_event(attr: TokenStream, item: TokenStream) -> TokenStream {
         let hash_value = hex::encode(hasher.finalize());
 
         let type_id_fn_name =
-            syn::Ident::new(&format!("_mhe_type_id_{}", hash_value), fn_name.span());
+            syn::Ident::new(&format!("_mhe_type_id_{hash_value}"), fn_name.span());
         let wrapper_fn_name =
-            syn::Ident::new(&format!("_mhe_wrap_id_{}", hash_value), fn_name.span());
+            syn::Ident::new(&format!("_mhe_wrap_id_{hash_value}"), fn_name.span());
 
         let trait_check = quote! {
             const _: () = {
@@ -282,18 +291,17 @@ pub fn derive_mania_event(input: proc_macro::TokenStream) -> proc_macro::TokenSt
                             .and_then(|attr| attr.parse_args::<ManiaEventPreferOptions>().ok())
                             .map_or_else(
                                 || {
-                                    if let syn::Type::Path(path) = field_type {
-                                        if let Some(segment) = path.path.segments.first() {
-                                            if segment.ident == "String" || segment.ident == "str" {
-                                                return "{}";
-                                            }
-                                        }
+                                    if let syn::Type::Path(path) = field_type
+                                        && let Some(segment) = path.path.segments.first()
+                                        && (segment.ident == "String" || segment.ident == "str")
+                                    {
+                                        return "{}";
                                     }
                                     "{:?}"
                                 },
                                 |opts| if opts.display { "{}" } else { "{:?}" },
                             );
-                        format!("{}: {}", field_name, placeholder)
+                        format!("{field_name}: {placeholder}")
                     })
                     .collect();
                 let fmt_string = format!("[{}] {}", struct_name, field_entries.join(" | "));
@@ -302,6 +310,7 @@ pub fn derive_mania_event(input: proc_macro::TokenStream) -> proc_macro::TokenSt
                     quote! { self.#field_ident }
                 });
                 quote! {
+                    #[automatically_derived]
                     impl std::fmt::Debug for #struct_name {
                         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                             write!(f, #fmt_string, #( #field_accesses ),* )

@@ -85,10 +85,10 @@ impl Debug for MessageChain {
         let entities_preview = self
             .entities
             .iter()
-            .map(|entity| format!("{:?}", entity))
+            .map(|entity| format!("{entity:?}"))
             .collect::<Vec<String>>()
             .join(" | ");
-        write!(f, "{}{}", header, entities_preview)
+        write!(f, "{header}{entities_preview}")
     }
 }
 
@@ -98,7 +98,7 @@ impl Debug for MessageChain {
 impl Display for MessageChain {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         for entity in &self.entities {
-            write!(f, "{}", entity)?;
+            write!(f, "{entity}")?;
         }
         Ok(())
     }

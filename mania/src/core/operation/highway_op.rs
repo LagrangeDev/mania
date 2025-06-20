@@ -84,7 +84,7 @@ impl BusinessHandle {
                 })
                 .await?;
                 let iv = resolve_image_metadata(s).await.map_err(|e| {
-                    ManiaError::GenericError(Cow::from(format!("Resolve image error: {:?}", e)))
+                    ManiaError::GenericError(Cow::from(format!("Resolve image error: {e:?}")))
                 })?;
                 let sha1_bytes = Bytes::from(sha1_hasher.finalize().to_vec());
                 let md5_bytes = Bytes::from(md5_hasher.finalize().to_vec());
@@ -323,7 +323,7 @@ impl BusinessHandle {
     ) -> ManiaResult<()> {
         self.prepare_highway().await?;
         let (vs, is) = video.resolve_stream().await.map_err(|e| {
-            ManiaError::GenericError(Cow::from(format!("Resolve stream error: {:?}", e)))
+            ManiaError::GenericError(Cow::from(format!("Resolve stream error: {e:?}")))
         })?;
         let vs = vs.ok_or(ManiaError::GenericError(Cow::from("No video stream found")))?;
         let is = is.ok_or(ManiaError::GenericError(Cow::from("No image stream found")))?;
@@ -469,7 +469,7 @@ impl BusinessHandle {
     ) -> ManiaResult<()> {
         self.prepare_highway().await?;
         let (vs, is) = video.resolve_stream().await.map_err(|e| {
-            ManiaError::GenericError(Cow::from(format!("Resolve stream error: {:?}", e)))
+            ManiaError::GenericError(Cow::from(format!("Resolve stream error: {e:?}")))
         })?;
         let vs = vs.ok_or(ManiaError::GenericError(Cow::from("No video stream found")))?;
         let is = is.ok_or(ManiaError::GenericError(Cow::from("No image stream found")))?;
@@ -627,31 +627,24 @@ impl BusinessHandle {
                         let pipeline = AudioRwStream::new(Box::new(cursor))
                             .decode(SymphoniaDecoder::<f32>::new())
                             .map_err(|e| {
-                                ManiaError::GenericError(Cow::from(format!(
-                                    "Decode error: {:?}",
-                                    e
-                                )))
+                                ManiaError::GenericError(Cow::from(format!("Decode error: {e:?}")))
                             })?
                             .resample(RubatoResampler::<i16>::new(48000))
                             .map_err(|e| {
                                 ManiaError::GenericError(Cow::from(format!(
-                                    "Resample error: {:?}",
-                                    e
+                                    "Resample error: {e:?}",
                                 )))
                             })?
                             .encode(SilkEncoder::new(30000))
                             .map_err(|e| {
-                                ManiaError::GenericError(Cow::from(format!(
-                                    "Encode error: {:?}",
-                                    e
-                                )))
+                                ManiaError::GenericError(Cow::from(format!("Encode error: {e:?}",)))
                             })?;
                         tracing::debug!("Audio processing finished");
                         let output = pipeline.stream;
                         Ok::<Vec<u8>, ManiaError>(output)
                     });
                     let res = task.await.map_err(|e| {
-                        ManiaError::GenericError(Cow::from(format!("Blocking error: {:?}", e)))
+                        ManiaError::GenericError(Cow::from(format!("Blocking error: {e:?}")))
                     })??;
                     let get_ten_silk_time = |data: &[u8]| -> f64 {
                         let mut i = 10;

@@ -139,7 +139,7 @@ impl ClientEvent for PushMessageEvent {
             .map(|content_head| content_head.r#type)
             .ok_or_else(|| EventError::OtherError("Cannot get typ in PushMsg".to_string()))?;
         let packet_type = PkgType::try_from(typ).map_err(|_| {
-            EventError::InternalWarning(format!("receive unknown olpush message type: {:?}", typ))
+            EventError::InternalWarning(format!("receive unknown olpush message type: {typ:?}"))
         })?;
         let mut chain: Option<MessageChain> = None;
         let mut extra: Option<Vec<Box<dyn ServerEvent>>> = match packet_type {
@@ -161,7 +161,7 @@ impl ClientEvent for PushMessageEvent {
                         })?,
                         ctx,
                     )
-                    .map_err(|e| EventError::OtherError(format!("parse_chain failed: {}", e)))?,
+                    .map_err(|e| EventError::OtherError(format!("parse_chain failed: {e}")))?,
                 );
             }
             PkgType::PrivateFileMessage => {
@@ -172,9 +172,7 @@ impl ClientEvent for PushMessageEvent {
                         })?,
                         ctx,
                     )
-                    .map_err(|e| {
-                        EventError::OtherError(format!("parse_file_chain failed: {}", e))
-                    })?,
+                    .map_err(|e| EventError::OtherError(format!("parse_file_chain failed: {e}")))?,
                 )
             }
             PkgType::GroupRequestInvitationNotice => {
@@ -270,8 +268,7 @@ impl ClientEvent for PushMessageEvent {
                     .transpose()
                     .map_err(|e| {
                         EventError::OtherError(format!(
-                            "Failed to parse invitor_uid in GroupChange: {}",
-                            e
+                            "Failed to parse invitor_uid in GroupChange: {e}"
                         ))
                     })?;
                 extra
@@ -429,8 +426,7 @@ fn process_event_0x2dc<'a>(
 ) -> Result<&'a mut Option<Vec<Box<dyn ServerEvent>>>, EventError> {
     let sub_type = Event0x2DCSubType::try_from(extract_0x_sub_type(packet)?).map_err(|err| {
         EventError::InternalWarning(format!(
-            "receive unknown olpush message 0x2dc sub type: {:?}",
-            err
+            "receive unknown olpush message 0x2dc sub type: {err:?}"
         ))
     })?;
     match sub_type {
@@ -471,8 +467,7 @@ fn process_event_0x2dc<'a>(
             let ev = Event0x2DCSubType16Field13::try_from(msg_body.field13.unwrap_or_default())
                 .map_err(|e| {
                     EventError::InternalWarning(format!(
-                        "Failed to parse 0x2dc sub type 16 field 13: {}",
-                        e
+                        "Failed to parse 0x2dc sub type 16 field 13: {e}"
                     ))
                 })?;
             match ev {
@@ -622,8 +617,7 @@ fn process_event_0x210<'a>(
 ) -> Result<&'a mut Option<Vec<Box<dyn ServerEvent>>>, EventError> {
     let sub_type = Event0x210SubType::try_from(extract_0x_sub_type(packet)?).map_err(|err| {
         EventError::InternalWarning(format!(
-            "receive unknown olpush message 0x210 sub type: {:?}",
-            err
+            "receive unknown olpush message 0x210 sub type: {err:?}"
         ))
     })?;
     match sub_type {
@@ -832,8 +826,7 @@ fn process_event_0x210<'a>(
         }
         Event0x210SubType::ServicePinChanged | Event0x210SubType::GroupKickNotice => {
             Err(EventError::InternalWarning(format!(
-                "TODO: handle 0x210 sub type {:?}",
-                sub_type
+                "TODO: handle 0x210 sub type {sub_type:?}"
             )))?;
         }
     }

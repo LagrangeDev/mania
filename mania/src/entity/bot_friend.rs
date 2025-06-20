@@ -36,7 +36,7 @@ impl BotFriend {
             personal_sign,
             qid,
             group,
-            avatar: format!("https://q1.qlogo.cn/g?b=qq&nk={}&s=640", uin),
+            avatar: format!("https://q1.qlogo.cn/g?b=qq&nk={uin}&s=640"),
         }
     }
 }

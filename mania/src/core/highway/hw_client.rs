@@ -144,7 +144,7 @@ impl HighwayClient {
         let mut buf = BytesMut::new();
         let mut codec = HighwayFrameCodec;
         codec.encode(frame, &mut buf).map_err(|e| {
-            HighwayError::OtherError(format!("encode http frame failed: {}", e).into())
+            HighwayError::OtherError(format!("encode http frame failed: {e}").into())
         })?;
         let mut codec = HighwayFrameCodec;
         let mut res_buf = BytesMut::from(buf.as_ref() as &[u8]);
@@ -244,7 +244,7 @@ impl HighwayClient {
             let mut codec = HighwayFrameCodec;
             let mut encoded_buf = BytesMut::new();
             codec.encode(frame, &mut encoded_buf).map_err(|e| {
-                HighwayError::OtherError(format!("encode http frame failed: {}", e).into())
+                HighwayError::OtherError(format!("encode http frame failed: {e}").into())
             })?;
             let post_frame = encoded_buf.freeze();
             let headers = [
@@ -274,10 +274,9 @@ impl HighwayClient {
                 )
                 .await
                 .map_err(|e| {
-                    HighwayError::OtherError(Cow::from(format!(
-                        "Failed to upload via http: {:?}",
-                        e
-                    )))
+                    HighwayError::OtherError(Cow::from(
+                        format!("Failed to upload via http: {e:?}",),
+                    ))
                 })?;
             let mut res_buf = BytesMut::from(res.as_ref() as &[u8]);
             let mut codec = HighwayFrameCodec;

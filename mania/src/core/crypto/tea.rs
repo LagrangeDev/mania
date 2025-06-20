@@ -2,7 +2,7 @@
 use byteorder::{BigEndian, ByteOrder};
 pub use generic_array::GenericArray;
 pub use generic_array::typenum::U16;
-use rand::{RngCore, thread_rng};
+use rand::{RngCore, rng};
 
 pub fn tea_encrypt(text: &[u8], key: &[u8]) -> Vec<u8> {
     let fill_count = 9 - (text.len() + 1) % 8;
@@ -15,7 +15,7 @@ pub fn tea_encrypt(text: &[u8], key: &[u8]) -> Vec<u8> {
         //这里是为了和pytea对拍，填充220
         plaintext[1..fill_count + 1].fill(220);
     } else {
-        thread_rng().fill_bytes(&mut plaintext[1..fill_count + 1]);
+        rng().fill_bytes(&mut plaintext[1..fill_count + 1]);
     }
     plaintext[fill_count + 1..plaintext_len - 7].copy_from_slice(text);
 

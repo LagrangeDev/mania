@@ -4,7 +4,7 @@ use digest::{
     block_buffer::{BlockBuffer, Eager},
     typenum::{U64, Unsigned},
 };
-use sha1::compress;
+use sha1::block_api::compress;
 
 #[derive(Default)]
 struct StreamSha1Core {

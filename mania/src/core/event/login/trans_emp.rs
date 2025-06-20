@@ -222,8 +222,7 @@ impl ClientEvent for TransEmp {
                     53 => TransEmp12Res::WaitingForConfirm,
                     54 => TransEmp12Res::Canceled,
                     _ => Err(EventError::OtherError(format!(
-                        "unknown trans_emp ret code: {}",
-                        state
+                        "unknown trans_emp ret code: {state}"
                     )))?,
                 };
                 Ok(ClientResult::single(Box::new(Self {
@@ -232,8 +231,7 @@ impl ClientEvent for TransEmp {
                 })))
             }
             _ => Err(EventError::OtherError(format!(
-                "unsupported trans_emp command: {:#x}",
-                command
+                "unsupported trans_emp command: {command:#x}"
             )))?,
         }
     }
