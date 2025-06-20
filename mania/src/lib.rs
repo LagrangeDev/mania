@@ -2,7 +2,6 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(default_field_values)]
-#![feature(result_flattening)]
 
 mod core;
 pub mod entity;
