@@ -67,7 +67,7 @@ impl Ecdh for P256 {
     fn new(server_public_key: [u8; 65]) -> Self {
         let s_pub_key =
             PublicKey::from_sec1_bytes(&server_public_key).expect("Failed to parse public key");
-        let c_pri_key = EphemeralSecret::random(&mut rand::thread_rng());
+        let c_pri_key = EphemeralSecret::random(&mut rand::rng());
         let c_pub_key = c_pri_key.public_key();
         let share_key = Self::key_exchange(c_pri_key, s_pub_key)
             .expect("Failed to generate shared key from key exchange");
@@ -89,10 +89,10 @@ impl Ecdh for P256 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::thread_rng;
+    use rand::rng;
     #[test]
     fn test_ecdh_p256() {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let server_secret = EphemeralSecret::random(&mut rng);
         let server_public = server_secret.public_key();
         let client_secret = EphemeralSecret::random(&mut rng);
@@ -122,7 +122,7 @@ mod test {
             "Client message: {:?}",
             String::from_utf8_lossy(client_message)
         );
-        println!("Ciphertext from client: {:?}", ciphertext_from_client);
+        println!("Ciphertext from client: {ciphertext_from_client:?}");
         println!(
             "Decrypted by server: {:?}",
             String::from_utf8_lossy(&decrypted_by_server)
@@ -131,7 +131,7 @@ mod test {
             "Server message: {:?}",
             String::from_utf8_lossy(server_message)
         );
-        println!("Ciphertext from server: {:?}", ciphertext_from_server);
+        println!("Ciphertext from server: {ciphertext_from_server:?}");
         println!(
             "Decrypted by client: {:?}",
             String::from_utf8_lossy(&decrypted_by_client)

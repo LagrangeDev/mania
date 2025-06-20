@@ -285,7 +285,7 @@ impl MessagePacker {
 
         let mut base_chain = MessagePacker::parse_chain(body, ctx)?;
         let extra = FileExtra::decode(Bytes::from(msg_content))
-            .map_err(|e| format!("failed to decode FileExtra: {:?}", e))?;
+            .map_err(|e| format!("failed to decode FileExtra: {e:?}"))?;
         let file = extra
             .file
             .as_ref()

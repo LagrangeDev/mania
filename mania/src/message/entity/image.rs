@@ -100,31 +100,30 @@ impl MessageEntity for ImageEntity {
     }
 
     fn unpack_element(elem: &Elem) -> Option<Self> {
-        if let Some(common) = &elem.common_elem {
-            if common.service_type == 48
-                && (common.business_type == 10 || common.business_type == 20)
-            {
-                let extra: MsgInfo = MsgInfo::decode(&*common.pb_elem).ok()?;
-                let ext_biz_info = extra.ext_biz_info.as_ref()?;
-                let msg_info_body = &extra.msg_info_body[0];
-                let index = msg_info_body.index.as_ref()?;
+        if let Some(common) = &elem.common_elem
+            && common.service_type == 48
+            && (common.business_type == 10 || common.business_type == 20)
+        {
+            let extra: MsgInfo = MsgInfo::decode(&*common.pb_elem).ok()?;
+            let ext_biz_info = extra.ext_biz_info.as_ref()?;
+            let msg_info_body = &extra.msg_info_body[0];
+            let index = msg_info_body.index.as_ref()?;
 
-                return Some(dda!(ImageEntity {
-                    height: index.info.as_ref()?.height,
-                    width: index.info.as_ref()?.width,
-                    file_path: Some(index.info.as_ref()?.file_name.clone()),
-                    md5: Bytes::from(index.info.as_ref()?.file_hash.unhex().ok()?),
-                    size: index.info.as_ref()?.file_size,
-                    msg_info: Some(extra.clone()),
-                    sub_type: ext_biz_info.pic.as_ref()?.biz_type,
-                    is_group: ext_biz_info.pic.as_ref()?.bytes_pb_reserve_troop.is_some(), // TODO: check this
-                    summary: if ext_biz_info.pic.as_ref()?.text_summary.is_empty() {
-                        Some("[图片]".to_string())
-                    } else {
-                        Some(ext_biz_info.pic.as_ref()?.text_summary.clone())
-                    },
-                }));
-            }
+            return Some(dda!(ImageEntity {
+                height: index.info.as_ref()?.height,
+                width: index.info.as_ref()?.width,
+                file_path: Some(index.info.as_ref()?.file_name.clone()),
+                md5: Bytes::from(index.info.as_ref()?.file_hash.unhex().ok()?),
+                size: index.info.as_ref()?.file_size,
+                msg_info: Some(extra.clone()),
+                sub_type: ext_biz_info.pic.as_ref()?.biz_type,
+                is_group: ext_biz_info.pic.as_ref()?.bytes_pb_reserve_troop.is_some(), // TODO: check this
+                summary: if ext_biz_info.pic.as_ref()?.text_summary.is_empty() {
+                    Some("[图片]".to_string())
+                } else {
+                    Some(ext_biz_info.pic.as_ref()?.text_summary.clone())
+                },
+            }));
         }
 
         if let Some(image) = &elem.not_online_image {

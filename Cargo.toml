@@ -9,10 +9,10 @@ license-file = "LICENCE"
 readme = "README.md"
 
 [workspace.dependencies]
-md-5 = "0.11.0-pre.4"
+md-5 = "0.11.0-rc.0"
 hex = "0.4.3"
 tracing = "0.1.41"
-tokio = { version = "1.43.0", features = [
+tokio = { version = "1.45.1", features = [
   "fs",
   "net",
   "io-util",
@@ -22,10 +22,10 @@ tokio = { version = "1.43.0", features = [
   "signal",
   "tracing",
 ] }
-uuid = { version = "1.12.1", features = ["serde", "v4"] }
-thiserror = "2.0.11"
+uuid = { version = "1.17.0", features = ["serde", "v4"] }
+thiserror = "2.0.12"
 num_enum = "0.7.3"
-bytes = { version = "1.10.0", features = ["serde"] }
+bytes = { version = "1.10.1", features = ["serde"] }
 
 [profile.release]
 opt-level = 2

@@ -90,13 +90,11 @@ async fn main() {
                             None
                         }
                     };
-                    if let Some((chain_str, group_uin)) = maybe_data {
-                        if chain_str.contains("/mania ping") {
-                            let chain = MessageChainBuilder::group(group_uin)
-                                .text("pong")
-                                .build();
-                            send_op.send_message(chain).await.unwrap();
-                        }
+                    if let Some((chain_str, group_uin)) = maybe_data && chain_str.contains("/mania ping") {
+                        let chain = MessageChainBuilder::group(group_uin)
+                            .text("pong")
+                            .build();
+                        send_op.send_message(chain).await.unwrap();
                     }
                 }
             }
@@ -127,7 +125,7 @@ async fn main() {
         }
         .await;
         if let Err(e) = login_res {
-            panic!("Failed to login: {:?}", e);
+            panic!("Failed to login: {e:?}");
         }
     } else {
         tracing::info!("Session is still valid, trying to online...");
@@ -136,7 +134,7 @@ async fn main() {
     let _tx = match op.online().await {
         Ok(tx) => tx,
         Err(e) => {
-            panic!("Failed to set online status: {:?}", e);
+            panic!("Failed to set online status: {e:?}");
         }
     };
 

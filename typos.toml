@@ -3,3 +3,5 @@ ignore-hidden = false
 [default]
 check-filename = true
 check-file = true
+[default.extend-words]
+typ = "typ"

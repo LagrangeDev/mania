@@ -61,8 +61,7 @@ impl BusinessHandle {
             };
             let payload = serde_json::to_vec(&request_body).map_err(|e| {
                 ManiaError::GenericError(Cow::from(format!(
-                    "Failed to serialize request body: {:?}",
-                    e
+                    "Failed to serialize request body: {e:?}",
                 )))
             })?;
             let mut headers = reqwest::header::HeaderMap::new();
@@ -75,14 +74,12 @@ impl BusinessHandle {
                 .await
                 .map_err(|e| {
                     ManiaError::GenericError(Cow::from(format!(
-                        "Failed to query QR code status via ntlogin.qq.com: {:?}",
-                        e
+                        "Failed to query QR code status via ntlogin.qq.com: {e:?}",
                     )))
                 })?;
             let info: NTLoginHttpResponse = serde_json::from_slice(&response).map_err(|e| {
                 ManiaError::GenericError(Cow::from(format!(
-                    "Failed to deserialize response: {:?}",
-                    e
+                    "Failed to deserialize response: {e:?}",
                 )))
             })?;
             self.context.key_store.uin.store(info.uin.into());

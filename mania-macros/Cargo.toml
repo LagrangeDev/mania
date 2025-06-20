@@ -8,8 +8,8 @@ license-file.workspace = true
 proc-macro = true
 
 [dependencies]
-syn = { version = "2.0.98", features = ["full"] }
-quote = "1.0.38"
-proc-macro2 = "1.0.93"
+syn = { version = "2.0.103", features = ["full"] }
+quote = "1.0.40"
+proc-macro2 = "1.0.95"
 hex.workspace = true
 md-5.workspace = true

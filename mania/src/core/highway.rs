@@ -22,7 +22,7 @@ fn int32ip2str(ip: u32) -> String {
     let b = (ip >> 8) & 0xff;
     let c = (ip >> 16) & 0xff;
     let d = (ip >> 24) & 0xff;
-    format!("{}.{}.{}.{}", a, b, c, d)
+    format!("{a}.{b}.{c}.{d}")
 }
 
 pub fn oidb_ipv4s_to_highway_ipv4s(ipv4s: &[IPv4]) -> Vec<NtHighwayIPv4> {

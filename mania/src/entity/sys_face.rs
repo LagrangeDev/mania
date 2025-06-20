@@ -75,7 +75,7 @@ impl SysFacePackEntry {
             .map(|e| {
                 e.q_sid
                     .parse::<u32>()
-                    .map_err(|e| format!("Failed to parse q_sid to u32: {}", e))
+                    .map_err(|e| format!("Failed to parse q_sid to u32: {e}"))
             })
             .collect()
     }

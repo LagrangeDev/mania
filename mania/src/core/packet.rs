@@ -166,7 +166,7 @@ impl SsoPacket {
 
         // Initialize the sequence number
         if SEQUENCE.compare_exchange(0, 1, Release, Acquire).is_ok() {
-            let offset = rand::thread_rng().gen_range(5000000..=9900000);
+            let offset = rand::rng().random_range(5000000..=9900000);
             SEQUENCE.store(offset, Relaxed);
         } else {
             // Other threads are doing the initialization
@@ -407,16 +407,16 @@ pub enum PacketError {
 fn random_trace() -> String {
     use std::fmt::Write;
     let mut result = String::from("00-");
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // 32 digits
     for _ in 0..16 {
-        write!(result, "{:x}", rng.r#gen::<u8>()).unwrap();
+        write!(result, "{:x}", rng.random::<u8>()).unwrap();
     }
     result.push('-');
     // 16 digits
     for _ in 0..8 {
-        write!(result, "{:x}", rng.r#gen::<u8>()).unwrap();
+        write!(result, "{:x}", rng.random::<u8>()).unwrap();
     }
     result.push_str("-01");
 
