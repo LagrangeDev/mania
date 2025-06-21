@@ -10,7 +10,7 @@ use std::sync::Arc;
 #[handle_event(KickNTEvent)]
 async fn messaging_logic(
     event: &mut dyn ServerEvent,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<()>>,
     flow: LogicFlow,
 ) -> Result<&dyn ServerEvent, BusinessError> {
     match flow {
@@ -19,9 +19,9 @@ async fn messaging_logic(
     }
 }
 
-async fn messaging_logic_incoming(
+async fn messaging_logic_incoming<H>(
     event: &mut dyn ServerEvent,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<H>>,
 ) -> &dyn ServerEvent {
     match event {
         _ if let Some(kick) = event.as_any_mut().downcast_mut::<KickNTEvent>() => {

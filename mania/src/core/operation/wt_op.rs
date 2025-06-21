@@ -20,7 +20,7 @@ use std::time::Duration;
 use tokio::sync::watch;
 use tokio::time::{sleep, timeout};
 
-impl BusinessHandle {
+impl<H> BusinessHandle<H> {
     pub fn update_key_store(&self) -> &KeyStore {
         &self.context.key_store
     }
@@ -182,7 +182,9 @@ impl BusinessHandle {
             )),
         }
     }
+}
 
+impl<H: Send + Sync + 'static> BusinessHandle<H> {
     pub async fn online(self: &Arc<Self>) -> ManiaResult<watch::Sender<()>> {
         let (tx, mut rx) = watch::channel::<()>(());
         let res = self.send_event(&mut InfoSyncEvent).await?;

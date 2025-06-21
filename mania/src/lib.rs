@@ -10,7 +10,7 @@ pub mod event;
 pub mod message;
 pub mod utility;
 
-use crate::core::business::{Business, BusinessHandle};
+pub use crate::core::business::{Business, BusinessHandle};
 pub use crate::core::cache::CacheMode;
 use crate::core::context::Protocol;
 pub use crate::core::context::{AppInfo, Context, DeviceInfo};
@@ -19,6 +19,7 @@ pub use crate::core::key_store::KeyStore;
 use crate::core::session::Session;
 use crate::core::sign::{SignProvider, default_sign_provider};
 use crate::entity::bot_group_member::FetchGroupMemberStrategy;
+use crate::event::EventHandler;
 use std::env;
 use std::sync::Arc;
 
@@ -63,12 +64,11 @@ impl Default for ClientConfig {
 }
 
 pub struct Client {
-    business: Business,
-    handle: ClientHandle,
+    context: Context,
 }
 
 impl Client {
-    pub async fn new(
+    pub fn new(
         mut config: ClientConfig,
         device: DeviceInfo,
         key_store: KeyStore,
@@ -96,34 +96,14 @@ impl Client {
             crypto: Default::default(),
             session: Session::new(),
         };
-        let context = Arc::new(context);
-        let business = Business::new(config, context.clone()).await?;
-        let handle = ClientHandle {
-            business: business.handle(),
-            context,
-        };
+        let context = context;
 
-        Ok(Self { business, handle })
+        Ok(Self { context })
     }
 
-    pub fn handle(&self) -> ClientHandle {
-        self.handle.clone()
-    }
-
-    pub async fn spawn(&mut self) {
-        self.business.spawn().await;
-    }
-}
-
-#[derive(Clone)]
-pub struct ClientHandle {
-    business: Arc<BusinessHandle>,
-    context: Arc<Context>,
-}
-
-// TODO: (maybe) refactor structure to more user-friendly api?
-impl ClientHandle {
-    pub fn operator(&self) -> Arc<BusinessHandle> {
-        self.business.clone()
+    pub async fn connect<H: EventHandler>(self, handler: H) -> Business<H> {
+        let config = self.context.config.clone();
+        Business::new(config, self.context, handler).await.unwrap();
+        todo!("return result?")
     }
 }
