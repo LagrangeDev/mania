@@ -6,7 +6,7 @@ license-file.workspace = true
 description = "examples for mania"
 
 [dependencies]
-cfg-if = "1.0.0"
+cfg-if = "1.0.1"
 console-subscriber = { version = "0.4.1", optional = true }
 mania = { path = "../mania" }
 tokio.workspace = true
