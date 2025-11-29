@@ -9,7 +9,7 @@ use std::sync::Arc;
 #[handle_event(GroupSysIncreaseEvent, GroupSysDecreaseEvent)]
 async fn caching_logic(
     event: &mut dyn ServerEvent,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<()>>,
     flow: LogicFlow,
 ) -> Result<&dyn ServerEvent, BusinessError> {
     match flow {
@@ -18,9 +18,9 @@ async fn caching_logic(
     }
 }
 
-async fn caching_logic_incoming(
+async fn caching_logic_incoming<H>(
     event: &mut dyn ServerEvent,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<H>>,
 ) -> &dyn ServerEvent {
     match event {
         _ if let Some(increase) = event.as_any_mut().downcast_mut::<GroupSysIncreaseEvent>() => {

@@ -70,7 +70,7 @@ static EVENT_MAP: Lazy<EventMap> = Lazy::new(|| {
     map
 });
 
-pub async fn resolve_event(packet: SsoPacket, context: &Arc<Context>) -> CEParseResult {
+pub async fn resolve_event(packet: SsoPacket, context: &Context) -> CEParseResult {
     // Lagrange.Core.Internal.Context.ServiceContext.ResolveEventByPacket
     let payload = PacketReader::new(packet.payload()).section(|p| p.bytes());
     let Some(parse) = EVENT_MAP.get(packet.command()) else {

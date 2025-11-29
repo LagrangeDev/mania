@@ -41,7 +41,7 @@ use std::io::Cursor;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
-impl BusinessHandle {
+impl<H> BusinessHandle<H> {
     async fn fetch_sig_session(self: &Arc<Self>) -> ManiaResult<Bytes> {
         let mut req = FetchHighwayTicketEvent::default();
         let req = self.send_event(&mut req).await?;

@@ -75,9 +75,9 @@ use std::sync::Arc;
     FriendSysRequestEvent,
     BotSysRenameEvent
 )]
-async fn messaging_logic(
+async fn messaging_logic<H>(
     event: &mut dyn ServerEvent,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<H>>,
     flow: LogicFlow,
 ) -> Result<&dyn ServerEvent, BusinessError> {
     tracing::trace!("[{}] Handling event: {:?}", flow, event);
@@ -89,9 +89,9 @@ async fn messaging_logic(
 
 // FIXME: avoid take things from event
 // FIXME: (TODO) make it return Result(?)
-async fn messaging_logic_incoming(
+async fn messaging_logic_incoming<H>(
     event: &mut dyn ServerEvent,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<H>>,
 ) -> &dyn ServerEvent {
     {
         if let Some(msg) = event.as_any_mut().downcast_mut::<PushMessageEvent>() {
@@ -647,7 +647,7 @@ async fn messaging_logic_incoming(
     event
 }
 
-async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHandle>) {
+async fn resolve_incoming_chain<H>(chain: &mut MessageChain, handle: Arc<BusinessHandle<H>>) {
     for entity in &mut chain.entities {
         match *entity {
             Entity::Image(ref mut image) => {
@@ -845,9 +845,9 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
     }
 }
 
-async fn messaging_logic_outgoing(
+async fn messaging_logic_outgoing<H>(
     event: &mut dyn ServerEvent,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<H>>,
 ) -> Result<&dyn ServerEvent, BusinessError> {
     match event {
         _ if let Some(send) = event.as_any_mut().downcast_mut::<SendMessageEvent>() => {
@@ -861,9 +861,9 @@ async fn messaging_logic_outgoing(
 }
 
 // TODO: error handling
-async fn resolve_outgoing_chain(
+async fn resolve_outgoing_chain<H>(
     chain: &mut MessageChain,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<H>>,
 ) -> Result<(), BusinessError> {
     let entities: &mut Vec<Entity> = chain.entities.as_mut();
     for entity in entities {
@@ -908,9 +908,9 @@ async fn resolve_outgoing_chain(
 }
 
 // TODO: return result!!!
-async fn resolve_chain_metadata(
+async fn resolve_chain_metadata<H>(
     chain: &mut MessageChain,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<H>>,
 ) -> &mut MessageChain {
     match chain.typ {
         MessageType::Group(ref mut grp)

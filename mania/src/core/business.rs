@@ -61,7 +61,7 @@ impl Display for LogicFlow {
 
 type LogicHandleFn = for<'a> fn(
     &'a mut dyn ServerEvent,
-    Arc<BusinessHandle>,
+    Arc<BusinessHandle<()>>,
     LogicFlow,
 ) -> Pin<
     Box<dyn Future<Output = Result<&'a dyn ServerEvent, BusinessError>> + Send + 'a>,
@@ -91,31 +91,36 @@ static LOGIC_MAP: Lazy<LogicHandlerMap> = Lazy::new(|| {
     map
 });
 
-pub async fn dispatch_logic(
+pub async fn dispatch_logic<H>(
     event: &mut dyn ServerEvent,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<H>>,
     flow: LogicFlow,
 ) -> Result<&dyn ServerEvent, BusinessError> {
-    let tid = event.as_any().type_id();
-    if let Some(fns) = LOGIC_MAP.get(&tid) {
-        tracing::trace!("[{}] Found {} handlers for {:?}.", flow, fns.len(), event);
-        for handle_fn in fns.iter() {
-            handle_fn(event, handle.to_owned(), flow).await?;
-        }
-    } else {
-        tracing::trace!("[{}] No handler found for {:?}", flow, event);
-    }
-    Ok(event)
+    todo!()
+    //let tid = event.as_any().type_id();
+    //if let Some(fns) = LOGIC_MAP.get(&tid) {
+    //    tracing::trace!("[{}] Found {} handlers for {:?}.", flow, fns.len(), event);
+    //    for handle_fn in fns.iter() {
+    //        handle_fn(event, handle.to_owned(), flow).await?;
+    //    }
+    //} else {
+    //    tracing::trace!("[{}] No handler found for {:?}", flow, event);
+    //}
+    //Ok(event)
 }
 
-pub struct Business {
+pub struct Business<H> {
     addr: SocketAddr,
     receiver: PacketReceiver,
-    handle: Arc<BusinessHandle>,
+    handle: Arc<BusinessHandle<H>>,
 }
 
-impl Business {
-    pub async fn new(config: Arc<ClientConfig>, context: Arc<Context>) -> BusinessResult<Self> {
+impl<H> Business<H> {
+    pub async fn new(
+        config: Arc<ClientConfig>,
+        context: Context,
+        handler: H,
+    ) -> BusinessResult<Self> {
         let addr = optimum_server(config.get_optimum_server, config.use_ipv6_network).await?;
         let (sender, receiver) = socket::connect(addr).await?;
         let event_dispatcher = EventDispatcher::new();
@@ -126,6 +131,7 @@ impl Business {
             pending_requests: DashMap::new(),
             context,
             cache: Arc::new(Cache::new(config.cache_mode)), // TODO: construct from context
+            event_handler: handler,
             event_dispatcher,
             event_listener,
             highway: Arc::new(Highway::default()),
@@ -138,41 +144,8 @@ impl Business {
         })
     }
 
-    pub fn handle(&self) -> Arc<BusinessHandle> {
+    pub fn handle(&self) -> Arc<BusinessHandle<H>> {
         self.handle.clone()
-    }
-
-    // TODO: decouple
-    pub async fn spawn(&mut self) {
-        let handle_packets = async {
-            loop {
-                let raw_packet = match self.receiver.recv().await {
-                    Ok(packet) => packet,
-                    Err(e) => {
-                        tracing::error!("Failed to receive raw_packet: {}", e);
-                        continue;
-                    }
-                };
-                let packet = match SsoPacket::parse(raw_packet, &self.handle.context) {
-                    Ok(packet) => packet,
-                    Err(e) => {
-                        tracing::error!("Failed to parse SsoPacket: {}", e);
-                        continue;
-                    }
-                };
-                tracing::debug!("Incoming packet: {}", packet.command());
-                tracing::trace!("Full: {:?}", packet);
-                let handle = self.handle.clone();
-                tokio::spawn(async move {
-                    if let Err(e) = handle.dispatch_sso_packet(packet).await {
-                        tracing::error!("Unhandled error occurred when handling packet: {:?}", e);
-                    }
-                });
-            }
-        };
-        tokio::select! {
-            _ = handle_packets => {}
-        }
     }
 
     async fn try_reconnect(&mut self) -> BusinessResult<()> {
@@ -208,18 +181,54 @@ impl Business {
     }
 }
 
-pub struct BusinessHandle {
+impl<H: Send + Sync + 'static> Business<H> {
+    // TODO: decouple
+    pub async fn spawn(&mut self) {
+        let handle_packets = async {
+            loop {
+                let raw_packet = match self.receiver.recv().await {
+                    Ok(packet) => packet,
+                    Err(e) => {
+                        tracing::error!("Failed to receive raw_packet: {}", e);
+                        continue;
+                    }
+                };
+                let packet = match SsoPacket::parse(raw_packet, &self.handle.context) {
+                    Ok(packet) => packet,
+                    Err(e) => {
+                        tracing::error!("Failed to parse SsoPacket: {}", e);
+                        continue;
+                    }
+                };
+                tracing::debug!("Incoming packet: {}", packet.command());
+                tracing::trace!("Full: {:?}", packet);
+                let handle = self.handle.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = handle.dispatch_sso_packet(packet).await {
+                        tracing::error!("Unhandled error occurred when handling packet: {:?}", e);
+                    }
+                });
+            }
+        };
+        tokio::select! {
+            _ = handle_packets => {}
+        }
+    }
+}
+
+pub struct BusinessHandle<H> {
     sender: ArcSwap<PacketSender>,
     reconnecting: Mutex<()>,
     pending_requests: DashMap<u32, oneshot::Sender<BusinessResult<CEParse>>>,
-    pub(crate) context: Arc<Context>,
+    pub(crate) context: Context,
     pub(crate) cache: Arc<Cache>,
+    event_handler: H,
     pub(crate) event_dispatcher: EventDispatcher,
     pub event_listener: EventListener,
     pub(crate) highway: Arc<Highway>,
 }
 
-impl BusinessHandle {
+impl<H> BusinessHandle<H> {
     /// Wait if the client is reconnecting.
     async fn wait_reconnecting(&self) {
         drop(self.reconnecting.lock().await);

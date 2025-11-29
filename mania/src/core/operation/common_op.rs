@@ -22,7 +22,7 @@ use futures::future::join_all;
 use std::sync::Arc;
 use tokio::join;
 
-impl BusinessHandle {
+impl<H> BusinessHandle<H> {
     pub async fn fetch_rkey(self: &Arc<Self>) -> ManiaResult<()> {
         let mut fetch_event = FetchRKeyEvent {};
         let res = self.send_event(&mut fetch_event).await?;

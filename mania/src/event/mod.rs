@@ -6,6 +6,12 @@ pub mod system;
 
 pub trait ManiaEvent: std::fmt::Debug {}
 
+use crate::event::system::bot_offline;
+
+pub trait EventHandler {
+    fn on_bot_offline(&self, ev: bot_offline::BotOfflineEvent);
+}
+
 pub(crate) struct EventDispatcher {
     pub(crate) system: watch::Sender<Option<system::SystemEvent>>,
     pub(crate) friend: watch::Sender<Option<friend::FriendEvent>>,

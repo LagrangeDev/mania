@@ -11,7 +11,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-impl BusinessHandle {
+impl<H> BusinessHandle<H> {
     pub async fn uin2uid(
         self: &Arc<Self>,
         uin: u32,
