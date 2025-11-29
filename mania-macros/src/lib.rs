@@ -1,4 +1,3 @@
-#![feature(let_chains)]
 use md5::{Digest, Md5};
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};

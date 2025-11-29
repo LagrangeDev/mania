@@ -331,15 +331,12 @@ impl SsoPacket {
             // Lagrange.Core.Internal.Packets.SsoPacker.InflatePacket
             let body = reader.section(|p| p.bytes());
             let mut reader = flate2::read::ZlibDecoder::new(body.reader());
-
             let mut buffer = BytesMut::new().writer();
             buffer.write_u32::<BigEndian>(0)?; // placeholder for length
             std::io::copy(&mut reader, &mut buffer)?;
-
             let mut buffer = buffer.into_inner();
             let len = buffer.len() as u32;
             BigEndian::write_u32(&mut buffer[0..4], len);
-
             buffer.freeze()
         } else {
             reader.bytes() // ...or full?

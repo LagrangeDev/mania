@@ -23,6 +23,7 @@ pub struct LinuxSignProvider {
     pub url: Option<String>,
 }
 
+// TODO: use async impl
 impl SignProvider for LinuxSignProvider {
     fn sign_impl(&self, cmd: &str, seq: u32, body: &[u8]) -> Option<SignResult> {
         let dummy_sign = || -> SignResult {

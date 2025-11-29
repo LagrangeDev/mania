@@ -37,7 +37,7 @@ impl ClientEvent for VideoGroupDownloadEvent {
                 client: Some(ClientMeta { agent_type: 2 }),
             }),
             download: Some(DownloadReq {
-                node: Some(self.node.to_owned().unwrap_or_else(|| (IndexNode {
+                node: Some(self.node.to_owned().unwrap_or_else(|| IndexNode {
                     info: Some(FileInfo {
                         file_size: 0,
                         file_hash: self.file_md5.to_owned(),
@@ -59,7 +59,7 @@ impl ClientEvent for VideoGroupDownloadEvent {
                     upload_time: 0,
                     ttl: 0,
                     sub_type: 0,
-                }))),
+                })),
                 download: Some(dda!(DownloadExt {
                     video: Some(dda!(VideoDownloadExt {
                         busi_type: 0,

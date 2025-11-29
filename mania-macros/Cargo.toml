@@ -10,6 +10,6 @@ proc-macro = true
 [dependencies]
 hex.workspace = true
 md-5.workspace = true
-proc-macro2 = "1.0.95"
-quote = "1.0.40"
-syn = { version = "2.0.104", features = ["full"] }
+proc-macro2 = "1.0.103"
+quote = "1.0.42"
+syn = { version = "2.0.111", features = ["full"] }
