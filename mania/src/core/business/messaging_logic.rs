@@ -684,9 +684,9 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
                     }
                 }
             }
-            Entity::MultiMsg(ref mut multi) => {
+            Entity::MultiMsg(ref mut multi)
                 // TODO: recursively resolve?
-                if multi.chains.is_empty() {
+                if multi.chains.is_empty() => {
                     let msg = handle
                         .multi_msg_download(chain.uid.clone(), multi.res_id.clone())
                         .await;
@@ -702,7 +702,6 @@ async fn resolve_incoming_chain(chain: &mut MessageChain, handle: Arc<BusinessHa
                         }
                     }
                 }
-            }
             Entity::File(ref mut file) => {
                 file.file_url = match file.extra.as_ref() {
                     Some(extra) => match extra {

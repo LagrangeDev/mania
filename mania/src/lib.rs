@@ -1,5 +1,4 @@
 #![allow(dead_code)] // TODO: remove this after stable
-#![feature(if_let_guard)]
 #![feature(default_field_values)]
 
 mod core;

@@ -329,7 +329,7 @@ impl ClientEvent for PushMessageEvent {
                 }
             }
             PkgType::Event0x2DC => {
-                extra = process_event_0x2dc(ctx, &mut packet, &mut extra)?.take();
+                extra = process_event_0x2dc(&mut packet, &mut extra)?.take();
             }
             PkgType::Event0x210 => {
                 extra = process_event_0x210(ctx, &mut packet, &mut extra)?.take();
@@ -420,7 +420,6 @@ struct SpecialTitleMedalInfo {
 }
 
 fn process_event_0x2dc<'a>(
-    _: &Context,
     packet: &'a mut PushMsg,
     extra: &'a mut Option<Vec<Box<dyn ServerEvent>>>,
 ) -> Result<&'a mut Option<Vec<Box<dyn ServerEvent>>>, EventError> {
