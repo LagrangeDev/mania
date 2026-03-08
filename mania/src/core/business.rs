@@ -23,6 +23,7 @@ use crate::core::socket::{self, PacketReceiver, PacketSender};
 use crate::event::{EventDispatcher, EventListener};
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
+use futures::stream::{FuturesUnordered, StreamExt};
 use once_cell::sync::Lazy;
 use thiserror::Error;
 use tokio::sync::{Mutex, MutexGuard, oneshot};
@@ -144,34 +145,35 @@ impl Business {
 
     // TODO: decouple
     pub async fn spawn(&mut self) {
-        let handle_packets = async {
-            loop {
-                let raw_packet = match self.receiver.recv().await {
-                    Ok(packet) => packet,
-                    Err(e) => {
-                        tracing::error!("Failed to receive raw_packet: {}", e);
-                        continue;
-                    }
-                };
-                let packet = match SsoPacket::parse(raw_packet, &self.handle.context) {
-                    Ok(packet) => packet,
-                    Err(e) => {
-                        tracing::error!("Failed to parse SsoPacket: {}", e);
-                        continue;
-                    }
-                };
-                tracing::debug!("Incoming packet: {}", packet.command());
-                tracing::trace!("Full: {:?}", packet);
-                let handle = self.handle.clone();
-                tokio::spawn(async move {
-                    if let Err(e) = handle.dispatch_sso_packet(packet).await {
-                        tracing::error!("Unhandled error occurred when handling packet: {:?}", e);
-                    }
-                });
+        let mut in_flight = FuturesUnordered::new();
+        loop {
+            tokio::select! {
+                result = self.receiver.recv() => {
+                    let raw_packet = match result {
+                        Ok(packet) => packet,
+                        Err(e) => {
+                            tracing::error!("Failed to receive raw_packet: {}", e);
+                            continue;
+                        }
+                    };
+                    let packet = match SsoPacket::parse(raw_packet, &self.handle.context) {
+                        Ok(packet) => packet,
+                        Err(e) => {
+                            tracing::error!("Failed to parse SsoPacket: {}", e);
+                            continue;
+                        }
+                    };
+                    tracing::debug!("Incoming packet: {}", packet.command());
+                    tracing::trace!("Full: {:?}", packet);
+                    let handle = self.handle.clone();
+                    in_flight.push(async move {
+                        if let Err(e) = handle.dispatch_sso_packet(packet).await {
+                            tracing::error!("Unhandled error occurred when handling packet: {:?}", e);
+                        }
+                    });
+                }
+                Some(_) = in_flight.next() => {}
             }
-        };
-        tokio::select! {
-            _ = handle_packets => {}
         }
     }
 
@@ -240,7 +242,7 @@ impl BusinessHandle {
 
     async fn dispatch_sso_packet(self: &Arc<Self>, packet: SsoPacket) -> BusinessResult<()> {
         let sequence = packet.sequence();
-        let result: BusinessResult<CEParse> = async {
+        let result = async {
             let (mut major_event, mut extra_events) = resolve_event(packet, &self.context).await?;
             let svc = self.clone();
             dispatch_logic(major_event.as_mut(), svc.clone(), LogicFlow::InComing).await?;
@@ -254,22 +256,15 @@ impl BusinessHandle {
         .await;
         // Lagrange.Core.Internal.Context.BusinessContext.HandleIncomingEvent
         // TODO: timeout auto remove
-        if let Some((_, tx)) = self.pending_requests.remove(&sequence) {
-            tx.send(result).expect("receiver dropped");
-        } else if let Err(e) = &result {
-            match e {
-                BusinessError::InternalEventError(inner_err)
-                    if matches!(
-                        inner_err,
-                        EventError::UnsupportedEvent(_) | EventError::InternalWarning(_)
-                    ) =>
-                {
-                    tracing::warn!("{}", inner_err);
-                }
-                _ => {
-                    tracing::error!("Unhandled error occurred: {}", e);
-                }
-            }
+        match self.pending_requests.remove(&sequence) {
+            Some((_, tx)) => tx.send(result).expect("receiver dropped"),
+            None => match &result {
+                Err(BusinessError::InternalEventError(
+                    ie @ (EventError::UnsupportedEvent(_) | EventError::InternalWarning(_)),
+                )) => tracing::warn!("{}", ie),
+                Err(e) => tracing::error!("Unhandled error occurred: {}", e),
+                Ok(_) => {}
+            },
         }
         Ok(())
     }
@@ -307,9 +302,21 @@ impl BusinessHandle {
 
     async fn send_packet(&self, packet: SsoPacket) -> BusinessResult<CEParse> {
         let sequence = packet.sequence();
-        let (tx, rx) = oneshot::channel::<BusinessResult<CEParse>>();
+        let (tx, rx) = oneshot::channel();
         self.pending_requests.insert(sequence, tx);
         self.post_packet(packet).await?;
-        rx.await.expect("response not received")
+        match tokio::time::timeout(Duration::from_secs(15), rx).await {
+            Ok(Ok(result)) => result,
+            Ok(Err(_)) => {
+                self.pending_requests.remove(&sequence);
+                Err(BusinessError::GenericError(
+                    "response channel dropped".into(),
+                ))
+            }
+            Err(_) => {
+                self.pending_requests.remove(&sequence);
+                Err(BusinessError::GenericError("request timed out".into()))
+            }
+        }
     }
 }

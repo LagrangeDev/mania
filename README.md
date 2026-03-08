@@ -8,12 +8,10 @@
 </div>
 
 > [!NOTE]\
-> This project is originally frozen in
-> [radicle](https://app.radicle.xyz/nodes/seed.radicle.garden/rad:z4QZVPDxLbGgd1oHFsjtJLQYtZ8ma)
+> This project is originally frozen in [radicle](https://app.radicle.xyz/nodes/seed.radicle.garden/rad:z4QZVPDxLbGgd1oHFsjtJLQYtZ8ma)
 
 > [!WARNING]\
-> This project is still in active development. The internal and external
-> interfaces are still unstable
+> This project is still under active development. Its internal and external interfaces are still unstable, so it is not recommended for use in production environments.
 
 ## Disclaimer
 
@@ -62,5 +60,8 @@ cp scripts/pre-push .git/hooks/pre-push
 
 - All projects in [LagrangeDev](https://github.com/lagrangeDev) (and their twin
   projects)
-- [lz1998/ricq](https://github.com/lz1998/ricq)
 - [inmes-dev/qqbot.rs](https://github.com/inmes-dev/qqbot.rs)
+- [LagrangeDev/kosa](https://github.com/LagrangeDev/kosa)
+- [lz1998/ricq](https://github.com/lz1998/ricq)
+
+Many thanks again to all the contributors to the projects above and to this project as well! Mania would not be where it is today without you!
