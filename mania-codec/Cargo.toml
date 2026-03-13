@@ -7,9 +7,9 @@ readme = "README.md"
 
 [dependencies]
 bytes.workspace = true
-num-traits = "0.2.19"
+num-traits.workspace = true
 num_enum.workspace = true
-rubato = "0.16.2"
-silk-sys = "0.1.0"
-symphonia = { git = "https://github.com/pdeljanov/Symphonia.git", branch = "dev-0.6", features = ["all"] }
+rubato.workspace = true
+silk-sys.workspace = true
+symphonia.workspace = true
 thiserror.workspace = true

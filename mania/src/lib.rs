@@ -1,63 +1,31 @@
 #![allow(dead_code)] // TODO: remove this after stable
 #![feature(default_field_values)]
 
-mod core;
-pub mod entity;
+pub mod business;
+pub mod cache;
+pub mod connect;
+pub mod error;
 pub mod event;
-pub mod message;
-pub mod utility;
+mod highway;
+mod http;
+pub mod operation;
+mod ping;
+pub mod sign;
+pub mod socket;
 
-use crate::core::business::{Business, BusinessHandle};
-pub use crate::core::cache::CacheMode;
-use crate::core::context::Protocol;
-pub use crate::core::context::{AppInfo, Context, DeviceInfo};
-pub use crate::core::error::{ManiaError, ManiaResult};
-pub use crate::core::key_store::KeyStore;
-use crate::core::session::Session;
-use crate::core::sign::{SignProvider, default_sign_provider};
-use crate::entity::bot_group_member::FetchGroupMemberStrategy;
+use crate::business::{Business, BusinessHandle};
+use crate::error::ManiaResult;
+use crate::sign::default_sign_provider;
+pub use mania_core::ClientConfig;
+pub use mania_core::core::context::Protocol;
+pub use mania_core::core::context::{AppInfo, Context, DeviceInfo};
+pub use mania_core::core::key_store::KeyStore;
+pub use mania_core::core::session::Session;
+pub use mania_core::core::sign::SignProvider;
+pub use mania_core::dda;
+pub use mania_core::message;
 use std::env;
 use std::sync::Arc;
-
-/// Configuration for the client
-pub struct ClientConfig {
-    /// The protocol for the client, default is Linux
-    pub protocol: Protocol,
-    /// Auto reconnect to server when disconnected
-    pub auto_reconnect: bool,
-    /// Use the IPv6 to connect to server, only if your network support IPv6
-    pub use_ipv6_network: bool,
-    /// Get optimum server from Tencent MSF server, set to false to use hardcode server
-    pub get_optimum_server: bool,
-    /// Custom Sign Provider
-    pub sign_provider: Option<Box<dyn SignProvider>>,
-    /// The maximum size of the highway block in byte, max 1MB (1024 * 1024 byte)
-    pub highway_chuck_size: usize,
-    /// Highway uploading concurrency, if the image failed to send, set this to 1
-    pub highway_concurrency: usize,
-    /// Cache mode for the client
-    pub cache_mode: CacheMode,
-    /// The strategy for fetching `BotGroupMember`
-    /// Setting it to `Simple` can avoid fetching all group members at the cost of losing some fields
-    /// See `BotGroupMember` for more information
-    pub fetch_group_member_strategy: FetchGroupMemberStrategy,
-}
-
-impl Default for ClientConfig {
-    fn default() -> Self {
-        Self {
-            protocol: Protocol::Linux,
-            auto_reconnect: true,
-            use_ipv6_network: false,
-            get_optimum_server: true,
-            sign_provider: None,
-            highway_chuck_size: 1024 * 1024,
-            highway_concurrency: 4,
-            cache_mode: CacheMode::Half,
-            fetch_group_member_strategy: FetchGroupMemberStrategy::Simple,
-        }
-    }
-}
 
 pub struct Client {
     business: Business,
@@ -76,8 +44,6 @@ impl Client {
         let context = Context {
             app_info,
             device,
-            key_store,
-            config: config.clone(),
             sign_provider: sign_provider.unwrap_or_else(|| {
                 default_sign_provider(
                     config.protocol,
@@ -90,8 +56,7 @@ impl Client {
                         }),
                 )
             }),
-            crypto: Default::default(),
-            session: Session::new(),
+            session: Arc::new(Session::new(key_store, Some(config.clone()))),
         };
         let context = Arc::new(context);
         let business = Business::new(config, context.clone()).await?;

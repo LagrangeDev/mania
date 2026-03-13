@@ -21,17 +21,16 @@ async fn main() {
             tracing::info!("tokio-tracing initialized.");
         } else {
             use tracing_subscriber::{fmt, EnvFilter};
-            use tracing_appender::rolling::{RollingFileAppender, Rotation};
-            let file_appender = RollingFileAppender::new(Rotation::HOURLY, "./logs", "mania.log");
+            // let file_appender = RollingFileAppender::new(Rotation::HOURLY, "./logs", "mania.log");
             let fmt_layer = fmt::Layer::default()
                 .with_writer(stdout)
                 .with_filter(EnvFilter::new("debug"));
-            let file_layer = fmt::Layer::default()
-                .with_writer(file_appender)
-                .with_filter(EnvFilter::new("trace"));
+            // let file_layer = fmt::Layer::default()
+            //     .with_writer(file_appender)
+            //     .with_filter(EnvFilter::new("trace"));
             let subscriber = tracing_subscriber::registry()
-                .with(fmt_layer)
-                .with(file_layer);
+                .with(fmt_layer);
+                // .with(file_layer);
             subscriber.init();
         }
     }

@@ -1,0 +1,43 @@
+[package]
+name = "mania-core"
+version.workspace = true
+edition.workspace = true
+license-file.workspace = true
+
+[dependencies]
+arc-swap.workspace = true
+byteorder.workspace = true
+bytes.workspace = true
+chrono.workspace = true
+digest.workspace = true
+elliptic-curve.workspace = true
+flate2.workspace = true
+futures.workspace = true
+generic-array.workspace = true
+hex.workspace = true
+image.workspace = true
+inventory.workspace = true
+mania-macros.workspace = true
+md-5.workspace = true
+noise.workspace = true
+num_enum.workspace = true
+once_cell.workspace = true
+p256.workspace = true
+phf.workspace = true
+prost.workspace = true
+quick-xml.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha1.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[build-dependencies]
+prost-build.workspace = true
+glob.workspace = true
+anyhow.workspace = true

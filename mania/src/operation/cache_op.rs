@@ -1,0 +1,406 @@
+use crate::business::{BusinessError, BusinessHandle, BusinessResult};
+use dashmap::DashMap;
+use mania_core::core::event::downcast_mut_major_event;
+use mania_core::core::event::system::fetch_friend::FetchFriendsEvent;
+use mania_core::core::event::system::fetch_members::FetchMembersEvent;
+use mania_core::entity::bot_friend::{BotFriend, BotFriendGroup};
+use mania_core::entity::bot_group_member::BotGroupMember;
+use mania_core::{CacheMode, dda};
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::sync::Arc;
+
+impl BusinessHandle {
+    pub async fn uin2uid(
+        self: &Arc<Self>,
+        uin: u32,
+        group_uin: Option<u32>,
+    ) -> BusinessResult<String> {
+        match self.cache.cache_mode {
+            CacheMode::Full | CacheMode::Half => {
+                if self.cache.cache_mode == CacheMode::Full
+                    && self.cache.uin2uid.as_ref().unwrap().is_empty()
+                {
+                    self.refresh_friends_cache().await?;
+                }
+                if let Some(group_uin) = group_uin
+                    && !self
+                        .cache
+                        .cached_group_members
+                        .as_ref()
+                        .unwrap()
+                        .contains_key(&group_uin)
+                {
+                    self.refresh_group_members_cache(group_uin).await?;
+                }
+                self.resolve_uin2uid_within_cache(uin, group_uin).await
+            }
+            CacheMode::None => {
+                if let Some(group_uin) = group_uin {
+                    self.fast_fetch_group_members_uid(uin, group_uin).await
+                } else {
+                    self.fast_fetch_friends_uid(uin).await
+                }
+            }
+        }
+    }
+
+    pub async fn uin2uid_fast(self: &Arc<Self>, uin: u32, group_uin: Option<u32>) -> String {
+        self.uin2uid(uin, group_uin).await.unwrap_or_else(|e| {
+            tracing::error!("uin2uid_fast failed: {:?}", e);
+            String::new()
+        })
+    }
+
+    pub async fn uid2uin(
+        self: &Arc<Self>,
+        uid: &str,
+        group_uin: Option<u32>,
+    ) -> BusinessResult<u32> {
+        match self.cache.cache_mode {
+            CacheMode::Full | CacheMode::Half => {
+                if self.cache.cache_mode == CacheMode::Full
+                    && self.cache.uid2uin.as_ref().unwrap().is_empty()
+                {
+                    self.refresh_friends_cache().await?;
+                }
+                if let Some(group_uin) = group_uin
+                    && !self
+                        .cache
+                        .cached_group_members
+                        .as_ref()
+                        .unwrap()
+                        .contains_key(&group_uin)
+                {
+                    self.refresh_group_members_cache(group_uin).await?;
+                }
+                self.resolve_uid2uin_within_cache(uid, group_uin).await
+            }
+            CacheMode::None => {
+                if let Some(group_uin) = group_uin {
+                    self.fast_fetch_group_members_uin(uid, group_uin).await
+                } else {
+                    self.fast_fetch_friends_uin(uid).await
+                }
+            }
+        }
+    }
+
+    pub async fn uid2uin_fast(self: &Arc<Self>, uid: &str, group_uin: Option<u32>) -> u32 {
+        self.uid2uin(uid, group_uin).await.unwrap_or_else(|e| {
+            tracing::error!("uid2uin_fast failed: {:?}", e);
+            0
+        })
+    }
+
+    async fn resolve_uin2uid_within_cache(
+        self: &Arc<Self>,
+        uin: u32,
+        group_uin: Option<u32>,
+    ) -> BusinessResult<String> {
+        if let Some(uid) = self.cache.uin2uid.as_ref().and_then(|m| m.get(&uin)) {
+            return Ok(uid.value().to_string());
+        }
+        if let Some(group_id) = group_uin {
+            let group_members = self
+                .cache
+                .cached_group_members
+                .as_ref()
+                .unwrap()
+                .get(&group_id)
+                .ok_or_else(|| BusinessError::GenericError(Cow::from("Group not found")))?;
+            Ok(group_members
+                .iter()
+                .find(|member| member.uin == uin)
+                .map(|member| member.uid.clone())
+                .ok_or_else(|| BusinessError::GenericError(Cow::from("Member not found")))?)
+        } else {
+            let friend = self
+                .cache
+                .cached_friends
+                .as_ref()
+                .unwrap()
+                .get(&uin)
+                .ok_or_else(|| BusinessError::GenericError(Cow::from("Friend not found")))?;
+            Ok(friend.value().uid.clone())
+        }
+    }
+
+    async fn resolve_uid2uin_within_cache(
+        self: &Arc<Self>,
+        uid: &str,
+        group_uin: Option<u32>,
+    ) -> BusinessResult<u32> {
+        if let Some(uin) = self.cache.uid2uin.as_ref().and_then(|m| m.get(uid)) {
+            return Ok(*uin.value());
+        }
+        if let Some(group_id) = group_uin {
+            let group_members = self
+                .cache
+                .cached_group_members
+                .as_ref()
+                .unwrap()
+                .get(&group_id)
+                .ok_or_else(|| BusinessError::GenericError(Cow::from("Group not found")))?;
+            Ok(group_members
+                .iter()
+                .find(|member| member.uid == uid)
+                .map(|member| member.uin)
+                .ok_or_else(|| BusinessError::GenericError(Cow::from("Member not found")))?)
+        } else {
+            let friend = self
+                .cache
+                .cached_friends
+                .as_ref()
+                .unwrap()
+                .iter()
+                .find(|entry| entry.value().uid == uid)
+                .ok_or_else(|| BusinessError::GenericError(Cow::from("Friend not found")))?;
+            Ok(*friend.key())
+        }
+    }
+
+    async fn iter_fetch_friends<T, F>(self: &Arc<Self>, mut process: F) -> BusinessResult<Option<T>>
+    where
+        F: FnMut(&mut FetchFriendsEvent) -> BusinessResult<Option<T>>,
+    {
+        let mut next_uin: Option<u32> = None;
+        loop {
+            let mut event = dda!(FetchFriendsEvent { next_uin });
+            let mut result = self.send_event(&mut event).await?;
+            let event: &mut FetchFriendsEvent = downcast_mut_major_event(&mut result)
+                .ok_or_else(|| BusinessError::GenericError("Downcast error".into()))?;
+            if let Some(val) = process(event)? {
+                return Ok(Some(val));
+            }
+            if let Some(n) = event.next_uin {
+                next_uin = Some(n);
+            } else {
+                break;
+            }
+        }
+        Ok(None::<T>)
+    }
+
+    pub(crate) async fn refresh_friends_cache(self: &Arc<Self>) -> BusinessResult<()> {
+        if self.cache.cache_mode == CacheMode::None {
+            tracing::warn!("Cache mode is None, no need to refresh friends cache");
+            return Ok(());
+        }
+        let mut friends: HashMap<u32, BotFriend> = HashMap::new();
+        let mut friend_groups: HashMap<u32, String> = HashMap::new();
+        self.iter_fetch_friends(|event: &mut FetchFriendsEvent| {
+            friend_groups.extend(event.friend_groups.to_owned());
+            for friend in event.friends.iter_mut() {
+                let group_id = friend
+                    .group
+                    .as_ref()
+                    .ok_or_else(|| BusinessError::GenericError(Cow::from("Missing group id")))?
+                    .group_id;
+                if let Some(name) = friend_groups.get(&group_id) {
+                    friend.group = Some(BotFriendGroup {
+                        group_id,
+                        group_name: name.clone(),
+                    });
+                }
+                friends.insert(friend.uin, friend.to_owned());
+                if self.cache.cache_mode == CacheMode::Full {
+                    self.cache.insert_uin_uid(friend.uin, friend.uid.clone());
+                }
+            }
+            Ok(None::<()>)
+        })
+        .await?;
+        let cached_friends = self.cache.cached_friends.as_ref().unwrap();
+        cached_friends.clear();
+        for (uin, friend) in friends.iter() {
+            cached_friends.insert(*uin, friend.to_owned());
+        }
+        Ok(())
+    }
+
+    async fn fast_fetch_friends_uid(self: &Arc<Self>, uin: u32) -> BusinessResult<String> {
+        let res = self
+            .iter_fetch_friends(|event| {
+                Ok(event
+                    .friends
+                    .iter()
+                    .find(|f| f.uin == uin)
+                    .map(|f| f.uid.clone()))
+            })
+            .await?;
+        res.ok_or_else(|| BusinessError::GenericError(Cow::from("Friend not found")))
+    }
+
+    async fn fast_fetch_friends_uin(self: &Arc<Self>, uid: &str) -> BusinessResult<u32> {
+        let res = self
+            .iter_fetch_friends(|event| {
+                Ok(event.friends.iter().find(|f| f.uid == uid).map(|f| f.uin))
+            })
+            .await?;
+        res.ok_or_else(|| BusinessError::GenericError(Cow::from("Friend not found")))
+    }
+
+    async fn iter_fetch_group<T, F>(
+        self: &Arc<Self>,
+        group_uin: u32,
+        mut process: F,
+    ) -> BusinessResult<Option<T>>
+    where
+        F: FnMut(&mut FetchMembersEvent) -> BusinessResult<Option<T>>,
+    {
+        let mut token: Option<String> = None;
+        loop {
+            let mut event = dda!(FetchMembersEvent { group_uin, token });
+            let mut result = self.send_event(&mut event).await?;
+            let event: &mut FetchMembersEvent = downcast_mut_major_event(&mut result)
+                .ok_or_else(|| BusinessError::GenericError("Downcast error".into()))?;
+            if let Some(val) = process(event)? {
+                return Ok(Some(val));
+            }
+            if let Some(t) = event.token.as_ref() {
+                token = Some(t.to_owned());
+            } else {
+                break;
+            }
+        }
+        Ok(None::<T>)
+    }
+
+    pub(crate) async fn refresh_group_members_cache(
+        self: &Arc<Self>,
+        group_uin: u32,
+    ) -> BusinessResult<()> {
+        if self.cache.cache_mode == CacheMode::None {
+            tracing::warn!("Cache mode is None, no need to refresh group members cache");
+            return Ok(());
+        }
+        let mut group_members: Vec<BotGroupMember> = Vec::new();
+        self.iter_fetch_group(group_uin, |event| {
+            group_members.extend(event.group_members.clone());
+            Ok(None::<()>)
+        })
+        .await?;
+        if self.cache.cache_mode == CacheMode::Full {
+            group_members.iter().for_each(|bgm| {
+                self.cache.insert_uin_uid(bgm.uin, bgm.uid.clone());
+            });
+        }
+        self.cache
+            .cached_group_members
+            .as_ref()
+            .unwrap()
+            .insert(group_uin, group_members);
+        Ok(())
+    }
+
+    async fn fast_fetch_group_members_uid(
+        self: &Arc<Self>,
+        uin: u32,
+        group_uin: u32,
+    ) -> BusinessResult<String> {
+        let res = self
+            .iter_fetch_group(group_uin, |event| {
+                Ok(event
+                    .group_members
+                    .iter()
+                    .find(|m| m.uin == uin)
+                    .map(|m| m.uid.clone()))
+            })
+            .await?;
+        res.ok_or_else(|| BusinessError::GenericError(Cow::from("Member not found")))
+    }
+
+    async fn fast_fetch_group_members_uin(
+        self: &Arc<Self>,
+        uid: &str,
+        group_uin: u32,
+    ) -> BusinessResult<u32> {
+        let res = self
+            .iter_fetch_group(group_uin, |event| {
+                Ok(event
+                    .group_members
+                    .iter()
+                    .find(|m| m.uid == uid)
+                    .map(|m| m.uin))
+            })
+            .await?;
+        res.ok_or_else(|| BusinessError::GenericError(Cow::from("Member not found")))
+    }
+
+    // TODO: Optimize performance in no-cache mode
+    pub async fn fetch_maybe_cached_group_members<F>(
+        self: &Arc<Self>,
+        group_uin: u32,
+        process_fn: F,
+        refresh_cache: bool,
+    ) -> BusinessResult<Vec<BotGroupMember>>
+    where
+        F: Fn(&DashMap<u32, Vec<BotGroupMember>>) -> Vec<BotGroupMember>,
+    {
+        if self.cache.cache_mode != CacheMode::None {
+            if refresh_cache {
+                self.refresh_group_members_cache(group_uin).await?;
+            }
+            if !self
+                .cache
+                .cached_group_members
+                .as_ref()
+                .unwrap()
+                .contains_key(&group_uin)
+            {
+                self.refresh_group_members_cache(group_uin).await?;
+            }
+            Ok(process_fn(
+                self.cache.cached_group_members.as_ref().unwrap(),
+            ))
+        } else {
+            let group_members: DashMap<u32, Vec<BotGroupMember>> = DashMap::new();
+            self.iter_fetch_group(group_uin, |event| {
+                group_members.insert(group_uin, event.group_members.to_owned());
+                Ok(None::<()>)
+            })
+            .await?;
+            Ok(process_fn(&group_members))
+        }
+    }
+
+    // TODO: Optimize performance in no-cache mode
+    pub async fn fetch_maybe_cached_friends<F>(
+        self: &Arc<Self>,
+        maybe_friend_uin: Option<u32>,
+        process_fn: F,
+        refresh_cache: bool,
+    ) -> BusinessResult<Vec<BotFriend>>
+    where
+        F: Fn(&DashMap<u32, BotFriend>) -> Vec<BotFriend>,
+    {
+        if self.cache.cache_mode != CacheMode::None {
+            if refresh_cache {
+                self.refresh_friends_cache().await?;
+            }
+            // TODO: Optimize performance
+            if maybe_friend_uin.is_some()
+                && !self
+                    .cache
+                    .cached_friends
+                    .as_ref()
+                    .unwrap()
+                    .contains_key(&maybe_friend_uin.unwrap())
+            {
+                self.refresh_friends_cache().await?;
+            }
+            Ok(process_fn(self.cache.cached_friends.as_ref().unwrap()))
+        } else {
+            let friends: DashMap<u32, BotFriend> = DashMap::new();
+            self.iter_fetch_friends(|event| {
+                for friend in event.friends.iter_mut() {
+                    friends.insert(friend.uin, friend.to_owned());
+                }
+                Ok(None::<()>)
+            })
+            .await?;
+            Ok(process_fn(&friends))
+        }
+    }
+}

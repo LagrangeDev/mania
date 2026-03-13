@@ -1,5 +1,5 @@
-use crate::core::entity::group_sys_enum::GroupEssenceSetFlag;
-pub use mania_macros::ManiaEvent;
+use mania_core::core::entity::group_sys_enum::GroupEssenceSetFlag;
+use mania_macros::ManiaEvent;
 
 #[derive(ManiaEvent)]
 pub struct GroupEssenceEvent {

@@ -6,13 +6,13 @@ license-file.workspace = true
 description = "examples for mania"
 
 [dependencies]
-cfg-if = "1.0.1"
-console-subscriber = { version = "0.4.1", optional = true }
-mania = { path = "../mania" }
+cfg-if.workspace = true
+console-subscriber = { workspace = true, optional = true }
+mania.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-appender = "0.2.3"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing-appender.workspace = true
+tracing-subscriber.workspace = true
 uuid.workspace = true
 
 [features]

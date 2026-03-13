@@ -1,4 +1,4 @@
-use crate::core::entity::group_sys_enum::GroupMemberIncreaseEventType;
+use mania_core::core::entity::group_sys_enum::GroupMemberIncreaseEventType;
 pub use mania_macros::ManiaEvent;
 
 #[derive(ManiaEvent)]

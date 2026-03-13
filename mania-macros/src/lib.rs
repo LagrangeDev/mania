@@ -172,7 +172,7 @@ pub fn derive_dummy_event(input: TokenStream) -> TokenStream {
                 unreachable!("DummyEvent {} should not be parsed", stringify!(#struct_name));
             }
 
-            fn parse(_: bytes::Bytes, _: &crate::core::context::Context) -> crate::core::event::CEParseResult {
+            fn parse(_: bytes::Bytes, _: &crate::core::session::Session) -> crate::core::event::CEParseResult {
                 unreachable!("DummyEvent {} should not be parsed", stringify!(#struct_name));
             }
         }
@@ -214,8 +214,8 @@ pub fn handle_event(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         let trait_check = quote! {
             const _: () = {
-                struct Checker<T: crate::core::event::ServerEvent>(core::marker::PhantomData<T>);
-                let _ = Checker::<#event_path>(core::marker::PhantomData);
+                struct Checker<T: mania_core::core::event::ServerEvent>(::core::marker::PhantomData<T>);
+                let _ = Checker::<#event_path>(::core::marker::PhantomData);
             };
         };
 
@@ -227,15 +227,15 @@ pub fn handle_event(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             fn #wrapper_fn_name<'a>(
-                event: &'a mut dyn crate::core::event::ServerEvent,
-                handle: std::sync::Arc<crate::core::business::BusinessHandle>,
-                flow: crate::core::business::LogicFlow,
-            ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<&'a dyn ServerEvent, crate::core::business::BusinessError>> + Send + 'a>> {
+                event: &'a mut dyn mania_core::core::event::ServerEvent,
+                handle: std::sync::Arc<crate::business::BusinessHandle>,
+                flow: crate::business::LogicFlow,
+            ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<&'a dyn mania_core::core::event::ServerEvent, crate::business::BusinessError>> + Send + 'a>> {
                 Box::pin(#fn_name(event, handle, flow))
             }
 
             inventory::submit! {
-                LogicRegistry {
+                crate::business::LogicRegistry {
                     event_type_id_fn: #type_id_fn_name,
                     event_handle_fn: #wrapper_fn_name,
                 }
