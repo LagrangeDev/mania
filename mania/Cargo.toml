@@ -11,7 +11,7 @@ byteorder = "1.5.0"
 bytes.workspace = true
 chrono = { version = "0.4.42", features = ["serde"] }
 dashmap = "7.0.0-rc2"
-digest = "0.11.0-rc.0"
+digest = "0.11.2"
 elliptic-curve = "0.14.0-rc.6"
 flate2 = "1.1.5"
 futures = "0.3.31"
