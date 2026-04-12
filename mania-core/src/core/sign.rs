@@ -72,3 +72,13 @@ pub trait SignProvider: Send + Sync {
 
     fn sign_impl(&self, cmd: &str, seq: u32, body: &[u8]) -> Option<SignResult>;
 }
+
+#[derive(Default)]
+pub struct DummySignProvider;
+
+impl SignProvider for DummySignProvider {
+    #[inline]
+    fn sign_impl(&self, _: &str, _: u32, _: &[u8]) -> Option<SignResult> {
+        None
+    }
+}

@@ -140,6 +140,9 @@ pub fn derive_server_event(input: TokenStream) -> TokenStream {
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
                 self
             }
+            fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+                self
+            }
         }
     };
     TokenStream::from(expanded)
@@ -162,6 +165,9 @@ pub fn derive_dummy_event(input: TokenStream) -> TokenStream {
                 self
             }
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+                self
+            }
+            fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
                 self
             }
         }
