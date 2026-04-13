@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-#![feature(default_field_values)]
-
 pub mod core;
 pub mod entity;
 pub mod message;

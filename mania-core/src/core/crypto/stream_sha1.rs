@@ -6,11 +6,20 @@ use digest::{
 };
 use sha1::block_api::compress;
 
-#[derive(Default)]
 struct StreamSha1Core {
-    h: [u32; 5] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0],
-    block_len: u64 = 0,
+    h: [u32; 5],
+    block_len: u64,
     buffer: BlockBuffer<U64, Eager>,
+}
+
+impl Default for StreamSha1Core {
+    fn default() -> Self {
+        Self {
+            h: [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0],
+            block_len: 0,
+            buffer: BlockBuffer::default(),
+        }
+    }
 }
 
 impl StreamSha1Core {
@@ -47,12 +56,22 @@ impl StreamSha1Core {
     }
 }
 
-#[derive(Default)]
 pub struct StreamSha1 {
     hasher: StreamSha1Core,
-    block_size: usize = 1024 * 1024,
-    offset: usize = 0,
+    block_size: usize,
+    offset: usize,
     digests_stream: Vec<[u8; 20]>,
+}
+
+impl Default for StreamSha1 {
+    fn default() -> Self {
+        Self {
+            hasher: StreamSha1Core::default(),
+            block_size: 1024 * 1024,
+            offset: 0,
+            digests_stream: Vec::new(),
+        }
+    }
 }
 
 impl StreamSha1 {

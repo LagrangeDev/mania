@@ -9,6 +9,7 @@ use crate::core::session::Session;
 use bytes::Bytes;
 use once_cell::sync::Lazy;
 use std::any::Any;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -72,9 +73,10 @@ static EVENT_MAP: Lazy<EventMap> = Lazy::new(|| {
 
 pub fn resolve_event(packet: SsoPacket, session: &Session) -> CEParseResult {
     // Lagrange.Core.Internal.Context.ServiceContext.ResolveEventByPacket
-    let payload = PacketReader::new(packet.payload()).section(|p| p.bytes());
-    let Some(parse) = EVENT_MAP.get(packet.command()) else {
-        return Err(EventError::UnsupportedEvent(packet.command().to_string()));
+    let (_, cmd, _, data) = packet.into_parts();
+    let payload = PacketReader::new(data.0).section(|p| p.bytes());
+    let Some(parse) = EVENT_MAP.get(cmd.as_ref()) else {
+        return Err(EventError::UnsupportedEvent(cmd));
     };
     let events = parse(payload, session)?;
     Ok(events)
@@ -101,7 +103,7 @@ pub fn downcast_mut_major_event<T: ServerEvent + 'static>(event: &mut CEParse) -
 #[derive(Debug, Error)]
 pub enum EventError {
     #[error("unsupported event, commend: {0}")]
-    UnsupportedEvent(String),
+    UnsupportedEvent(Cow<'static, str>),
 
     #[error("TLV error occurred: {0}")]
     MissingTlv(#[from] crate::core::tlv::TlvError),

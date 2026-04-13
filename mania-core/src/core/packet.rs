@@ -36,7 +36,7 @@ impl TryFrom<u32> for PacketType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BinaryPacket(pub Bytes);
 
 pub struct OidbPacket {
@@ -114,6 +114,7 @@ impl OidbPacket {
     }
 }
 
+#[derive(Clone)]
 pub struct SsoPacket {
     packet_type: PacketType,
     command: Cow<'static, str>,
@@ -187,8 +188,12 @@ impl SsoPacket {
         self.sequence
     }
 
-    pub fn payload(&self) -> Bytes {
-        self.payload.0.clone()
+    pub fn payload(&self) -> &[u8] {
+        self.payload.0.as_ref()
+    }
+
+    pub fn into_parts(self) -> (PacketType, Cow<'static, str>, u32, BinaryPacket) {
+        (self.packet_type, self.command, self.sequence, self.payload)
     }
 
     pub fn build(&self, ctx: &Context) -> Vec<u8> {

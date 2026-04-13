@@ -1,6 +1,4 @@
 #![allow(dead_code)] // TODO: remove this after stable
-#![feature(default_field_values)]
-
 pub mod business;
 pub mod cache;
 pub mod connect;
