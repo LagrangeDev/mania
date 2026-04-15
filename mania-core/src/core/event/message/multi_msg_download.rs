@@ -41,6 +41,11 @@ impl ClientEvent for MultiMsgDownloadEvent {
             .result
             .ok_or_else(|| EventError::OtherError("Missing RecvLongMsgInfo".to_string()))?
             .payload;
+        let Some(inflate) = inflate else {
+            return Ok(ClientResult::single(Box::new(dda!(
+                MultiMsgDownloadEvent { chains: None }
+            ))));
+        };
         let inflate = gzip::decompress(&inflate).ok_or_else(|| {
             EventError::OtherError("Failed to decompress long message".to_string())
         })?;

@@ -14,8 +14,8 @@ pub struct ImageEntity {
     pub url: String,
     pub image_stream: Option<AsyncStream>,
     pub msg_info: Option<MsgInfo>,
-    pub not_online_image: NotOnlineImage,
-    pub custom_face: CustomFace,
+    pub not_online_image: Option<NotOnlineImage>,
+    pub custom_face: Option<CustomFace>,
     pub summary: Option<String>,
     pub sub_type: u32,
     pub is_group: bool,
@@ -86,8 +86,8 @@ impl MessageEntity for ImageEntity {
         );
         vec![
             dda!(Elem {
-                custom_face: Some(self.custom_face.clone()),
-                not_online_image: Some(self.not_online_image.clone()),
+                custom_face: self.custom_face.clone(),
+                not_online_image: self.not_online_image.clone(),
             }),
             dda!(Elem {
                 common_elem: Some(CommonElem {
@@ -144,7 +144,7 @@ impl MessageEntity for ImageEntity {
                 md5: Bytes::from(image.pic_md5.clone()),
                 size: image.file_len,
                 url,
-                not_online_image: image.clone(),
+                not_online_image: Some(image.clone()),
                 sub_type: pb_res.sub_type as u32,
                 is_group: false,
                 summary: Some(pb_res.summary.clone()),
@@ -169,7 +169,7 @@ impl MessageEntity for ImageEntity {
                 md5: Bytes::from(face.md5.clone()),
                 size: face.size,
                 url,
-                custom_face: face.clone(),
+                custom_face: Some(face.clone()),
                 sub_type: pb_res.sub_type as u32,
                 is_group: true,
                 summary: Some(pb_res.summary.clone()),

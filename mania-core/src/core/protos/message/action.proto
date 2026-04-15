@@ -46,7 +46,7 @@ message RecvLongMsgResp {
 
 message RecvLongMsgResult {
   string ResId = 3;
-  bytes Payload = 4;
+  optional bytes Payload = 4;
 }
 
 message SendLongMsgReq {

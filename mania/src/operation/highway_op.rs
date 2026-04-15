@@ -189,7 +189,7 @@ impl BusinessHandle {
             tracing::debug!("No u_key in upload_group_image response, skip upload!");
         }
         image.msg_info = Some(res.res.msg_info.to_owned());
-        image.custom_face = res.res.custom_face.to_owned();
+        image.custom_face = Some(res.res.custom_face.to_owned());
         Ok(())
     }
 
@@ -283,7 +283,7 @@ impl BusinessHandle {
             tracing::debug!("No u_key in upload_c2c_image response, skip upload!");
         }
         image.msg_info = Some(res.res.msg_info.to_owned());
-        image.not_online_image = res.res.not_online_image.to_owned();
+        image.not_online_image = Some(res.res.not_online_image.to_owned());
         Ok(())
     }
 
